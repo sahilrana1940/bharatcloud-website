@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const client = getS3Client();
   if (!client) {
     return NextResponse.json(
-      { error: "E2E S3 not configured" },
+      { error: "Object storage not configured" },
       { status: 503 },
     );
   }

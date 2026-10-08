@@ -14,17 +14,21 @@ const HOT_MAX_DAYS = 15;
 const ARCHIVE_MIN_DAYS = 60;
 
 function createS3Client() {
-  const endpoint = process.env.E2E_S3_ENDPOINT;
+  const endpoint =
+    process.env.WASABI_ENDPOINT || process.env.E2E_S3_ENDPOINT;
   if (!endpoint) {
     return null;
   }
   return new S3Client({
     endpoint,
-    region: process.env.E2E_S3_REGION || "us-east-1",
+    region:
+      process.env.WASABI_REGION || process.env.E2E_S3_REGION || "us-east-1",
     forcePathStyle: true,
     credentials: {
-      accessKeyId: process.env.E2E_S3_ACCESS_KEY || "",
-      secretAccessKey: process.env.E2E_S3_SECRET_KEY || "",
+      accessKeyId:
+        process.env.WASABI_ACCESS_KEY || process.env.E2E_S3_ACCESS_KEY || "",
+      secretAccessKey:
+        process.env.WASABI_SECRET_KEY || process.env.E2E_S3_SECRET_KEY || "",
     },
   });
 }

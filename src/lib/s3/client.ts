@@ -8,19 +8,20 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-export const B2B_VAULT_BUCKET =
-  process.env.E2E_S3_B2B_BUCKET || "bharatcloud-vault";
+import { getS3Env, isS3Configured } from "@/lib/s3/config";
+
+export const B2B_VAULT_BUCKET = getS3Env().b2bBucket;
 
 export function getS3Client(): S3Client | null {
-  const endpoint = process.env.E2E_S3_ENDPOINT;
-  if (!endpoint) return null;
+  if (!isS3Configured()) return null;
+  const { endpoint, region, accessKeyId, secretAccessKey } = getS3Env();
   return new S3Client({
     endpoint,
-    region: process.env.E2E_S3_REGION || "us-east-1",
+    region,
     forcePathStyle: true,
     credentials: {
-      accessKeyId: process.env.E2E_S3_ACCESS_KEY || "",
-      secretAccessKey: process.env.E2E_S3_SECRET_KEY || "",
+      accessKeyId,
+      secretAccessKey,
     },
   });
 }
