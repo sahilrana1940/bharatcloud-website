@@ -1,48 +1,54 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-type IdRow = {
-  id: string;
-  email_prefix: string;
-  storage_used_gb: number;
-  last_active_at: string;
+import { formatStorageGb, planLabel } from "@/lib/b2b/plans";
+
+type Org = {
+  name: string;
+  plan: string;
+  storage_limit: number;
+  storage_used: number;
 };
 
-type TrashRow = {
+type Member = {
   id: string;
-  original_name: string;
-  deleted_at: string;
-  file_key: string;
+  user_email: string;
+  role: string;
+  joined_at: string;
 };
 
 export function DashboardClient() {
-  const [usedGb, setUsedGb] = useState(320);
-  const [limitGb, setLimitGb] = useState(500);
-  const [ids, setIds] = useState<IdRow[]>([]);
-  const [trash, setTrash] = useState<TrashRow[]>([]);
+  const [org, setOrg] = useState<Org | null>(null);
+  const [memberCount, setMemberCount] = useState(0);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("member");
   const [message, setMessage] = useState("");
-  const [lastFileKey, setLastFileKey] = useState<string | null>(null);
-  const [showTrash, setShowTrash] = useState(false);
+
+  const [usedBytes, setUsedBytes] = useState(0);
+  const [limitBytes, setLimitBytes] = useState(1);
 
   const refresh = useCallback(async () => {
-    const [storageRes, idsRes, trashRes] = await Promise.all([
+    const [orgRes, membersRes, storageRes] = await Promise.all([
+      fetch("/api/b2b/org"),
+      fetch("/api/b2b/members"),
       fetch("/api/b2b/storage"),
-      fetch("/api/b2b/ids"),
-      fetch("/api/b2b/trash"),
     ]);
     if (storageRes.ok) {
       const s = await storageRes.json();
-      setUsedGb(s.usedGb);
-      setLimitGb(s.limitGb);
+      setUsedBytes(s.usedBytes ?? 0);
+      setLimitBytes(s.limitBytes ?? 1);
     }
-    if (idsRes.ok) {
-      const j = await idsRes.json();
-      setIds(j.ids || []);
+    if (orgRes.ok) {
+      const j = await orgRes.json();
+      setOrg(j.org);
+      setMemberCount(j.memberCount ?? 0);
     }
-    if (trashRes.ok) {
-      const t = await trashRes.json();
-      setTrash(t.items || []);
+    if (membersRes.ok) {
+      const j = await membersRes.json();
+      setMembers(j.members || []);
     }
   }, []);
 
@@ -50,203 +56,188 @@ export function DashboardClient() {
     refresh();
   }, [refresh]);
 
-  async function createId() {
-    const emailPrefix = prompt("Nayi ID email (e.g. hr@company.com)");
-    if (!emailPrefix) return;
-    const res = await fetch("/api/b2b/ids", {
+  async function addMember() {
+    if (!email.includes("@")) {
+      setMessage("Enter a valid email");
+      return;
+    }
+    const res = await fetch("/api/b2b/members", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ emailPrefix }),
+      body: JSON.stringify({ userEmail: email, role }),
     });
     const j = await res.json();
     if (!res.ok) {
-      setMessage(j.error || "Failed");
+      setMessage(j.error || "Failed to add member");
       return;
     }
-    setMessage(`ID created: ${emailPrefix}`);
+    setEmail("");
+    setMessage(`Added ${j.member?.user_email || email}`);
     refresh();
   }
 
-  async function onUpload(file: File) {
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/b2b/upload", { method: "POST", body: fd });
-    const j = await res.json();
-    if (!res.ok) {
-      setMessage(j.error || "Upload failed");
-      return;
-    }
-    setLastFileKey(j.key);
-    setMessage(`Uploaded: ${j.name}`);
-    refresh();
-  }
-
-  async function onShare() {
-    if (!lastFileKey) {
-      setMessage("Upload a file first, then Share");
-      return;
-    }
-    const res = await fetch("/api/b2b/share", {
-      method: "POST",
+  async function removeMember(id: string) {
+    const res = await fetch("/api/b2b/members", {
+      method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: lastFileKey }),
+      body: JSON.stringify({ memberId: id }),
     });
-    const j = await res.json();
     if (!res.ok) {
-      setMessage(j.error || "Share failed");
+      const j = await res.json();
+      setMessage(j.error || "Delete failed");
       return;
     }
-    setMessage(`7-day link copied`);
-    await navigator.clipboard.writeText(j.url);
-  }
-
-  async function restore(trashId: string) {
-    const res = await fetch("/api/b2b/restore", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ trashId }),
-    });
-    const j = await res.json();
-    setMessage(res.ok ? `Restored: ${j.restored || "ok"}` : j.error);
     refresh();
   }
 
-  const pct = Math.min(100, Math.round((usedGb / limitGb) * 100));
+  const limit = limitBytes || org?.storage_limit || 1;
+  const used = usedBytes || org?.storage_used || 0;
+  const pct = Math.min(100, Math.round((used / limit) * 100));
 
   return (
-    <div className="min-h-screen bg-white text-gray-900">
-      <header className="flex flex-col gap-4 border-b border-gray-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-        <div className="text-lg font-medium text-gray-800">BharatCloud B2B</div>
-        <div className="w-full max-w-md">
-          <div className="mb-1 flex justify-between text-xs text-gray-600">
-            <span>{usedGb}GB / {limitGb}GB Used</span>
-            <span>{pct}%</span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-            <div
-              className="h-full rounded-full bg-blue-600 transition-all"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      <header className="border-b border-gray-200 bg-white px-6 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between">
+          <Link href="/" className="font-semibold text-gray-900">
+            BharatCloud<span className="text-[#ff6a00]">.store</span>
+          </Link>
+          <Link
+            href="/login"
+            className="text-sm text-gray-600 hover:text-[#ff6a00]"
+          >
+            Account
+          </Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-xl font-normal text-gray-800">Company IDs</h1>
-          <button
-            type="button"
-            onClick={createId}
-            className="rounded-full border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
-          >
-            + Nayi ID Banao
-          </button>
+      <main className="mx-auto max-w-6xl px-6 py-8">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard title="Storage used">
+            <p className="text-lg font-semibold">
+              {formatStorageGb(used)} / {formatStorageGb(limit)}
+            </p>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
+              <div
+                className="h-full rounded-full bg-[#ff6a00]"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </StatCard>
+          <StatCard title="Total members">
+            <p className="text-3xl font-semibold">{memberCount}</p>
+          </StatCard>
+          <StatCard title="Plan">
+            <p className="text-3xl font-semibold capitalize">
+              {org ? planLabel(org.plan) : "—"}
+            </p>
+            <Link
+              href="/#pricing"
+              className="mt-2 inline-block text-sm font-medium text-[#ff6a00] hover:underline"
+            >
+              Upgrade plan →
+            </Link>
+          </StatCard>
         </div>
 
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
+        <section className="mt-10 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold">Add team member</h2>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <input
+              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <select
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+            >
+              <option value="admin">Admin</option>
+              <option value="member">Member</option>
+              <option value="viewer">Viewer</option>
+            </select>
+            <button
+              type="button"
+              onClick={addMember}
+              className="rounded-full bg-[#ff6a00] px-6 py-2 text-sm font-semibold text-white hover:bg-[#e55f00]"
+            >
+              Add
+            </button>
+          </div>
+        </section>
+
+        <section className="mt-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <h2 className="border-b border-gray-100 px-6 py-4 text-lg font-semibold">
+            Members
+          </h2>
           <table className="min-w-full text-left text-sm">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
-                <th className="px-4 py-3 font-medium">ID Name</th>
-                <th className="px-4 py-3 font-medium">Storage Used</th>
-                <th className="px-4 py-3 font-medium">Last Active</th>
-                <th className="px-4 py-3 font-medium">Action</th>
+                <th className="px-6 py-3 font-medium">Email</th>
+                <th className="px-6 py-3 font-medium">Role</th>
+                <th className="px-6 py-3 font-medium">Joined</th>
+                <th className="px-6 py-3 font-medium">Action</th>
               </tr>
             </thead>
             <tbody>
-              {ids.map((row) => (
-                <tr key={row.id} className="border-t border-gray-100">
-                  <td className="px-4 py-3">{row.email_prefix}</td>
-                  <td className="px-4 py-3">{row.storage_used_gb}GB</td>
-                  <td className="px-4 py-3">
-                    {new Date(row.last_active_at).toLocaleDateString()}
+              {members.map((m) => (
+                <tr key={m.id} className="border-t border-gray-100">
+                  <td className="px-6 py-3">{m.user_email}</td>
+                  <td className="px-6 py-3 capitalize">{m.role}</td>
+                  <td className="px-6 py-3">
+                    {new Date(m.joined_at).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-3">
                     <button
                       type="button"
-                      className="text-blue-600 hover:underline"
-                      onClick={() => setMessage(`Manage ${row.email_prefix}`)}
+                      onClick={() => removeMember(m.id)}
+                      className="text-red-600 hover:underline"
                     >
-                      Manage
+                      Remove
                     </button>
                   </td>
                 </tr>
               ))}
-              {ids.length === 0 && (
+              {members.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
-                    No IDs yet — create one with &quot;Nayi ID Banao&quot;
+                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                    No members yet — add your team above.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-        </div>
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
+          <h2 className="text-lg font-semibold text-gray-800">Company files</h2>
+          <p className="mt-2 text-gray-600">
+            Company Files — Coming from Mobile App
+          </p>
+        </section>
 
         {message && (
-          <p className="mt-4 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-900">
+          <p className="mt-4 rounded-lg bg-orange-50 px-4 py-2 text-sm text-orange-900">
             {message}
           </p>
         )}
-
-        <div className="mt-10 flex flex-wrap gap-3">
-          <label className="cursor-pointer rounded-full bg-blue-600 px-6 py-3 text-sm font-medium text-white hover:bg-blue-700">
-            Upload
-            <input
-              type="file"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onUpload(f);
-              }}
-            />
-          </label>
-          <button
-            type="button"
-            onClick={onShare}
-            className="rounded-full border border-gray-300 px-6 py-3 text-sm hover:bg-gray-50"
-          >
-            Share
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowTrash((v) => !v)}
-            className="rounded-full border border-gray-300 px-6 py-3 text-sm hover:bg-gray-50"
-          >
-            Wapas Lao
-          </button>
-        </div>
-
-        {showTrash && (
-          <div className="mt-6 rounded-lg border border-gray-200 p-4">
-            <h2 className="mb-3 font-medium">Deleted files (vault_trash)</h2>
-            {trash.length === 0 ? (
-              <p className="text-sm text-gray-500">No deleted files.</p>
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {trash.map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2"
-                  >
-                    <span>
-                      {t.original_name} ·{" "}
-                      {new Date(t.deleted_at).toLocaleString()}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => restore(t.id)}
-                      className="text-blue-600 hover:underline"
-                    >
-                      Restore
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
       </main>
+    </div>
+  );
+}
+
+function StatCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <p className="text-sm font-medium text-gray-500">{title}</p>
+      <div className="mt-2">{children}</div>
     </div>
   );
 }

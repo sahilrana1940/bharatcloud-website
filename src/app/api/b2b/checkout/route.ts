@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 
-import { B2B_PLANS, type B2BPlanId } from "@/lib/b2b/plans";
+import { SAAS_PLANS, type SaasPlanId } from "@/lib/b2b/plans";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
-import { ensureFolder, getS3Client, companyPrefix } from "@/lib/s3/client";
+import { companyPrefix, ensureFolder, getS3Client } from "@/lib/s3/client";
 
 export async function POST(req: Request) {
-  const { plan, companyName } = await req.json();
-  const planId = plan as B2BPlanId;
-  const selected = B2B_PLANS[planId];
-  if (!selected) {
+  const { plan, companyName, ownerEmail } = await req.json();
+  const planId = plan as SaasPlanId;
+  const selected = SAAS_PLANS[planId];
+  if (!selected || planId === "free" || planId === "enterprise") {
     return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
   }
 
@@ -20,12 +20,14 @@ export async function POST(req: Request) {
 
   if (supabase) {
     const { data, error } = await supabase
-      .from("b2b_companies")
+      .from("organizations")
       .insert({
         name: companyName || "New Company",
+        owner_email: ownerEmail || `owner-${Date.now()}@example.com`,
         plan: planId,
-        storage_limit_gb: selected.storageGb,
-        razorpay_subscription_id: orderId,
+        storage_limit: selected.storageBytes,
+        storage_used: 0,
+        status: "active",
       })
       .select("id")
       .single();
@@ -46,6 +48,6 @@ export async function POST(req: Request) {
     gstNote: "+ GST",
     razorpayKeyConfigured: Boolean(razorpayKey),
     companyId,
-    checkoutUrl: `/b2b/login?company=${companyId}`,
+    checkoutUrl: `/login`,
   });
 }

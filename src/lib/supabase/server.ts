@@ -1,5 +1,24 @@
 import { createClient } from "@supabase/supabase-js";
 
+export type Organization = {
+  id: string;
+  name: string;
+  owner_email: string;
+  plan: string;
+  storage_limit: number;
+  storage_used: number;
+  status: "active" | "blocked";
+  created_at: string;
+};
+
+export type OrgMember = {
+  id: string;
+  org_id: string;
+  user_email: string;
+  role: string;
+  joined_at: string;
+};
+
 export type B2BCompany = {
   id: string;
   name: string;

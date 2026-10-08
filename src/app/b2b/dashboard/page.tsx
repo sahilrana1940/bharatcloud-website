@@ -6,7 +6,7 @@ import { getB2BCompanyId } from "@/lib/b2b/session";
 export default async function B2BDashboardPage() {
   const companyId = await getB2BCompanyId();
   if (!companyId) {
-    redirect("/b2b/login");
+    redirect("/login");
   }
   return <DashboardClient />;
 }
