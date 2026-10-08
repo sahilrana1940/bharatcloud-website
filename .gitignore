@@ -3,9 +3,9 @@
 # dependencies
 /node_modules
 /backend/node_modules
-/app/.dart_tool/
-/app/build/
-/app/.flutter-plugins-dependencies
+/flutter/.dart_tool/
+/flutter/build/
+/flutter/.flutter-plugins-dependencies
 /.pnp
 .pnp.*
 .yarn/*

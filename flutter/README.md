@@ -13,7 +13,7 @@
 ## Run
 
 ```bash
-cd app
+cd flutter
 flutter pub get
 flutter run --dart-define=API_BASE_URL=http://<host>:4000
 ```
