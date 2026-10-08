@@ -1,0 +1,6 @@
+{
+  "name": "bharatcloud-website",
+  "install": "npm ci",
+  "start": "exec npm run dev -- -H 0.0.0.0 -p 3000",
+  "ports": [3000]
+}
