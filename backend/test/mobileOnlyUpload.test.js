@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mobileOnlyUpload } from "../src/middleware/mobileOnlyUpload.js";
+import { mobileOnlyUpload } from "../middleware/mobileOnly.js";
 
 function mockRes() {
   return {
