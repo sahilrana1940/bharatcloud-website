@@ -1,4 +1,4 @@
-import { GB, type SaasPlanId } from "@/lib/b2b/plans";
+import { GB } from "@/lib/b2b/plans";
 import type { Organization, OrgMember } from "@/lib/supabase/server";
 
 export const demoOrganizations: Organization[] = [
