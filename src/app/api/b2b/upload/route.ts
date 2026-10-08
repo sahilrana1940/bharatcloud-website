@@ -22,7 +22,10 @@ export async function POST(req: Request) {
   const client = getS3Client();
   if (!client) {
     return NextResponse.json(
-      { error: "E2E S3 not configured (set E2E_S3_ENDPOINT)" },
+      {
+        error:
+          "Object storage not configured (set WASABI_* or E2E_S3_* — see docs/hostinger-wasabi.md)",
+      },
       { status: 503 },
     );
   }

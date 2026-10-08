@@ -19,7 +19,7 @@ export default function B2BPricingPage() {
           Apna Private Google Drive — Delete-Proof
         </h1>
         <p className="mt-4 text-gray-600">
-          Mumbai Vault on E2E S3 · Versioning ON · Soft delete only
+          Private S3 vault (Wasabi / India-ready) · Versioning ON · Soft delete only
         </p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2">

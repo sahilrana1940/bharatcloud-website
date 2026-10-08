@@ -16,7 +16,7 @@ Next.js site (B2C view-only + **B2B Private Drive** at `/b2b`).
 Copy `.env.example` → `.env.local`:
 
 - `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
-- `E2E_S3_*` (bucket default: `bharatcloud-vault`)
+- `WASABI_*` or `E2E_S3_*` (bucket default: `bharatcloud-vault`) — see [Hostinger + Wasabi](docs/hostinger-wasabi.md)
 - `RAZORPAY_KEY`
 
 Run SQL: `supabase/migrations/001_b2b_vault.sql`

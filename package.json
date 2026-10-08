@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "verify:s3": "node scripts/verify-s3.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1148.0",
