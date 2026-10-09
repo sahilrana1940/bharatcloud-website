@@ -6,6 +6,7 @@ export const demoOrganizations: Organization[] = [
     id: "demo-org-001",
     name: "RJ Adam Pvt Ltd",
     owner_email: "admin@rjadam.com",
+    owner_phone: "+919876543210",
     plan: "starter",
     storage_limit: 100 * GB,
     storage_used: 5 * GB,

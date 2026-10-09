@@ -9,7 +9,8 @@ import {
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
-  const { companyName, email, password } = await req.json();
+  const { companyName, email, password, phone } = await req.json();
+  const ownerPhone = String(phone || "").trim();
   const name = String(companyName || "").trim();
   const ownerEmail = String(email || "").trim().toLowerCase();
   const pass = String(password || "");
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
       id: orgId,
       name,
       owner_email: ownerEmail,
+      owner_phone: ownerPhone || null,
       plan: "free",
       storage_limit: 10 * GB,
       storage_used: 0,
@@ -58,6 +60,7 @@ export async function POST(req: Request) {
       .insert({
         name,
         owner_email: ownerEmail,
+        owner_phone: ownerPhone || null,
         plan: "free",
         storage_limit: 10 * GB,
         storage_used: 0,

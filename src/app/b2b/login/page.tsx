@@ -1,5 +1,5 @@
-import { CompanyAuthForm } from "@/components/b2b/CompanyAuthForm";
+import { redirect } from "next/navigation";
 
-export default function B2BLoginPage() {
-  return <CompanyAuthForm />;
+export default function LegacyB2BLogin() {
+  redirect("/login");
 }

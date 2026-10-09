@@ -1,53 +1,27 @@
 import { NextResponse } from "next/server";
 
-import { SAAS_PLANS, type SaasPlanId } from "@/lib/b2b/plans";
-import { getSupabaseAdmin } from "@/lib/supabase/server";
-import { companyPrefix, ensureFolder, getS3Client } from "@/lib/s3/client";
+import { PRICING_PLANS, type PlanId, withGst } from "@/lib/b2b/plans";
 
 export async function POST(req: Request) {
-  const { plan, companyName, ownerEmail } = await req.json();
-  const planId = plan as SaasPlanId;
-  const selected = SAAS_PLANS[planId];
-  if (!selected || planId === "free" || planId === "enterprise") {
+  const { plan } = await req.json();
+  const planId = plan as PlanId;
+  const selected = PRICING_PLANS[planId];
+  if (!selected) {
     return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
   }
 
   const orderId = `order_${Date.now()}`;
-  const razorpayKey = process.env.RAZORPAY_KEY;
-
-  const supabase = getSupabaseAdmin();
-  let companyId = `cmp_${Date.now()}`;
-
-  if (supabase) {
-    const { data, error } = await supabase
-      .from("organizations")
-      .insert({
-        name: companyName || "New Company",
-        owner_email: ownerEmail || `owner-${Date.now()}@example.com`,
-        plan: planId,
-        storage_limit: selected.storageBytes,
-        storage_used: 0,
-        status: "active",
-      })
-      .select("id")
-      .single();
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-    companyId = data.id;
-  }
-
-  const s3 = getS3Client();
-  if (s3) {
-    await ensureFolder(s3, companyPrefix(companyId));
-  }
+  const razorpayKey =
+    process.env.NEXT_PUBLIC_RAZORPAY_KEY || process.env.RAZORPAY_KEY;
+  const total = withGst(selected.priceInr);
 
   return NextResponse.json({
     orderId,
-    amountInr: selected.priceInr,
-    gstNote: "+ GST",
+    razorpayOrderId: orderId,
+    amountInr: total,
+    plan: planId,
     razorpayKeyConfigured: Boolean(razorpayKey),
-    companyId,
-    checkoutUrl: `/login`,
+    note:
+      "Test mode: use demo success or create Razorpay orders server-side for live payments.",
   });
 }

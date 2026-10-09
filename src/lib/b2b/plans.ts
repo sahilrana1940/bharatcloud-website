@@ -1,56 +1,72 @@
-export type SaasPlanId = "free" | "starter" | "growth" | "enterprise";
+export type PlanId = "starter" | "standard" | "business";
 
 export const GB = 1024 ** 3;
+export const GST_RATE = 0.18;
 
-export const SAAS_PLANS = {
-  free: {
-    id: "free" as const,
-    name: "Free trial",
-    priceInr: 0,
-    maxUsers: 3,
-    storageGb: 10,
-    storageBytes: 10 * GB,
-    cta: "Start Free Trial",
-  },
+export const PRICING_PLANS: Record<
+  PlanId,
+  {
+    id: PlanId;
+    name: string;
+    priceInr: number;
+    maxUsers: number;
+    storageGb: number;
+    storageBytes: number;
+    badge?: "popular" | "business";
+  }
+> = {
   starter: {
-    id: "starter" as const,
+    id: "starter",
     name: "Starter",
     priceInr: 999,
-    maxUsers: 10,
+    maxUsers: 5,
     storageGb: 100,
     storageBytes: 100 * GB,
-    cta: "Get Starter",
+    badge: "popular",
   },
-  growth: {
-    id: "growth" as const,
-    name: "Growth",
-    priceInr: 2999,
-    maxUsers: 50,
+  standard: {
+    id: "standard",
+    name: "Standard",
+    priceInr: 2199,
+    maxUsers: 10,
     storageGb: 500,
     storageBytes: 500 * GB,
-    popular: true,
-    cta: "Get Growth",
   },
-  enterprise: {
-    id: "enterprise" as const,
-    name: "Enterprise",
-    priceInr: null,
-    maxUsers: null,
-    storageGb: 2048,
-    storageBytes: 2048 * GB,
-    cta: "Contact sales",
+  business: {
+    id: "business",
+    name: "Business",
+    priceInr: 3499,
+    maxUsers: 20,
+    storageGb: 1024,
+    storageBytes: 1024 * GB,
+    badge: "business",
   },
 };
 
+export function planById(id: string) {
+  return PRICING_PLANS[id as PlanId] ?? null;
+}
+
+export function withGst(amount: number) {
+  return Math.round(amount * (1 + GST_RATE));
+}
+
+export function gstAmount(amount: number) {
+  return Math.round(amount * GST_RATE);
+}
+
+/** @deprecated use PRICING_PLANS */
+export const SAAS_PLANS = PRICING_PLANS;
+export type SaasPlanId = PlanId;
 export const BRAND_ORANGE = "#ff6a00";
 
 export function formatStorageGb(bytes: number): string {
   const gb = bytes / GB;
-  if (gb < 1) return `${Math.round(bytes / (1024 ** 2))} MB`;
+  if (gb < 1) return `${Math.round(bytes / 1024 ** 2)} MB`;
   return `${Math.round(gb * 10) / 10} GB`;
 }
 
 export function planLabel(plan: string): string {
-  const p = SAAS_PLANS[plan as SaasPlanId];
+  const p = PRICING_PLANS[plan as PlanId];
   return p?.name ?? plan;
 }

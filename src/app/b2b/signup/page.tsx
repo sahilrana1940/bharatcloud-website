@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function B2BSignupRedirect() {
-  redirect("/login?mode=register");
+export default function LegacyB2BSignup() {
+  redirect("/signup");
 }

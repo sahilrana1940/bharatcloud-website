@@ -4,6 +4,7 @@ export type Organization = {
   id: string;
   name: string;
   owner_email: string;
+  owner_phone?: string | null;
   plan: string;
   storage_limit: number;
   storage_used: number;
