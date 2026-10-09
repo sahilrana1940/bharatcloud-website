@@ -5,6 +5,13 @@ import {
   B2B_EMAIL_COOKIE,
   B2B_SESSION_COOKIE,
 } from "@/lib/b2b/session";
+import {
+  workspaceCookieOptions,
+  WS_COMPANY_COOKIE,
+  WS_EMAIL_COOKIE,
+  WS_ROLE_COOKIE,
+} from "@/lib/workspace/session";
+import { DEMO_COMPANY_ID } from "@/lib/workspace/demo-data";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
@@ -57,5 +64,13 @@ export async function POST(req: Request) {
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });
+  const wsOpts = workspaceCookieOptions();
+  res.cookies.set(WS_COMPANY_COOKIE, orgId || DEMO_COMPANY_ID, wsOpts);
+  res.cookies.set(WS_EMAIL_COOKIE, ownerEmail, wsOpts);
+  res.cookies.set(
+    WS_ROLE_COOKIE,
+    ownerEmail.startsWith("admin@") ? "admin" : "member",
+    wsOpts,
+  );
   return res;
 }

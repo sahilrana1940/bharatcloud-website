@@ -30,18 +30,15 @@ export function LoginForm() {
       setError(j.error || "Login failed");
       return;
     }
-    router.push("/dashboard");
+    router.push("/dashboard/drive");
   }
 
-  async function googleLogin() {
-    setError("");
-    const res = await fetch("/api/b2b/auth/google", { method: "POST" });
-    const j = await res.json();
-    if (!res.ok) {
-      setError(j.error || "Google sign-in not configured");
-      return;
-    }
-    if (j.redirect) router.push(j.redirect);
+  function googleLogin() {
+    window.location.href = "/api/auth/google";
+  }
+
+  function googleDemo() {
+    window.location.href = "/api/auth/google/demo?email=admin@rjadam.com";
   }
 
   return (
@@ -100,7 +97,15 @@ export function LoginForm() {
         className="w-full border-slate-200 text-slate-800 dark:border-slate-600 dark:text-slate-100"
         onClick={googleLogin}
       >
-        Continue with Google
+        Continue with Google Workspace
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        className="mt-2 w-full text-xs text-slate-500"
+        onClick={googleDemo}
+      >
+        Demo workspace (no Google keys)
       </Button>
 
       <p className="mt-6 text-center text-sm text-slate-500">
