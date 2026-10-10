@@ -42,8 +42,10 @@ export function VaultPageClient({ userEmail }: { userEmail: string }) {
   return (
     <div className="min-h-screen overflow-y-auto bg-[#0A0E1A] pb-[140px] lg:pb-10">
       <div className="border-b border-white/5 px-4 pb-4 pt-6 sm:px-8">
-        <h1 className="text-3xl font-bold text-white">My Vault - Secured Backup</h1>
-        <p className="text-slate-500">Company vault for {userEmail}</p>
+        <h1 className="bg-gradient-to-r from-white to-cyan-200 bg-clip-text text-3xl font-bold text-transparent">
+          My Vault — Secured Backup
+        </h1>
+        <p className="text-slate-500">Encrypted company vault · {userEmail}</p>
         <div className="mt-6 flex flex-wrap gap-2 rounded-2xl bg-[#0F1420] p-1.5">
           <button
             type="button"
