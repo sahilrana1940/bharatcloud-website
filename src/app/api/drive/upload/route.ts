@@ -69,30 +69,45 @@ export async function POST(req: Request) {
 
   const publicUrl = publicBackupUrl(storagePath) || "";
 
-  const { data: row, error: dbError } = await supabase
-    .from("drive_files")
-    .insert({
-      company_id: session.companyId,
-      company_domain: domain,
-      owner_email: ownerEmail,
-      drive_file_id: driveFileId,
-      name: baseName,
-      file_name: baseName,
-      mime_type: file.type || "application/octet-stream",
-      size: file.size,
-      file_size: file.size,
-      s3_path: storagePath,
-      public_url: publicUrl,
-      backup_status: "backedup",
-      is_shortcut: false,
-      is_deleted: false,
-      shared: false,
-    })
-    .select()
-    .single();
+  const insertPayload: Record<string, unknown> = {
+    company_id: session.companyId,
+    company_domain: domain,
+    owner_email: ownerEmail,
+    drive_file_id: driveFileId,
+    name: baseName,
+    file_name: baseName,
+    mime_type: file.type || "application/octet-stream",
+    size: file.size,
+    file_size: file.size,
+    s3_path: storagePath,
+    public_url: publicUrl,
+    backup_status: "backedup",
+    is_shortcut: false,
+    is_deleted: false,
+    shared: false,
+  };
 
-  if (dbError) {
-    return NextResponse.json({ error: dbError.message }, { status: 500 });
+  let row: Record<string, unknown> | null = null;
+  let dbError: { message: string } | null = null;
+  let payload = { ...insertPayload };
+
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const res = await supabase.from("drive_files").insert(payload).select().single();
+    row = res.data;
+    dbError = res.error;
+    if (!dbError) break;
+    const m = dbError.message;
+    if (m.includes("company_domain")) delete payload.company_domain;
+    else if (m.includes("file_name")) delete payload.file_name;
+    else if (m.includes("file_size")) delete payload.file_size;
+    else if (m.includes("public_url")) delete payload.public_url;
+    else if (m.includes("is_deleted")) delete payload.is_deleted;
+    else if (m.includes("shared")) delete payload.shared;
+    else break;
+  }
+
+  if (dbError || !row) {
+    return NextResponse.json({ error: dbError?.message || "DB insert failed" }, { status: 500 });
   }
 
   return NextResponse.json({
