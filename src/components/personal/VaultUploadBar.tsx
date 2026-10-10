@@ -6,25 +6,40 @@ import { useRef, useState } from "react";
 export function VaultUploadBar({
   type = "photo",
   onDone,
+  onError,
 }: {
   type?: string;
   onDone?: () => void;
+  onError?: (message: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("");
 
   async function onPick(files: FileList | null) {
     if (!files) return;
     setBusy(true);
+    setStatus("");
+    let ok = 0;
     for (const f of Array.from(files)) {
       const fd = new FormData();
       fd.append("file", f);
       fd.append("type", type);
-      await fetch("/api/vault-upload", { method: "POST", body: fd });
+      const res = await fetch("/api/vault-upload", { method: "POST", body: fd });
+      const j = await res.json().catch(() => ({}));
+      if (res.ok) ok += 1;
+      else {
+        const msg = j.error || `Upload failed (${res.status})`;
+        setStatus(msg);
+        onError?.(msg);
+      }
     }
     setBusy(false);
     if (inputRef.current) inputRef.current.value = "";
-    onDone?.();
+    if (ok > 0) {
+      setStatus(ok === 1 ? "Uploaded" : `${ok} files uploaded`);
+      onDone?.();
+    }
   }
 
   return (
@@ -46,6 +61,9 @@ export function VaultUploadBar({
         <Upload className="h-4 w-4" />
         {busy ? "Uploading HD…" : "Upload HD original"}
       </button>
+      {status && (
+        <p className="mt-2 text-center text-xs text-cyan-300 sm:text-left">{status}</p>
+      )}
     </div>
   );
 }

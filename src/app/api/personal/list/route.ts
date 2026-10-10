@@ -27,7 +27,15 @@ export async function GET(req: Request) {
   const supabase = await getSupabaseOrNull();
   if (!supabase) {
     let items = demoVaultList(ctx.email, ctx.companyDomain, isOwner);
-    if (type && type !== "qr") items = items.filter((i) => i.type === type);
+    if (type && type !== "qr") {
+      if (ctx.companyDomain && type === "video") {
+        items = items.filter((i) =>
+          ["video", "company_doc", "file"].includes(i.type),
+        );
+      } else {
+        items = items.filter((i) => i.type === type);
+      }
+    }
     const slice = items.slice(offset, offset + PAGE);
     const withThumbs = await Promise.all(
       slice.map(async (i) => ({
@@ -56,8 +64,17 @@ export async function GET(req: Request) {
     query = query.eq("company_domain", ctx.companyDomain);
   } else {
     query = query.eq("user_email", ctx.email);
+    if (ctx.companyDomain) {
+      query = query.eq("company_domain", ctx.companyDomain);
+    }
   }
-  if (type && type !== "qr") query = query.eq("type", type);
+  if (type && type !== "qr") {
+    if (ctx.companyDomain && type === "video") {
+      query = query.in("type", ["video", "company_doc", "file"]);
+    } else {
+      query = query.eq("type", type);
+    }
+  }
 
   const { data, count } = await query
     .order("created_at", { ascending: false })
