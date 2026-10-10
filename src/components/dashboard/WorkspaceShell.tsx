@@ -10,6 +10,7 @@ import {
   Inbox,
   Share2,
   Shield,
+  LogOut,
   Trash2,
   User,
 } from "lucide-react";
@@ -123,6 +124,15 @@ export function WorkspaceShell({
               />
             </div>
           </div>
+          <form action="/api/auth/logout" method="post" className="mt-3">
+            <button
+              type="submit"
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 py-2 text-xs font-medium text-slate-400 transition hover:bg-white/5 hover:text-slate-200"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Log out
+            </button>
+          </form>
         </div>
       </aside>
 
