@@ -31,7 +31,13 @@ export function RecoveryAdminClient() {
       body: JSON.stringify({ requestId: id }),
     });
     const j = await res.json();
-    if (res.ok) setCode(`Code for mail: ${j.code} → ${j.contact_mail}`);
+    if (res.ok) {
+      setCode(
+        j.emailSent
+          ? `Email sent to ${j.contact_mail}`
+          : `Email not sent — share code manually: ${j.code} → ${j.contact_mail}`,
+      );
+    }
     load();
   }
 

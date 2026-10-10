@@ -35,6 +35,9 @@ export async function POST(req: Request) {
   if (!row?.backup_code_hash || row.backup_code_hash !== hashBackupCode(codeClean)) {
     return NextResponse.json({ error: "Invalid code" }, { status: 401 });
   }
+  if (row.code_expires_at && new Date(row.code_expires_at) < new Date()) {
+    return NextResponse.json({ error: "Code expired — request again" }, { status: 401 });
+  }
 
   await supabase
     .from("app_locks")

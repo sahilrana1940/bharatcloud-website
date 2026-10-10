@@ -140,6 +140,12 @@ export function LoginForm() {
           Create account
         </Link>
       </p>
+      <p className="mt-3 text-center text-sm text-slate-500">
+        Lost phone or PIN?{" "}
+        <Link href="/recover" className="font-medium text-sky-600 hover:underline">
+          Account recovery
+        </Link>
+      </p>
     </div>
   );
 }
