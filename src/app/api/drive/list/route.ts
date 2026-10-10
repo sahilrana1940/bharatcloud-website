@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { listDriveFiles, type DriveListItem } from "@/lib/drive/list-drive";
+import { listDriveFiles } from "@/lib/drive/list-drive";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
-
-export type { DriveListItem };
 
 export async function GET(req: Request) {
   const auth = await requireWorkspace();
@@ -12,23 +10,29 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const source = url.searchParams.get("source") || "bharatcloud";
-  const ownerParam = url.searchParams.get("owner") || "";
+  const mode =
+    source === "google"
+      ? "google"
+      : source === "shared"
+        ? "shared"
+        : source === "recent"
+          ? "recent"
+          : source === "trash"
+            ? "trash"
+            : source === "vault"
+              ? "vault"
+              : "bharatcloud";
 
   const result = await listDriveFiles({
-    source,
+    mode,
     session,
-    ownerParam,
+    ownerParam: url.searchParams.get("owner") || "",
+    search: url.searchParams.get("q") || "",
   });
 
-  if (result.error) {
-    return NextResponse.json(
-      { error: result.error, files: [] },
-      { status: source === "google" ? 400 : 200 },
-    );
+  if (result.error && mode === "google") {
+    return NextResponse.json({ error: result.error, files: [] }, { status: 400 });
   }
 
-  return NextResponse.json({
-    files: result.files,
-    ownerEmail: result.ownerEmail,
-  });
+  return NextResponse.json({ files: result.files });
 }

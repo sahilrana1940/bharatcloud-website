@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Cloud,
+  CreditCard,
   Clock,
   HardDrive,
   Inbox,
@@ -17,13 +18,14 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const nav = [
-  { href: "/dashboard/drive", label: "Drive", icon: HardDrive, gradient: true },
-  { href: "/dashboard/my-vault", label: "My Vault", icon: Shield },
+  { href: "/dashboard/drive", label: "Drive", icon: HardDrive },
+  { href: "/dashboard/vault", label: "My Vault", icon: Shield },
   { href: "/dashboard/emails", label: "Emails", icon: Inbox },
-  { href: "/dashboard/my-vault", label: "Shared with me", icon: Share2 },
-  { href: "/dashboard/drive", label: "Recent", icon: Clock },
-  { href: "/dashboard/drive", label: "Trash", icon: Trash2 },
+  { href: "/dashboard/shared", label: "Shared with me", icon: Share2 },
+  { href: "/dashboard/recent", label: "Recent", icon: Clock },
+  { href: "/dashboard/trash", label: "Trash", icon: Trash2 },
   { href: "/dashboard/team", label: "Team", icon: User, admin: true },
+  { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
 ];
 
 export function WorkspaceShell({
@@ -72,7 +74,7 @@ export function WorkspaceShell({
           {nav
             .filter((l) => !l.admin || role === "admin")
             .map((l) => {
-              const active = pathname === l.href && l.label === "Drive";
+              const active = pathname === l.href;
               return (
                 <Link
                   key={l.label}

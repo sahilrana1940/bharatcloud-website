@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireWorkspace } from "@/lib/workspace/auth-api";
+import { resolveCompanyDomain } from "@/lib/workspace/company";
 import { DEMO_EMAILS } from "@/lib/workspace/demo-data";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
@@ -14,14 +15,19 @@ export async function GET(req: Request) {
   const owner = url.searchParams.get("owner") || "";
   const hasAttachment = url.searchParams.get("attachment") === "1";
   const range = url.searchParams.get("range") || "";
+  const page = Math.max(1, Number(url.searchParams.get("page") || 1));
+  const limit = 50;
+  const offset = (page - 1) * limit;
 
+  const domain = await resolveCompanyDomain(session.companyId, session.email);
   const supabase = await getSupabaseOrNull();
   let rows = [...DEMO_EMAILS];
   if (supabase) {
     let query = supabase
       .from("email_backups")
-      .select("*")
+      .select("*", { count: "exact" })
       .eq("company_id", session.companyId);
+    if (domain) query = query.eq("company_domain", domain);
     if (session.role === "member") {
       query = query.eq("owner_email", session.email);
     } else if (owner) {
@@ -33,8 +39,14 @@ export async function GET(req: Request) {
         `subject.ilike.%${q}%,from_email.ilike.%${q}%,body_text.ilike.%${q}%`,
       );
     }
-    const { data } = await query.order("date", { ascending: false }).limit(100);
-    rows = data || [];
+    const { data, count } = await query
+      .order("date", { ascending: false })
+      .range(offset, offset + limit - 1);
+    return NextResponse.json({
+      emails: data || [],
+      page,
+      total: count || 0,
+    });
   } else {
     if (session.role === "member") {
       rows = rows.filter((e) => e.owner_email === session.email);
@@ -64,5 +76,6 @@ export async function GET(req: Request) {
     });
   }
 
-  return NextResponse.json({ emails: rows });
+  const total = rows.length;
+  return NextResponse.json({ emails: rows.slice(offset, offset + limit), page, total });
 }

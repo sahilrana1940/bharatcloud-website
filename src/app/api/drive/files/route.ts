@@ -9,12 +9,24 @@ export async function GET(req: Request) {
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
   const url = new URL(req.url);
-  const source =
-    url.searchParams.get("source") === "google" ? "google" : "bharatcloud";
+  const source = url.searchParams.get("source") || "bharatcloud";
+  const mode =
+    source === "google"
+      ? "google"
+      : source === "shared"
+        ? "shared"
+        : source === "recent"
+          ? "recent"
+          : source === "trash"
+            ? "trash"
+            : source === "vault"
+              ? "vault"
+              : "bharatcloud";
   const result = await listDriveFiles({
-    source,
+    mode,
     session,
     ownerParam: url.searchParams.get("owner") || "",
+    search: url.searchParams.get("q") || "",
   });
   return NextResponse.json({ files: result.files });
 }

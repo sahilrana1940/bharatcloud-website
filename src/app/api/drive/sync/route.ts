@@ -32,18 +32,26 @@ export async function POST(req: Request) {
         (f) => f.drive_file_id === body.driveFileId,
       );
       if (g) {
+        const s3_path = `rjadam.com/${g.owner_email}/${g.name}`;
         const copy = {
           id: `df-demo-${Date.now()}`,
           company_id: g.company_id,
+          company_domain: "rjadam.com",
           owner_email: g.owner_email,
           drive_file_id: g.drive_file_id,
           name: g.name,
+          file_name: g.name,
           mime_type: g.mime_type,
           size: g.size,
+          file_size: g.size,
           web_view_link: g.web_view_link,
-          s3_path: `rjadam.com/${g.owner_email}/${g.name}`,
+          s3_path,
+          public_url: publicBackupUrl(s3_path) || "",
           backup_status: "backedup" as const,
           is_shortcut: false,
+          is_deleted: false,
+          shared: false,
+          created_at: new Date().toISOString(),
         };
         DEMO_DRIVE_FILES.push(copy);
         return NextResponse.json({
@@ -97,11 +105,15 @@ export async function POST(req: Request) {
     });
   }
 
-  const { data: users } = await supabase
+  let usersQuery = supabase
     .from("company_users")
     .select("email")
     .eq("company_id", session.companyId)
     .eq("is_backup_enabled", true);
+  if (body.ownerEmail) {
+    usersQuery = usersQuery.eq("email", body.ownerEmail.toLowerCase());
+  }
+  const { data: users } = await usersQuery;
 
   const { data: company } = await supabase
     .from("companies")
