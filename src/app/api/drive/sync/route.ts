@@ -1,19 +1,95 @@
 import { NextResponse } from "next/server";
 
+import { backupDriveFile } from "@/lib/drive/backup-one";
 import { driveClient } from "@/lib/google/client";
+import { publicBackupUrl } from "@/lib/drive/public-url";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
-import { DEMO_DRIVE_FILES } from "@/lib/workspace/demo-data";
+import { DEMO_DRIVE_FILES, DEMO_GOOGLE_DRIVE_FILES } from "@/lib/workspace/demo-data";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
-import { prepareUploadBody } from "@/lib/storage/compress-upload";
-
-const BUCKET = "bharatcloud-backups";
-
-export async function POST() {
+export async function POST(req: Request) {
   const auth = await requireWorkspace();
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
 
+  let body: { driveFileId?: string; ownerEmail?: string } = {};
+  try {
+    body = await req.json();
+  } catch {
+    body = {};
+  }
+
   const supabase = await getSupabaseOrNull();
+
+  // Single-file backup
+  if (body.driveFileId) {
+    const ownerEmail = (body.ownerEmail || session.email).toLowerCase();
+    if (session.role === "member" && ownerEmail !== session.email) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (!supabase) {
+      const g = DEMO_GOOGLE_DRIVE_FILES.find(
+        (f) => f.drive_file_id === body.driveFileId,
+      );
+      if (g) {
+        const copy = {
+          id: `df-demo-${Date.now()}`,
+          company_id: g.company_id,
+          owner_email: g.owner_email,
+          drive_file_id: g.drive_file_id,
+          name: g.name,
+          mime_type: g.mime_type,
+          size: g.size,
+          web_view_link: g.web_view_link,
+          s3_path: `rjadam.com/${g.owner_email}/${g.name}`,
+          backup_status: "backedup" as const,
+          is_shortcut: false,
+        };
+        DEMO_DRIVE_FILES.push(copy);
+        return NextResponse.json({
+          ok: true,
+          publicLink: publicBackupUrl(copy.s3_path),
+        });
+      }
+      return NextResponse.json({ error: "File not found" }, { status: 404 });
+    }
+
+    const { data: company } = await supabase
+      .from("companies")
+      .select("domain")
+      .eq("id", session.companyId)
+      .single();
+
+    const { data: tok } = await supabase
+      .from("google_oauth_tokens")
+      .select("access_token")
+      .eq("company_id", session.companyId)
+      .eq("email", ownerEmail)
+      .maybeSingle();
+
+    if (!tok?.access_token || !company?.domain) {
+      return NextResponse.json({ error: "Google token missing" }, { status: 400 });
+    }
+
+    try {
+      const result = await backupDriveFile(supabase, {
+        companyId: session.companyId,
+        domain: company.domain,
+        ownerEmail,
+        driveFileId: body.driveFileId,
+        accessToken: tok.access_token,
+      });
+      return NextResponse.json({
+        ok: true,
+        publicLink: publicBackupUrl(result.storagePath),
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Backup failed";
+      return NextResponse.json({ error: msg }, { status: 500 });
+    }
+  }
+
+  // Full sync (all enabled users)
   if (!supabase) {
     return NextResponse.json({
       message: "Demo sync complete",
@@ -54,48 +130,17 @@ export async function POST() {
 
     for (const f of listed.data.files || []) {
       if (!f.id || !f.name) continue;
-      let fileName = f.name;
-      let storagePath = `${company?.domain}/${u.email}/${fileName}`;
-      await supabase.from("drive_files").upsert(
-        {
-          company_id: session.companyId,
-          owner_email: u.email,
-          drive_file_id: f.id,
-          name: f.name,
-          mime_type: f.mimeType,
-          size: Number(f.size || 0),
-          web_view_link: f.webViewLink,
-          s3_path: storagePath,
-          backup_status: "backedup",
-        },
-        { onConflict: "company_id,drive_file_id" },
-      );
-
-      if (f.mimeType?.startsWith("application/vnd.google-apps")) continue;
       try {
-        const media = await drive.files.get(
-          { fileId: f.id, alt: "media" },
-          { responseType: "arraybuffer" },
-        );
-        const raw = Buffer.from(media.data as ArrayBuffer);
-        const prepared = await prepareUploadBody(raw, f.mimeType);
-        if (prepared.fileNameSuffix) {
-          const base = fileName.replace(/\.[^.]+$/, "");
-          fileName = `${base}.webp`;
-          storagePath = `${company?.domain}/${u.email}/${fileName}`;
-          await supabase
-            .from("drive_files")
-            .update({ name: fileName, s3_path: storagePath })
-            .eq("company_id", session.companyId)
-            .eq("drive_file_id", f.id);
-        }
-        await supabase.storage.from(BUCKET).upload(storagePath, prepared.body, {
-          upsert: true,
-          contentType: prepared.contentType,
+        await backupDriveFile(supabase, {
+          companyId: session.companyId,
+          domain: company?.domain || "unknown",
+          ownerEmail: u.email,
+          driveFileId: f.id,
+          accessToken: tok.access_token,
         });
         backed += 1;
       } catch {
-        /* skip binary download errors in sync batch */
+        /* continue batch */
       }
     }
   }

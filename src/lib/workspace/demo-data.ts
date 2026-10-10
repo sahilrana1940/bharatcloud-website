@@ -50,6 +50,30 @@ export const DEMO_USERS: CompanyUserRow[] = [
   },
 ];
 
+/** Live Google Drive tab (not yet in Safe Drive) */
+export const DEMO_GOOGLE_DRIVE_FILES = [
+  {
+    id: "g-live-1",
+    company_id: DEMO_COMPANY_ID,
+    drive_file_id: "g-live-1",
+    name: "Invoice_March.pdf",
+    owner_email: "admin@rjadam.com",
+    mime_type: "application/pdf",
+    size: 520000,
+    web_view_link: "https://drive.google.com",
+  },
+  {
+    id: "g-live-2",
+    company_id: DEMO_COMPANY_ID,
+    drive_file_id: "g-live-2",
+    name: "Team Photo.jpg",
+    owner_email: "sundarbani@rjadam.com",
+    mime_type: "image/jpeg",
+    size: 3100000,
+    web_view_link: "https://drive.google.com",
+  },
+];
+
 export const DEMO_DRIVE_FILES = [
   {
     id: "df1",
