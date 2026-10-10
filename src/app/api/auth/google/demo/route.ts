@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { attachSaasRoleCookies, defaultDashboardForRole, getUserRole } from "@/lib/auth";
 import { isSuperAdminEmail } from "@/lib/brand";
 import { B2C_PERSONAL_COMPANY_ID } from "@/lib/workspace/b2c";
-import { DEMO_COMPANY_ID } from "@/lib/workspace/demo-data";
+import { resolveCompanyIdForEmail } from "@/lib/workspace/resolve-company";
 import {
   workspaceCookieOptions,
   WS_COMPANY_COOKIE,
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
   const saas = await getUserRole(email);
 
   let redirectPath = defaultDashboardForRole(saas);
-  let companyId = DEMO_COMPANY_ID;
+  let companyId = await resolveCompanyIdForEmail(email);
 
   if (mode === "b2c" || url.searchParams.get("redirect") === "personal") {
     companyId = B2C_PERSONAL_COMPANY_ID;

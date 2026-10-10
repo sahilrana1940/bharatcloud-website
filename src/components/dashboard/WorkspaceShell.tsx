@@ -33,10 +33,12 @@ export function WorkspaceShell({
   children,
   role,
   userEmail,
+  companyId,
 }: {
   children: React.ReactNode;
   role: "admin" | "member";
   userEmail: string;
+  companyId?: string;
 }) {
   const pathname = usePathname();
   const [usedGb, setUsedGb] = useState(4.3);
@@ -102,6 +104,11 @@ export function WorkspaceShell({
                 {userEmail.split("@")[0]}
               </p>
               <p className="truncate text-[10px] text-slate-500">{userEmail}</p>
+              {companyId && (
+                <p className="truncate text-[9px] text-slate-600" title={companyId}>
+                  Co. {companyId.startsWith("demo-") ? "demo" : companyId.slice(0, 8)}…
+                </p>
+              )}
             </div>
           </div>
           <div className="mt-3">
