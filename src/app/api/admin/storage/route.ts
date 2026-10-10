@@ -3,7 +3,14 @@ import { NextResponse } from "next/server";
 import { getSessionRole } from "@/lib/auth";
 import { SUPER_ADMIN_EMAIL } from "@/lib/b2b/constants";
 import { demoStorageStats } from "@/lib/personal/demo-store";
-import { BUCKET_COLD, BUCKET_HOT, BUCKET_VAULT } from "@/lib/storage/tiers";
+import {
+  BUCKET_COLD,
+  BUCKET_COMPANY_HOT,
+  BUCKET_PERSONAL_HOT,
+  BUCKET_VAULT,
+  hotBucketFor,
+} from "@/lib/storage/tiers";
+import { VAULT_TABLE } from "@/lib/vault/table";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
 function bytesToGb(n: number) {
@@ -19,20 +26,17 @@ export async function GET() {
   const supabase = await getSupabaseOrNull();
   if (!supabase) {
     const d = demoStorageStats();
-    const hotGb = bytesToGb(d.hot);
-    const coldGb = bytesToGb(d.cold);
-    const vaultGb = bytesToGb(d.vault);
-    const saved = Math.round(parseFloat(coldGb) * 15);
+    const coldGb = parseFloat(bytesToGb(d.cold));
     return NextResponse.json({
-      hotGb,
-      coldGb,
-      vaultGb,
-      costSavedInr: saved,
-      buckets: [BUCKET_HOT, BUCKET_COLD, BUCKET_VAULT],
+      hotGb: bytesToGb(d.hot),
+      coldGb: bytesToGb(d.cold),
+      vaultGb: bytesToGb(d.vault),
+      costSavedInr: Math.round(coldGb * 15),
+      buckets: [BUCKET_PERSONAL_HOT, BUCKET_COMPANY_HOT, BUCKET_COLD, BUCKET_VAULT],
     });
   }
 
-  const { data } = await supabase.from("personal_backups").select("file_size, storage_tier, is_deleted");
+  const { data } = await supabase.from(VAULT_TABLE).select("file_size, storage_tier, is_deleted");
   let hot = 0;
   let cold = 0;
   let vault = 0;
@@ -42,14 +46,13 @@ export async function GET() {
     if (r.storage_tier === "cold") cold += sz;
     else if (!r.is_deleted) hot += sz;
   }
-
   const coldGb = parseFloat(bytesToGb(cold));
   return NextResponse.json({
     hotGb: bytesToGb(hot),
     coldGb: bytesToGb(cold),
     vaultGb: bytesToGb(vault),
     costSavedInr: Math.round(coldGb * 15),
-    buckets: [BUCKET_HOT, BUCKET_COLD, BUCKET_VAULT],
+    buckets: [BUCKET_PERSONAL_HOT, BUCKET_COMPANY_HOT, BUCKET_COLD, BUCKET_VAULT],
   });
 }
 
@@ -69,12 +72,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, demo: true });
   }
 
-  const { data: row } = await supabase
-    .from("personal_backups")
-    .select("*")
-    .eq("id", backupId)
-    .maybeSingle();
-
+  const { data: row } = await supabase.from(VAULT_TABLE).select("*").eq("id", backupId).maybeSingle();
   if (!row?.vault_path) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -84,19 +82,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Vault object missing" }, { status: 404 });
   }
 
+  const hotBucket = hotBucketFor(row.company_domain as string | null);
   const hotPath = row.vault_path as string;
-  await supabase.storage.from(BUCKET_HOT).upload(hotPath, blob, {
+  await supabase.storage.from(hotBucket).upload(hotPath, blob, {
     upsert: true,
     contentType: row.mime_type || undefined,
   });
 
   await supabase
-    .from("personal_backups")
+    .from(VAULT_TABLE)
     .update({
       is_deleted: false,
       storage_tier: "hot",
       hot_path: hotPath,
-      hot_url: hotPath,
       last_accessed: new Date().toISOString(),
     })
     .eq("id", backupId);

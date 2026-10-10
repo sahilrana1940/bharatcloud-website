@@ -1,0 +1,70 @@
+import { NextResponse } from "next/server";
+
+import { getSessionRole } from "@/lib/auth";
+import { SUPER_ADMIN_EMAIL } from "@/lib/b2b/constants";
+import { demoRecoveryListPending, demoRecoveryUpdate } from "@/lib/personal/recovery-demo";
+import { generateBackupCode, hashBackupCode } from "@/lib/personal/pin";
+import { getSupabaseOrNull } from "@/lib/workspace/db";
+
+async function guard() {
+  const role = await getSessionRole();
+  return role?.role === "super_admin" || role?.email === SUPER_ADMIN_EMAIL;
+}
+
+export async function GET() {
+  if (!(await guard())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const supabase = await getSupabaseOrNull();
+  if (!supabase) {
+    return NextResponse.json({ requests: demoRecoveryListPending() });
+  }
+  const { data } = await supabase
+    .from("recovery_requests")
+    .select("*")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+  return NextResponse.json({ requests: data || [] });
+}
+
+export async function POST(req: Request) {
+  if (!(await guard())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { requestId } = await req.json();
+  const plain = generateBackupCode();
+  const hash = hashBackupCode(plain);
+  const expires = new Date(Date.now() + 3600_000).toISOString();
+
+  const supabase = await getSupabaseOrNull();
+  if (!supabase) {
+    demoRecoveryUpdate(requestId, {
+      status: "approved",
+      backup_code_hash: hash,
+      backup_code_plain_temp: plain,
+      code_expires_at: expires,
+    });
+    return NextResponse.json({ ok: true, code: plain, mailNote: "Send via Resend to contact_mail" });
+  }
+
+  const { data: row } = await supabase
+    .from("recovery_requests")
+    .select("*")
+    .eq("id", requestId)
+    .maybeSingle();
+
+  if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  await supabase
+    .from("recovery_requests")
+    .update({
+      status: "approved",
+      backup_code_hash: hash,
+      backup_code_plain_temp: plain,
+      code_expires_at: expires,
+    })
+    .eq("id", requestId);
+
+  return NextResponse.json({
+    ok: true,
+    code: plain,
+    contact_mail: row.contact_mail,
+    mailNote: "Configure RESEND_API_KEY to email code",
+  });
+}

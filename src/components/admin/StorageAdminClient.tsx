@@ -71,7 +71,7 @@ export function StorageAdminClient() {
         <input
           value={restoreId}
           onChange={(e) => setRestoreId(e.target.value)}
-          placeholder="personal_backups UUID"
+          placeholder="personal_vault UUID"
           className="mt-3 w-full rounded-lg border border-white/10 bg-[#0A0E1A] px-3 py-2 text-sm"
         />
         <button

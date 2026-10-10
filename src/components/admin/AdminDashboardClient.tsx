@@ -77,12 +77,10 @@ export function AdminDashboardClient() {
         </div>
       )}
 
-      <Link
-        href="/admin/storage"
-        className="mt-6 inline-block text-sm text-cyan-400 hover:underline"
-      >
-        Storage tiers (Hot / Cold / Vault) →
-      </Link>
+      <div className="mt-6 flex flex-wrap gap-4 text-sm text-cyan-400">
+        <Link href="/admin/storage" className="hover:underline">Storage tiers →</Link>
+        <Link href="/admin/recovery" className="hover:underline">Recovery →</Link>
+      </div>
 
       <div className="mt-8 flex gap-2">
         <button

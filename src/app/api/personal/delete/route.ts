@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { demoPersonalGet, demoPersonalUpdate } from "@/lib/personal/demo-store";
+import { demoVaultGet, demoVaultUpdate } from "@/lib/personal/demo-store";
 import { getUploadContext } from "@/lib/personal/access";
-import { BUCKET_COLD, BUCKET_HOT } from "@/lib/storage/tiers";
+import { BUCKET_COLD, hotBucketFor } from "@/lib/storage/tiers";
+import { VAULT_TABLE } from "@/lib/vault/table";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
 export async function POST(req: Request) {
@@ -18,16 +19,16 @@ export async function POST(req: Request) {
 
   const supabase = await getSupabaseOrNull();
   if (!supabase) {
-    const row = demoPersonalGet(id);
+    const row = demoVaultGet(id);
     if (!row || row.user_email !== ctx.email) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    demoPersonalUpdate(id, { is_deleted: true, hot_url: null, cold_url: null });
-    return NextResponse.json({ ok: true, soft: true });
+    demoVaultUpdate(id, { is_deleted: true, hot_path: null, cold_path: null });
+    return NextResponse.json({ ok: true, vaultRetained: true });
   }
 
   const { data: row } = await supabase
-    .from("personal_backups")
+    .from(VAULT_TABLE)
     .select("*")
     .eq("id", id)
     .eq("user_email", ctx.email)
@@ -37,24 +38,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (row.hot_path) {
-    await supabase.storage.from(BUCKET_HOT).remove([row.hot_path as string]);
-  }
-  if (row.cold_path) {
-    await supabase.storage.from(BUCKET_COLD).remove([row.cold_path as string]);
-  }
+  const hotBucket = hotBucketFor(row.company_domain as string | null);
+  if (row.hot_path) await supabase.storage.from(hotBucket).remove([row.hot_path as string]);
+  if (row.cold_path) await supabase.storage.from(BUCKET_COLD).remove([row.cold_path as string]);
 
   await supabase
-    .from("personal_backups")
+    .from(VAULT_TABLE)
     .update({
       is_deleted: true,
       hot_path: null,
       cold_path: null,
-      hot_url: null,
-      cold_url: null,
-      storage_tier: "vault",
+      storage_tier: "cold",
     })
     .eq("id", id);
 
-  return NextResponse.json({ ok: true, soft: true, vaultRetained: true });
+  return NextResponse.json({ ok: true, vaultRetained: true });
 }

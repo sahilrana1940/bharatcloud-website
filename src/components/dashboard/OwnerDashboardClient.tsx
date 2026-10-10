@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { INDIA_BADGE } from "@/lib/storage/tiers";
+
 
 type Member = {
   email: string;
@@ -16,6 +18,7 @@ type Member = {
 export function OwnerDashboardClient() {
   const [members, setMembers] = useState<Member[]>([]);
   const [msg, setMsg] = useState("");
+  const [storage, setStorage] = useState({ hot: "0", cold: "0", vault: "0" });
 
   const load = useCallback(async () => {
     const res = await fetch("/api/team/users");
@@ -25,6 +28,12 @@ export function OwnerDashboardClient() {
 
   useEffect(() => {
     load();
+    fetch("/api/company/storage")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.hotGb) setStorage({ hot: j.hotGb, cold: j.coldGb, vault: j.vaultGb });
+      })
+      .catch(() => undefined);
   }, [load]);
 
   async function syncAll(type: "drive" | "gmail") {
@@ -44,6 +53,10 @@ export function OwnerDashboardClient() {
     <div className="min-h-screen overflow-y-auto bg-[#0A0E1A] px-4 pb-[140px] pt-6 sm:px-8">
       <h1 className="text-3xl font-bold text-white">Company Owner</h1>
       <p className="text-slate-500">Full access for your company domain</p>
+      <p className="mt-1 text-[10px] text-slate-600">{INDIA_BADGE}</p>
+      <p className="mt-2 text-sm text-slate-400">
+        Hot {storage.hot}GB · Cold {storage.cold}GB · Vault {storage.vault}GB (7yr retention)
+      </p>
 
       <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-white/10 bg-[#1E2639] p-5">
