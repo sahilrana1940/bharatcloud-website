@@ -1,7 +1,7 @@
 "use client";
 
-import { FileIcon, FileImage, FileText } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { FileIcon, FileImage, FileText, Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,24 +28,57 @@ function FileTypeIcon({ mime }: { mime?: string | null }) {
   return <FileIcon className="h-5 w-5 text-slate-400" />;
 }
 
+function uploadFileWithProgress(
+  file: File,
+  onProgress: (pct: number) => void,
+): Promise<{ file?: DriveFile; publicUrl?: string; error?: string }> {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    const fd = new FormData();
+    fd.append("file", file);
+    xhr.open("POST", "/api/drive/upload");
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+    xhr.onload = () => {
+      try {
+        const j = JSON.parse(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve({ file: j.file, publicUrl: j.publicUrl });
+        } else {
+          resolve({ error: j.error || "Upload failed" });
+        }
+      } catch {
+        resolve({ error: "Upload failed" });
+      }
+    };
+    xhr.onerror = () => resolve({ error: "Network error" });
+    xhr.send(fd);
+  });
+}
+
 export function DrivePageClient({
-  isAdmin,
   userEmail,
 }: {
-  isAdmin: boolean;
+  isAdmin?: boolean;
   userEmail: string;
 }) {
-  const [tab, setTab] = useState<"google" | "safe">("google");
+  const [tab, setTab] = useState<"google" | "safe">("safe");
   const [q, setQ] = useState("");
   const [allFiles, setAllFiles] = useState<DriveFile[]>([]);
   const [driveFull, setDriveFull] = useState(false);
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(false);
   const [listError, setListError] = useState("");
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const source = tab === "google" ? "google" : "bharatcloud";
 
   const load = useCallback(async () => {
+    if (tab !== "safe" && tab !== "google") return;
     setLoading(true);
     setListError("");
     const res = await fetch(
@@ -53,13 +86,14 @@ export function DrivePageClient({
     );
     const j = await res.json();
     setLoading(false);
-    if (!res.ok) {
+    if (!res.ok && tab === "google") {
       setListError(j.error || "Could not load files");
       setAllFiles([]);
       return;
     }
+    setListError(tab === "google" ? j.error || "" : "");
     setAllFiles(j.files || []);
-  }, [source, userEmail]);
+  }, [source, userEmail, tab]);
 
   useEffect(() => {
     load();
@@ -95,11 +129,40 @@ export function DrivePageClient({
 
   async function copyLink(link: string | null) {
     if (!link) {
-      showToast("No public link yet — backup file first");
+      showToast("No link available");
       return;
     }
     await navigator.clipboard.writeText(link);
     showToast("Link Copied!");
+  }
+
+  function shareWhatsApp(link: string | null) {
+    if (!link) {
+      showToast("No link available");
+      return;
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(link)}`, "_blank");
+  }
+
+  async function onFilesPicked(fileList: FileList | null) {
+    if (!fileList?.length) return;
+    const filesToUpload = Array.from(fileList);
+    for (let i = 0; i < filesToUpload.length; i++) {
+      setUploadProgress(0);
+      const result = await uploadFileWithProgress(filesToUpload[i], (pct) => {
+        setUploadProgress(pct);
+      });
+      if (result.error) {
+        showToast(result.error);
+        continue;
+      }
+      if (result.file) {
+        setAllFiles((prev) => [result.file!, ...prev]);
+        showToast(`Uploaded ${result.file.name}`);
+      }
+    }
+    setUploadProgress(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function backupNow(file: DriveFile) {
@@ -118,22 +181,6 @@ export function DrivePageClient({
     }
     showToast("Backed up to BharatCloud Safe Drive");
     if (tab === "google") load();
-  }
-
-  async function moveShortcut(fileId: string) {
-    await fetch("/api/drive/move-and-shortcut", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileId }),
-    });
-    showToast("Shortcut created — space freed on Google Drive");
-    load();
-  }
-
-  async function bulkShortcuts() {
-    for (const f of files) {
-      if (!f.is_shortcut) await moveShortcut(f.id);
-    }
   }
 
   return (
@@ -160,6 +207,43 @@ export function DrivePageClient({
           BharatCloud Safe Drive
         </button>
       </div>
+
+      {tab === "safe" && (
+        <div className="mt-6">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => onFilesPicked(e.target.files)}
+          />
+          <Button
+            type="button"
+            size="lg"
+            className="w-full bg-gradient-to-r from-sky-600 to-blue-600 py-6 text-base font-semibold sm:w-auto sm:px-10"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadProgress !== null}
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            Upload File to BharatCloud
+          </Button>
+          {uploadProgress !== null && (
+            <div className="mt-4 max-w-md">
+              <div className="mb-1 flex justify-between text-xs text-slate-500">
+                <span>Uploading…</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                <div
+                  className="h-full rounded-full bg-sky-600 transition-all"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="mt-4 flex flex-wrap gap-3">
         <Input
           className="max-w-md"
@@ -167,20 +251,20 @@ export function DrivePageClient({
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        {isAdmin && tab === "safe" && files.length > 0 && (
-          <Button type="button" variant="outline" onClick={bulkShortcuts}>
-            Move All & Create Shortcuts (Save 99% Space)
-          </Button>
-        )}
       </div>
 
-      {listError && (
+      {listError && tab === "google" && (
         <p className="mt-4 text-sm text-amber-600 dark:text-amber-400">{listError}</p>
       )}
 
-      {loading ? (
+      {loading && tab === "google" ? (
         <p className="mt-8 text-sm text-slate-500">Loading files…</p>
-      ) : files.length === 0 ? (
+      ) : files.length === 0 && tab === "safe" && uploadProgress === null ? (
+        <p className="mt-8 rounded-xl border border-dashed border-slate-300 px-6 py-10 text-center text-sm text-slate-500 dark:border-slate-700">
+          No files yet. Use <strong>Upload File to BharatCloud</strong> above — no
+          Google Drive needed.
+        </p>
+      ) : files.length === 0 && tab === "google" ? (
         <p className="mt-8 rounded-xl border border-dashed border-slate-300 px-6 py-10 text-center text-sm text-slate-500 dark:border-slate-700">
           No files found. Click Sync Now in Team page to start backup
         </p>
@@ -196,7 +280,7 @@ export function DrivePageClient({
                 <div className="min-w-0">
                   <p className="truncate font-medium">{f.name}</p>
                   <p className="text-xs text-slate-500">
-                    {f.owner_email} · {formatSize(f.size)}
+                    {tab === "safe" ? formatSize(f.size) : `${f.owner_email} · ${formatSize(f.size)}`}
                   </p>
                 </div>
               </div>
@@ -213,15 +297,15 @@ export function DrivePageClient({
                       variant="outline"
                       onClick={() => copyLink(f.publicLink)}
                     >
-                      Copy BharatCloud Link
+                      Copy Link
                     </Button>
                     <Button
                       type="button"
                       size="sm"
-                      onClick={() => moveShortcut(f.id)}
-                      disabled={f.is_shortcut}
+                      className="bg-emerald-600 hover:bg-emerald-500"
+                      onClick={() => shareWhatsApp(f.publicLink)}
                     >
-                      Create Shortcut & Free Space
+                      Share on WhatsApp
                     </Button>
                   </>
                 )}
