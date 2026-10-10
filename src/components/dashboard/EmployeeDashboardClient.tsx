@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { Search, Upload } from "lucide-react";
 
-import { DriveShell } from "@/components/dashboard/DriveShell";
+import { VaultGallery } from "@/components/personal/VaultGallery";
 
-export function EmployeeDashboardClient({ userEmail }: { userEmail: string }) {
+export function EmployeeDashboardClient() {
   return (
     <div className="min-h-screen overflow-y-auto bg-[#0A0E1A] px-4 pb-[140px] pt-8 sm:px-8">
       <h1 className="text-2xl font-bold text-white">Employee workspace</h1>
@@ -30,14 +30,7 @@ export function EmployeeDashboardClient({ userEmail }: { userEmail: string }) {
 
       <div className="mt-12">
         <h2 className="mb-4 text-lg font-semibold text-white">My uploads</h2>
-        <DriveShell
-          userEmail={userEmail}
-          listSource="my-uploads"
-          showUpload={false}
-          title=""
-          subtitle=""
-          embedded
-        />
+        <VaultGallery />
       </div>
     </div>
   );
