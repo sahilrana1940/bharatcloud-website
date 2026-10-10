@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { VaultGallery } from "@/components/personal/VaultGallery";
+import { VaultUploadBar } from "@/components/personal/VaultUploadBar";
 import { Toast } from "@/components/dashboard/Toast";
 import { BRAND_FOOTER } from "@/lib/brand";
 
@@ -20,6 +21,7 @@ export function PersonalGalleryClient() {
   const [tab, setTab] = useState("photo");
   const [plan, setPlan] = useState<{ storage_used?: number; storage_limit?: number } | null>(null);
   const [toast, setToast] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const checkSessionUnlock = useCallback(() => {
     const raw = sessionStorage.getItem(UNLOCK_KEY);
@@ -169,7 +171,8 @@ export function PersonalGalleryClient() {
         <p className="mt-8 text-center text-slate-400">QR share — signed links only (60s)</p>
       ) : (
         <div className="mt-6">
-          <VaultGallery typeFilter={tab} />
+          <VaultUploadBar type={tab} onDone={() => setRefreshKey((k) => k + 1)} />
+          <VaultGallery typeFilter={tab} refreshKey={refreshKey} />
         </div>
       )}
 

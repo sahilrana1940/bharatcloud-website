@@ -11,7 +11,13 @@ type Item = {
   thumbUrl: string | null;
 };
 
-export function VaultGallery({ typeFilter }: { typeFilter?: string }) {
+export function VaultGallery({
+  typeFilter,
+  refreshKey = 0,
+}: {
+  typeFilter?: string;
+  refreshKey?: number;
+}) {
   const [items, setItems] = useState<Item[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -34,7 +40,7 @@ export function VaultGallery({ typeFilter }: { typeFilter?: string }) {
   useEffect(() => {
     load(1, false);
     setPage(1);
-  }, [load]);
+  }, [load, refreshKey]);
 
   async function openHd(id: string) {
     const res = await fetch(`/api/secure-download/${id}`);

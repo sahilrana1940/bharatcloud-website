@@ -9,7 +9,7 @@ export default async function PersonalPage() {
   if (!session) redirect("/login");
 
   const ctx = await getUploadContext();
-  if (ctx?.companyDomain && session.companyId !== "demo-company-workspace") {
+  if (ctx?.companyDomain && !ctx.isB2C && session.companyId !== "demo-company-workspace") {
     redirect("/dashboard/employee");
   }
 

@@ -41,6 +41,16 @@ export function LoginForm() {
     window.location.href = "/api/auth/google/demo?email=admin@rjadam.com";
   }
 
+  function personalDemo() {
+    window.location.href =
+      "/api/auth/google/demo?email=demo.user@gmail.com&mode=b2c";
+  }
+
+  function superAdminDemo() {
+    window.location.href =
+      "/api/auth/google/demo?email=admin@bharatcloud.store";
+  }
+
   return (
     <div className="mx-auto w-full max-w-md">
       <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
@@ -105,7 +115,23 @@ export function LoginForm() {
         className="mt-2 w-full text-xs text-slate-500"
         onClick={googleDemo}
       >
-        Demo workspace (no Google keys)
+        Demo B2B workspace (rjadam.com)
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        className="mt-1 w-full text-xs text-cyan-600"
+        onClick={personalDemo}
+      >
+        Personal HD Cloud (B2C demo)
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        className="mt-1 w-full text-xs text-slate-400"
+        onClick={superAdminDemo}
+      >
+        Super Admin demo
       </Button>
 
       <p className="mt-6 text-center text-sm text-slate-500">

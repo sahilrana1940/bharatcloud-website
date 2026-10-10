@@ -3,7 +3,8 @@
 import { Mail, Search } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-import { DriveShell } from "@/components/dashboard/DriveShell";
+import { VaultGallery } from "@/components/personal/VaultGallery";
+import { VaultUploadBar } from "@/components/personal/VaultUploadBar";
 
 type MailRow = {
   id: string;
@@ -15,6 +16,7 @@ type MailRow = {
 
 export function VaultPageClient({ userEmail }: { userEmail: string }) {
   const [tab, setTab] = useState<"files" | "emails">("files");
+  const [refreshKey, setRefreshKey] = useState(0);
   const [q, setQ] = useState("");
   const [emails, setEmails] = useState<MailRow[]>([]);
 
@@ -41,7 +43,7 @@ export function VaultPageClient({ userEmail }: { userEmail: string }) {
     <div className="min-h-screen overflow-y-auto bg-[#0A0E1A] pb-[140px] lg:pb-10">
       <div className="border-b border-white/5 px-4 pb-4 pt-6 sm:px-8">
         <h1 className="text-3xl font-bold text-white">My Vault - Secured Backup</h1>
-        <p className="text-slate-500">Files and emails for your company domain</p>
+        <p className="text-slate-500">Company vault for {userEmail}</p>
         <div className="mt-6 flex flex-wrap gap-2 rounded-2xl bg-[#0F1420] p-1.5">
           <button
             type="button"
@@ -69,14 +71,10 @@ export function VaultPageClient({ userEmail }: { userEmail: string }) {
       </div>
 
       {tab === "files" ? (
-        <DriveShell
-          userEmail={userEmail}
-          listSource="vault"
-          showUpload={false}
-          title=""
-          subtitle=""
-          embedded
-        />
+        <div className="px-4 pt-4 sm:px-8">
+          <VaultUploadBar onDone={() => setRefreshKey((k) => k + 1)} />
+          <VaultGallery refreshKey={refreshKey} />
+        </div>
       ) : (
         <div className="px-4 pt-6 sm:px-8">
           <div className="relative max-w-xl">

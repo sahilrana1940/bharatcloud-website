@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import { SUPER_ADMIN_EMAIL } from "@/lib/brand";
+import { isSuperAdminEmail } from "@/lib/brand";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 import {
   WS_EMAIL_COOKIE,
@@ -19,7 +19,7 @@ export type UserRoleInfo = {
 
 export function roleFromEmailDemo(email: string): UserRoleInfo {
   const e = email.toLowerCase();
-  if (e === SUPER_ADMIN_EMAIL.toLowerCase()) {
+  if (isSuperAdminEmail(e)) {
     return {
       role: "super_admin",
       is_company_owner: true,
@@ -45,10 +45,7 @@ export function roleFromEmailDemo(email: string): UserRoleInfo {
 
 export async function getUserRole(email: string): Promise<UserRoleInfo> {
   const normalized = email.toLowerCase();
-  if (
-    normalized === SUPER_ADMIN_EMAIL.toLowerCase() ||
-    normalized === "admin@bharatcloud.store"
-  ) {
+  if (isSuperAdminEmail(normalized)) {
     return {
       role: "super_admin",
       is_company_owner: true,

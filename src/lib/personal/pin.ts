@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "crypto";
+import { createHash } from "crypto";
 
 const PIN_SALT = process.env.BC_PIN_SALT || "bharatcloud-pin-salt";
 

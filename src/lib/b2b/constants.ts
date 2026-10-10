@@ -1,1 +1,1 @@
-export const SUPER_ADMIN_EMAIL = "sahilrana1940@gmail.com";
+export { SUPER_ADMIN_EMAIL, LEGACY_SUPER_ADMIN_EMAIL, isSuperAdminEmail } from "@/lib/brand";
