@@ -33,12 +33,12 @@ export async function POST(req: Request) {
   const objectPath = storageObjectPath(ctx.email, fileName);
   const thumbPath = thumbObjectPath(ctx.email, fileName);
   const mime = file.type || "application/octet-stream";
+  const companyDomain =
+    ctx.companyDomain || (ctx.isB2C ? null : emailDomain(ctx.email));
   const type: VaultRow["type"] = companyDomain
     ? "company_doc"
     : ((typeParam as VaultRow["type"]) ||
         detectBackupType(fileName, mime, companyDomain));
-  const companyDomain =
-    ctx.companyDomain || (ctx.isB2C ? null : emailDomain(ctx.email));
   const hotBucket = hotBucketFor(companyDomain);
   const supabase = await getSupabaseOrNull();
 
