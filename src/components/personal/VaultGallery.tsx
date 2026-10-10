@@ -72,20 +72,22 @@ export function VaultGallery({
   const load = useCallback(
     async (p: number, append: boolean) => {
       setLoading(true);
-      const q = typeFilter ? `type=${typeFilter}&` : "";
-      const res = await fetch(`/api/personal/list?${q}page=${p}`);
-      const j = await res.json();
-      if (!res.ok) {
-        setListError(j.error || "Could not load files");
-        setItems([]);
-        setHasMore(false);
+      try {
+        const q = typeFilter ? `type=${typeFilter}&` : "";
+        const res = await fetch(`/api/personal/list?${q}page=${p}`);
+        const j = await res.json();
+        if (!res.ok) {
+          setListError(j.error || "Could not load files");
+          setItems([]);
+          setHasMore(false);
+          return;
+        }
+        setListError("");
+        setItems((prev) => (append ? [...prev, ...(j.items || [])] : j.items || []));
+        setHasMore(Boolean(j.hasMore));
+      } finally {
         setLoading(false);
-        return;
       }
-      setListError("");
-      setItems((prev) => (append ? [...prev, ...(j.items || [])] : j.items || []));
-      setHasMore(Boolean(j.hasMore));
-      setLoading(false);
     },
     [typeFilter],
   );
@@ -103,7 +105,6 @@ export function VaultGallery({
 
   return (
     <div>
-      <p className="mb-4 text-center text-[10px] text-slate-500">{BRAND_FOOTER}</p>
       {listError && (
         <p className="mb-3 rounded-lg border border-red-500/30 bg-red-950/40 px-3 py-2 text-center text-xs text-red-300">
           {listError}
@@ -116,8 +117,8 @@ export function VaultGallery({
             ))
           : null}
         {!loading && items.length === 0 ? (
-          <p className="col-span-full rounded-xl border border-dashed border-white/10 py-12 text-center text-sm text-slate-500">
-            No files yet. Upload above — if upload fails, check Supabase storage buckets.
+          <p className="col-span-full rounded-2xl border border-dashed border-cyan-500/20 bg-cyan-950/20 py-14 text-center text-sm text-slate-400">
+            Abhi koi file nahi — upar se upload karo. CCTV, PDF, photo sab chalega.
           </p>
         ) : null}
         {!loading &&
@@ -126,7 +127,7 @@ export function VaultGallery({
                 key={item.id}
                 type="button"
                 onClick={() => openHd(item.id)}
-                className="overflow-hidden rounded-xl border border-white/10 bg-[#1E2639]"
+                className="overflow-hidden rounded-2xl border border-white/10 bg-[#1E2639] shadow-md transition hover:border-cyan-400/40 hover:shadow-cyan-500/10"
               >
                 <VaultThumb thumbUrl={item.thumbUrl} fileName={item.file_name} />
                 <p className="truncate px-2 py-1 text-[10px] text-slate-400">
@@ -149,9 +150,12 @@ export function VaultGallery({
           Load More
         </button>
       )}
+      <p className="mt-8 text-center text-[10px] text-slate-600">{BRAND_FOOTER}</p>
       {hdUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setHdUrl(null)}>
-          <a href={hdUrl} download className="absolute right-4 top-4 text-cyan-400 text-sm">Download HD</a>
+          <a href={hdUrl} download className="absolute right-4 top-4 rounded-lg bg-cyan-500/20 px-3 py-1.5 text-sm text-cyan-300">
+            Download
+          </a>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={hdUrl} alt="" className="max-h-[85vh] rounded-xl object-contain" />
         </div>
