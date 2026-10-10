@@ -4,6 +4,50 @@ import { useCallback, useEffect, useState } from "react";
 
 import { BRAND_FOOTER } from "@/lib/brand";
 
+function vaultPreviewLabel(fileName: string) {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "pdf") return "PDF";
+  if (["mp4", "mov", "webm", "mkv"].includes(ext)) return "VIDEO";
+  if (["jpg", "jpeg", "png", "webp", "heic"].includes(ext)) return "PHOTO";
+  return "FILE";
+}
+
+function VaultThumb({
+  thumbUrl,
+  fileName,
+}: {
+  thumbUrl: string | null;
+  fileName: string;
+}) {
+  const [broken, setBroken] = useState(false);
+  const label = vaultPreviewLabel(fileName);
+  const showImg = Boolean(thumbUrl) && !broken && label === "PHOTO";
+
+  if (showImg) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={thumbUrl!}
+        alt=""
+        className="h-32 w-full object-cover"
+        loading="lazy"
+        onError={() => setBroken(true)}
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-32 flex-col items-center justify-center gap-1 bg-[#151c2c] text-slate-400">
+      <span className="text-xs font-semibold tracking-wide text-cyan-400/90">
+        {label}
+      </span>
+      <span className="max-w-[90%] truncate text-[10px] text-slate-500">
+        {fileName}
+      </span>
+    </div>
+  );
+}
+
 type Item = {
   id: string;
   file_name: string;
@@ -63,12 +107,7 @@ export function VaultGallery({
                 onClick={() => openHd(item.id)}
                 className="overflow-hidden rounded-xl border border-white/10 bg-[#1E2639]"
               >
-                {item.thumbUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.thumbUrl} alt="" className="h-32 w-full object-cover" loading="lazy" />
-                ) : (
-                  <div className="flex h-32 items-center justify-center text-xs text-slate-500">HD</div>
-                )}
+                <VaultThumb thumbUrl={item.thumbUrl} fileName={item.file_name} />
                 <p className="truncate px-2 py-1 text-[10px] text-slate-400">
                   {item.storage_tier === "cold" ? "❄️" : "🔥"} {item.file_name}
                 </p>
