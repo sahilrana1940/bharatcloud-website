@@ -13,7 +13,7 @@ export function EmployeeUploadClient() {
       <p className="text-sm text-slate-500">HD → company hot + vault (signed URLs only)</p>
       <div className="mt-6">
         <VaultUploadBar type="video" onDone={() => setRefreshKey((k) => k + 1)} />
-        <VaultGallery typeFilter="video" refreshKey={refreshKey} />
+        <VaultGallery refreshKey={refreshKey} />
       </div>
     </div>
   );
