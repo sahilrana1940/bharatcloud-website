@@ -65,7 +65,9 @@ export async function GET(req: Request) {
   } else {
     query = query.eq("user_email", ctx.email);
     if (ctx.companyDomain) {
-      query = query.eq("company_domain", ctx.companyDomain);
+      query = query.or(
+        `company_domain.eq.${ctx.companyDomain},company_domain.is.null`,
+      );
     }
   }
   if (type && type !== "qr") {
