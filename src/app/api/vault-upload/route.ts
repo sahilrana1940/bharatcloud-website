@@ -100,26 +100,36 @@ export async function POST(req: Request) {
     console.warn("[vault-upload] vault bucket mirror skipped:", vaultErr.message);
   }
 
-  const { data: row, error: dbErr } = await supabase
-    .from(VAULT_TABLE)
-    .insert({
-      user_email: ctx.email,
-      company_domain: companyDomain,
-      file_name: fileName,
-      file_size: file.size,
-      type,
-      hot_path: objectPath,
-      vault_path: objectPath,
-      thumb_path: thumbBuf ? thumbPath : null,
-      storage_tier: "hot",
-      is_locked: true,
-      mime_type: mime,
-    })
-    .select()
-    .single();
+  const rowPayload = {
+    user_email: ctx.email,
+    company_domain: companyDomain,
+    file_name: fileName,
+    file_size: file.size,
+    type,
+    hot_path: objectPath,
+    vault_path: objectPath,
+    thumb_path: thumbBuf ? thumbPath : null,
+    storage_tier: "hot",
+    is_locked: true,
+    mime_type: mime,
+  };
 
-  if (dbErr) {
-    return NextResponse.json({ error: dbErr.message }, { status: 500 });
+  let row: { id: string } | null = null;
+  let dbErr: { message: string } | null = null;
+
+  const first = await supabase.from(VAULT_TABLE).insert(rowPayload).select().single();
+  row = first.data;
+  dbErr = first.error;
+
+  if (dbErr?.message.includes("mime_type")) {
+    const { mime_type: _omit, ...withoutMime } = rowPayload;
+    const retry = await supabase.from(VAULT_TABLE).insert(withoutMime).select().single();
+    row = retry.data;
+    dbErr = retry.error;
+  }
+
+  if (dbErr || !row) {
+    return NextResponse.json({ error: dbErr?.message || "DB insert failed" }, { status: 500 });
   }
 
   const { data: pu } = await supabase
