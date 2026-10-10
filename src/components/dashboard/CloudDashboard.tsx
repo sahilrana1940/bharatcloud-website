@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { BrandMark } from "@/components/brand/BrandMark";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -75,10 +76,11 @@ export function CloudDashboard() {
     <div className="flex min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0c0d10] dark:text-slate-100">
       <aside className="hidden w-56 flex-shrink-0 border-r border-slate-200/80 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80 md:flex md:flex-col">
         <div className="border-b border-slate-200/80 px-5 py-5 dark:border-slate-800">
-          <span className="text-sm font-semibold tracking-tight">
-            BharatCloud
-          </span>
-          <span className="text-sky-500">.store</span>
+          <BrandMark
+            href="/"
+            titleClass="text-slate-900 dark:text-slate-100"
+            accentClass="text-sky-500"
+          />
         </div>
         <nav className="flex-1 space-y-1 p-3">
           {nav.map((item) => (

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { BrandMark } from "@/components/brand/BrandMark";
 import { formatStorageGb, planLabel } from "@/lib/b2b/plans";
 
 type Org = {
@@ -98,9 +99,11 @@ export function DashboardClient() {
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="border-b border-gray-200 bg-white px-6 py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <Link href="/" className="font-semibold text-gray-900">
-            BharatCloud<span className="text-[#ff6a00]">.store</span>
-          </Link>
+          <BrandMark
+            href="/"
+            titleClass="text-gray-900"
+            accentClass="text-[#ff6a00]"
+          />
           <Link
             href="/login"
             className="text-sm text-gray-600 hover:text-[#ff6a00]"
