@@ -5,5 +5,5 @@ export function publicBackupUrl(s3Path: string | null | undefined): string | nul
     .split("/")
     .map((seg) => encodeURIComponent(seg))
     .join("/");
-  return `${base}/storage/v1/object/public/bharatcloud-backups/${encoded}`;
+  return `${base}/storage/v1/object/public/bharatcloud-company-hot/${encoded}`;
 }

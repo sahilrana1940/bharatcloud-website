@@ -5,5 +5,6 @@ values
   ('bharatcloud-company-hot', 'bharatcloud-company-hot', false),
   ('bharatcloud-cold', 'bharatcloud-cold', false),
   ('bharatcloud-vault', 'bharatcloud-vault', false),
-  ('bharatcloud-thumbs', 'bharatcloud-thumbs', false)
+  ('bharatcloud-thumbs', 'bharatcloud-thumbs', false),
+  ('bharatcloud-backups', 'bharatcloud-backups', false)
 on conflict (id) do update set public = false;

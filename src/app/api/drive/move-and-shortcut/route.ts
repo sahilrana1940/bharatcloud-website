@@ -36,7 +36,7 @@ export async function POST(req: Request) {
   }
 
   const { data: exists } = await supabase.storage
-    .from("bharatcloud-backups")
+    .from("bharatcloud-company-hot")
     .list(file.s3_path.split("/").slice(0, -1).join("/"));
   const fileName = file.s3_path.split("/").pop();
   const inStorage = exists?.some((o) => o.name === fileName);
