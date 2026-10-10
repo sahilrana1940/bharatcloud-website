@@ -5,7 +5,7 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-6 py-16 text-slate-100">
       <div className="mx-auto max-w-lg text-center">
         <h1 className="text-2xl font-semibold">Secure checkout</h1>
-        <p className="mt-2 text-sm text-slate-400">BharatCloud.store · Test mode</p>
+        <p className="mt-2 text-sm text-slate-400">Bharat Tijori · Test mode</p>
       </div>
       <div className="mx-auto mt-10 max-w-lg text-slate-900 dark:text-slate-100">
         <CheckoutClient />

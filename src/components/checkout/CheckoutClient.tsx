@@ -69,7 +69,7 @@ function CheckoutInner() {
       key,
       amount: total * 100,
       currency: "INR",
-      name: "BharatCloud.store",
+      name: "BharatCloud by Bharat Tijori",
       description: `${plan.name} plan (incl. GST)`,
       order_id: order.razorpayOrderId,
       handler: () => {

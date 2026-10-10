@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { BRAND_PARENT, BRAND_PRODUCT } from "@/lib/brand";
+
 type Props = {
   variant?: "landing" | "minimal" | "dark";
 };
@@ -24,14 +26,20 @@ export function SiteHeader({ variant = "landing" }: Props) {
           >
             BC
           </span>
-          <span
-            className={`text-lg font-semibold tracking-tight ${
-              dark ? "text-white" : "text-gray-900"
-            }`}
-          >
-            BharatCloud
-            <span className={dark ? "text-sky-400" : "text-[#ff6a00]"}>
-              .store
+          <span className="flex flex-col leading-tight">
+            <span
+              className={`text-lg font-semibold tracking-tight ${
+                dark ? "text-white" : "text-gray-900"
+              }`}
+            >
+              {BRAND_PRODUCT}
+            </span>
+            <span
+              className={`text-[10px] font-medium uppercase tracking-wider ${
+                dark ? "text-sky-400/90" : "text-[#ff6a00]"
+              }`}
+            >
+              by {BRAND_PARENT}
             </span>
           </span>
         </Link>

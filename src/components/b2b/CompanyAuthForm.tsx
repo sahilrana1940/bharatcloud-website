@@ -48,7 +48,7 @@ function AuthInner() {
           {mode === "register" ? "Register your company" : "Company admin login"}
         </h1>
         <p className="mt-1 text-sm text-gray-600">
-          Manage team storage on BharatCloud.store
+          Manage team storage — BharatCloud by Bharat Tijori
         </p>
 
         <div className="mt-6 flex gap-2 rounded-full bg-white p-1 shadow-sm ring-1 ring-gray-100">

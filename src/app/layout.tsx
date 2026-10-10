@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { BharatCloudFooter } from "@/components/BharatCloudFooter";
+import { BRAND_DOMAIN, BRAND_TAGLINE } from "@/lib/brand";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,9 +15,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BharatCloud.store — Business cloud for India",
+  title: `${BRAND_TAGLINE}`,
   description:
-    "Apna Business Cloud, India me safe. Team storage and admin for Indian companies.",
+    "Apna Business Cloud, India me safe. Team backup and vault for Indian companies — Bharat Tijori.",
+  metadataBase: new URL(`https://www.${BRAND_DOMAIN}`),
+  openGraph: {
+    title: BRAND_TAGLINE,
+    siteName: BRAND_TAGLINE,
+    url: `https://www.${BRAND_DOMAIN}`,
+  },
 };
 
 export default function RootLayout({
