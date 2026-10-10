@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getSessionRole } from "@/lib/auth";
 import { SUPER_ADMIN_EMAIL } from "@/lib/b2b/constants";
 import { demoRecoveryListPending, demoRecoveryUpdate } from "@/lib/personal/recovery-demo";
+import { sendRecoveryCodeEmail } from "@/lib/email/recovery-mail";
 import { generateBackupCode, hashBackupCode } from "@/lib/personal/pin";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
@@ -41,8 +42,18 @@ export async function POST(req: Request) {
       backup_code_plain_temp: plain,
       code_expires_at: expires,
     });
-    if (pending) console.log(`[recovery] mail to ${pending.contact_mail} code ${plain}`);
-    return NextResponse.json({ ok: true, code: plain, mailNote: "Send via Resend to contact_mail" });
+    const mail = pending
+      ? await sendRecoveryCodeEmail(pending.contact_mail, plain, pending.user_email)
+      : { sent: false };
+    if (!mail.sent) {
+      console.log(`[recovery] mail to ${pending?.contact_mail} code ${plain}`);
+    }
+    return NextResponse.json({
+      ok: true,
+      code: plain,
+      emailSent: mail.sent,
+      mailError: mail.error,
+    });
   }
 
   const { data: row } = await supabase
@@ -74,12 +85,20 @@ export async function POST(req: Request) {
     backup_code_hash: hash,
   });
 
-  console.log(`[recovery] mail to ${row.contact_mail} code ${plain}`);
+  const mail = await sendRecoveryCodeEmail(
+    row.contact_mail,
+    plain,
+    row.user_email,
+  );
+  if (!mail.sent) {
+    console.log(`[recovery] mail to ${row.contact_mail} code ${plain}`);
+  }
 
   return NextResponse.json({
     ok: true,
     code: plain,
     contact_mail: row.contact_mail,
-    mailNote: "Configure RESEND_API_KEY to email code",
+    emailSent: mail.sent,
+    mailError: mail.error,
   });
 }

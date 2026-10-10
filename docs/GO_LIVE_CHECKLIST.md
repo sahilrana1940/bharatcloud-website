@@ -11,6 +11,7 @@
 - `CRON_SECRET` (Vercel Cron → `/api/cron/archive` + `/api/cron/plan-expiry`)
 - `RAZORPAY_KEY_ID` + secret (live payments)
 - `BC_PIN_SALT`
+- `RESEND_API_KEY` + `RECOVERY_FROM_EMAIL` (recovery codes; optional until live)
 
 ## Demo flows (no Google keys)
 | Button | URL |
