@@ -4,9 +4,10 @@ import { publicBackupUrl } from "@/lib/drive/public-url";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { resolveCompanyDomain } from "@/lib/workspace/company";
 import { DEMO_DRIVE_FILES } from "@/lib/workspace/demo-data";
+import { BUCKET_COMPANY_HOT } from "@/lib/storage/tiers";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
-const BUCKET = "bharatcloud-backups";
+const BUCKET = BUCKET_COMPANY_HOT;
 
 export async function POST(req: Request) {
   const auth = await requireWorkspace();
@@ -66,8 +67,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: uploadError.message }, { status: 500 });
   }
 
-  const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
-  const publicUrl = urlData.publicUrl || publicBackupUrl(storagePath) || "";
+  const publicUrl = publicBackupUrl(storagePath) || "";
 
   const { data: row, error: dbError } = await supabase
     .from("drive_files")

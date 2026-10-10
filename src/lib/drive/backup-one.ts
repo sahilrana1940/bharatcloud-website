@@ -3,7 +3,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { driveClient } from "@/lib/google/client";
 import { prepareUploadBody } from "@/lib/storage/compress-upload";
 
-const BUCKET = "bharatcloud-backups";
+import { BUCKET_COMPANY_HOT } from "@/lib/storage/tiers";
+
+const BUCKET = BUCKET_COMPANY_HOT;
 
 export async function backupDriveFile(
   supabase: SupabaseClient,

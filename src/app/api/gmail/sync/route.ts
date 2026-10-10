@@ -4,11 +4,12 @@ import { gmailClient } from "@/lib/google/client";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { resolveCompanyDomain } from "@/lib/workspace/company";
 import { DEMO_EMAILS } from "@/lib/workspace/demo-data";
+import { BUCKET_COMPANY_HOT } from "@/lib/storage/tiers";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
 export const maxDuration = 300;
 
-const BUCKET = "bharatcloud-backups";
+const BUCKET = BUCKET_COMPANY_HOT;
 
 async function runGmailSync(
   session: { companyId: string; email: string },
