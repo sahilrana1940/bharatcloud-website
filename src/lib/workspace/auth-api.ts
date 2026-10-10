@@ -5,7 +5,15 @@ import { getWorkspaceSession } from "@/lib/workspace/session";
 export async function requireWorkspace(
   adminOnly = false,
 ): Promise<
-  | { session: { companyId: string; email: string; role: "admin" | "member" } }
+  | {
+      session: {
+        companyId: string;
+        email: string;
+        role: "admin" | "member";
+        saasRole?: "super_admin" | "company_owner" | "employee";
+        isCompanyOwner?: boolean;
+      };
+    }
   | NextResponse
 > {
   const session = await getWorkspaceSession();

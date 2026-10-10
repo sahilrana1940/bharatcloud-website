@@ -21,11 +21,16 @@ export async function GET(req: Request) {
             ? "trash"
             : source === "vault"
               ? "vault"
-              : "bharatcloud";
+              : source === "my-uploads"
+                ? "my-uploads"
+                : "bharatcloud";
 
   const result = await listDriveFiles({
     mode,
-    session,
+    session: {
+      ...session,
+      saasRole: session.saasRole,
+    },
     ownerParam: url.searchParams.get("owner") || "",
     search: url.searchParams.get("q") || "",
   });

@@ -28,7 +28,9 @@ export async function GET(req: Request) {
       .select("*", { count: "exact" })
       .eq("company_id", session.companyId);
     if (domain) query = query.eq("company_domain", domain);
-    if (session.role === "member") {
+    const companyWide =
+      session.saasRole === "company_owner" || session.saasRole === "employee";
+    if (!companyWide && session.role === "member") {
       query = query.eq("owner_email", session.email);
     } else if (owner) {
       query = query.eq("owner_email", owner);
@@ -48,7 +50,12 @@ export async function GET(req: Request) {
       total: count || 0,
     });
   } else {
-    if (session.role === "member") {
+    rows = rows.filter(
+      (e) => (e as { company_domain?: string }).company_domain === domain || !domain,
+    );
+    const companyWide =
+      session.saasRole === "company_owner" || session.saasRole === "employee";
+    if (!companyWide && session.role === "member") {
       rows = rows.filter((e) => e.owner_email === session.email);
     } else if (owner) {
       rows = rows.filter((e) => e.owner_email === owner);

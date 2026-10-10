@@ -40,12 +40,18 @@ function mapRow(f: Record<string, unknown>): DriveListItem {
 }
 
 export async function listDriveFiles(opts: {
-  mode: "google" | "bharatcloud" | "shared" | "recent" | "trash" | "vault";
-  session: { companyId: string; email: string; role: "admin" | "member" };
+  mode: "google" | "bharatcloud" | "shared" | "recent" | "trash" | "vault" | "my-uploads";
+  session: {
+    companyId: string;
+    email: string;
+    role: "admin" | "member";
+    saasRole?: "super_admin" | "company_owner" | "employee";
+  };
   ownerParam: string;
   search: string;
 }) {
   const { session, mode, ownerParam, search } = opts;
+  const saasRole = session.saasRole || (session.role === "admin" ? "company_owner" : "employee");
   const domain = await resolveCompanyDomain(session.companyId, session.email);
   const supabase = await getSupabaseOrNull();
 
@@ -115,9 +121,14 @@ export async function listDriveFiles(opts: {
     let rows = [...DEMO_DRIVE_FILES];
     if (mode === "trash") rows = rows.filter((f) => (f as { is_deleted?: boolean }).is_deleted);
     else rows = rows.filter((f) => !(f as { is_deleted?: boolean }).is_deleted);
-    if (mode === "bharatcloud" || mode === "vault") rows = rows.filter((f) => !f.is_shortcut);
+    if (mode === "bharatcloud" || mode === "vault" || mode === "my-uploads") {
+      rows = rows.filter((f) => !f.is_shortcut);
+    }
     if (mode === "shared") rows = rows.filter((f) => (f as { shared?: boolean }).shared);
-    if (session.role === "member") rows = rows.filter((f) => f.owner_email === session.email);
+    const companyVault = mode === "vault" && (saasRole === "company_owner" || saasRole === "employee");
+    if (mode === "my-uploads" || (!companyVault && session.role === "member")) {
+      rows = rows.filter((f) => f.owner_email === session.email);
+    }
     const files = rows.map((f) => mapRow(f as Record<string, unknown>));
     return { files: filterSearch(files, search), error: null };
   }
@@ -132,15 +143,23 @@ export async function listDriveFiles(opts: {
   if (mode === "bharatcloud") {
     query = query.eq("is_shortcut", false).eq("backup_status", "backedup");
   }
-  if (mode === "vault") {
+  if (mode === "vault" || mode === "my-uploads") {
     query = query.eq("is_shortcut", false);
   }
   if (mode === "shared") query = query.eq("shared", true);
   if (mode === "recent") query = query.order("created_at", { ascending: false }).limit(20);
   else query = query.order("created_at", { ascending: false });
 
-  if (session.role === "member") query = query.eq("owner_email", session.email);
-  else if (ownerParam) query = query.eq("owner_email", ownerParam);
+  const companyVault = mode === "vault" && (saasRole === "company_owner" || saasRole === "employee");
+  if (mode === "my-uploads") {
+    query = query.eq("owner_email", session.email);
+  } else if (companyVault) {
+    /* all files in company_domain */
+  } else if (session.role === "member" || saasRole === "employee") {
+    query = query.eq("owner_email", session.email);
+  } else if (ownerParam) {
+    query = query.eq("owner_email", ownerParam);
+  }
 
   const { data } = await query;
   const files = (data || []).map((f) => mapRow(f));

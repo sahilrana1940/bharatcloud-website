@@ -53,7 +53,9 @@ export function DriveShell({
       ? tab === "google"
         ? "google"
         : "bharatcloud"
-      : listSource;
+      : listSource === "my-uploads"
+        ? "my-uploads"
+        : listSource;
 
   const [q, setQ] = useState("");
   const [files, setFiles] = useState<GridFile[]>([]);

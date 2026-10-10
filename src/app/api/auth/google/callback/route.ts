@@ -7,6 +7,7 @@ import {
   WS_EMAIL_COOKIE,
   WS_ROLE_COOKIE,
 } from "@/lib/workspace/session";
+import { attachSaasRoleCookies, defaultDashboardForRole, getUserRole } from "@/lib/auth";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
 export async function GET(req: Request) {
@@ -68,12 +69,21 @@ export async function GET(req: Request) {
         company_id: companyId,
         email,
         role: "admin",
+        saas_role: "company_owner",
+        is_company_owner: true,
       });
     } else {
       companyId = existing.id;
       role = existing.admin_email === email ? "admin" : "member";
+      const isOwner = existing.admin_email === email;
       await supabase.from("company_users").upsert(
-        { company_id: companyId, email, role },
+        {
+          company_id: companyId,
+          email,
+          role,
+          saas_role: isOwner ? "company_owner" : "employee",
+          is_company_owner: isOwner,
+        },
         { onConflict: "company_id,email" },
       );
     }
@@ -89,10 +99,14 @@ export async function GET(req: Request) {
     });
   }
 
-  const res = NextResponse.redirect(new URL("/dashboard/drive", url.origin));
+  const saas = await getUserRole(email);
+  const res = NextResponse.redirect(
+    new URL(defaultDashboardForRole(saas), url.origin),
+  );
   const opts = workspaceCookieOptions();
   res.cookies.set(WS_COMPANY_COOKIE, companyId, opts);
   res.cookies.set(WS_EMAIL_COOKIE, email, opts);
   res.cookies.set(WS_ROLE_COOKIE, role, opts);
+  attachSaasRoleCookies(res, saas);
   return res;
 }

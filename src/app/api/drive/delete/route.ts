@@ -8,6 +8,9 @@ export async function POST(req: Request) {
   const auth = await requireWorkspace();
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
+  if (session.saasRole === "employee") {
+    return NextResponse.json({ error: "Employees cannot delete files" }, { status: 403 });
+  }
   const { fileId } = await req.json();
   if (!fileId) {
     return NextResponse.json({ error: "fileId required" }, { status: 400 });

@@ -141,6 +141,7 @@ export const DEMO_EMAILS = [
   {
     id: "em1",
     company_id: DEMO_COMPANY_ID,
+    company_domain: "rjadam.com",
     owner_email: "sundarbani@rjadam.com",
     gmail_id: "m1",
     subject: "Challan payment reminder",
