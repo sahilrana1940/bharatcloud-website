@@ -15,7 +15,11 @@ export default async function DashboardLayout({
   }
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <WorkspaceShell role={session.role} userEmail={session.email}>
+      <WorkspaceShell
+        role={session.role}
+        userEmail={session.email}
+        companyId={session.companyId}
+      >
         {children}
       </WorkspaceShell>
     </ThemeProvider>

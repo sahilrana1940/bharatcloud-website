@@ -123,7 +123,7 @@ export function LoginForm() {
         className="mt-1 w-full text-xs text-cyan-600"
         onClick={personalDemo}
       >
-        Personal HD Cloud (B2C demo)
+        Personal HD Cloud (B2C demo — not your company)
       </Button>
       <Button
         type="button"
