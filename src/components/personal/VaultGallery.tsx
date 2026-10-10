@@ -67,6 +67,7 @@ export function VaultGallery({
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [hdUrl, setHdUrl] = useState<string | null>(null);
+  const [listError, setListError] = useState("");
 
   const load = useCallback(
     async (p: number, append: boolean) => {
@@ -74,6 +75,14 @@ export function VaultGallery({
       const q = typeFilter ? `type=${typeFilter}&` : "";
       const res = await fetch(`/api/personal/list?${q}page=${p}`);
       const j = await res.json();
+      if (!res.ok) {
+        setListError(j.error || "Could not load files");
+        setItems([]);
+        setHasMore(false);
+        setLoading(false);
+        return;
+      }
+      setListError("");
       setItems((prev) => (append ? [...prev, ...(j.items || [])] : j.items || []));
       setHasMore(Boolean(j.hasMore));
       setLoading(false);
@@ -95,6 +104,11 @@ export function VaultGallery({
   return (
     <div>
       <p className="mb-4 text-center text-[10px] text-slate-500">{BRAND_FOOTER}</p>
+      {listError && (
+        <p className="mb-3 rounded-lg border border-red-500/30 bg-red-950/40 px-3 py-2 text-center text-xs text-red-300">
+          {listError}
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {loading && items.length === 0
           ? Array.from({ length: 8 }).map((_, i) => (
