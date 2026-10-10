@@ -8,6 +8,7 @@ export type VaultRow = {
   hot_path: string | null;
   cold_path: string | null;
   vault_path: string;
+  thumb_path: string | null;
   storage_tier: "hot" | "cold";
   is_deleted: boolean;
   is_locked: boolean;
@@ -17,6 +18,10 @@ export type VaultRow = {
 };
 
 const rows: VaultRow[] = [];
+
+export function demoAllVault() {
+  return [...rows];
+}
 
 export function demoVaultList(email: string, companyDomain: string | null, asOwner: boolean) {
   const e = email.toLowerCase();

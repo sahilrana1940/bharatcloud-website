@@ -7,19 +7,14 @@ export function hashPin(pin: string) {
 }
 
 export function hashBackupCode(code: string) {
-  return createHash("sha256").update(`${PIN_SALT}:backup:${code}`).digest("hex");
+  return createHash("sha256").update(`${PIN_SALT}:backup:${code.replace(/\s/g, "")}`).digest("hex");
 }
 
 export function generateBackupCode(): string {
-  const n = () => Math.floor(1000 + Math.random() * 9000);
-  return `${n()}-${n()}`;
+  const seg = () => Math.floor(1000 + Math.random() * 9000);
+  return `BHARAT-${seg()}-${seg()}`;
 }
 
 export function generateWords12(): string {
-  const w = ["mumbai", "vault", "secure", "bharat", "cloud", "hot", "cold", "data", "hd", "lock", "safe", "india"];
-  const out: string[] = [];
-  for (let i = 0; i < 12; i++) {
-    out.push(w[Math.floor(Math.random() * w.length)] + randomBytes(1).toString("hex").slice(0, 2));
-  }
-  return out.join(" ");
+  return generateBackupCode();
 }

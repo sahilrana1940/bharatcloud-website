@@ -2,6 +2,7 @@ export const BUCKET_COMPANY_HOT = "bharatcloud-company-hot";
 export const BUCKET_PERSONAL_HOT = "bharatcloud-personal-hot";
 export const BUCKET_COLD = "bharatcloud-cold";
 export const BUCKET_VAULT = "bharatcloud-vault";
+export const BUCKET_THUMBS = "bharatcloud-thumbs";
 
 /** @deprecated use BUCKET_PERSONAL_HOT / BUCKET_COMPANY_HOT */
 export const BUCKET_HOT = BUCKET_PERSONAL_HOT;
@@ -41,5 +42,4 @@ export function storageObjectPath(email: string, fileName: string) {
   return `${email.toLowerCase()}/${Date.now()}_${safe}`;
 }
 
-export const INDIA_BADGE =
-  "🇮🇳 100% Made in India | Mumbai Encrypted Vault | 🔒 Signed URL 60sec | HOT/COLD/VAULT";
+export { BRAND_FOOTER as INDIA_BADGE } from "@/lib/brand";

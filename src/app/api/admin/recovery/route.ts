@@ -34,12 +34,14 @@ export async function POST(req: Request) {
 
   const supabase = await getSupabaseOrNull();
   if (!supabase) {
+    const pending = demoRecoveryListPending().find((r) => r.id === requestId);
     demoRecoveryUpdate(requestId, {
       status: "approved",
       backup_code_hash: hash,
       backup_code_plain_temp: plain,
       code_expires_at: expires,
     });
+    if (pending) console.log(`[recovery] mail to ${pending.contact_mail} code ${plain}`);
     return NextResponse.json({ ok: true, code: plain, mailNote: "Send via Resend to contact_mail" });
   }
 
@@ -60,6 +62,19 @@ export async function POST(req: Request) {
       code_expires_at: expires,
     })
     .eq("id", requestId);
+
+  const { data: existingLock } = await supabase
+    .from("app_locks")
+    .select("pin_hash")
+    .eq("user_email", row.user_email)
+    .maybeSingle();
+  await supabase.from("app_locks").upsert({
+    user_email: row.user_email,
+    pin_hash: existingLock?.pin_hash || hash,
+    backup_code_hash: hash,
+  });
+
+  console.log(`[recovery] mail to ${row.contact_mail} code ${plain}`);
 
   return NextResponse.json({
     ok: true,

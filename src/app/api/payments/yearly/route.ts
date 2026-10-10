@@ -25,9 +25,10 @@ export async function POST(req: Request) {
     const supabase = await getSupabaseOrNull();
     if (!supabase) {
       demoUpdateUser(ctx.email, {
-        plan: cfg.key as "year_20gb" | "year_100gb",
-        storage_limit_bytes: cfg.limit,
-        plan_expires_at: expires.toISOString(),
+        plan: cfg.key === "year_20gb" ? "plus" : "pro",
+        storage_limit: cfg.limit,
+        plan_expiry: expires.toISOString(),
+        is_paid: true,
       });
       return NextResponse.json({
         ok: true,
@@ -37,10 +38,11 @@ export async function POST(req: Request) {
       });
     }
     await supabase.from("personal_users").upsert({
-      user_email: ctx.email,
-      plan: cfg.key,
-      storage_limit_bytes: cfg.limit,
-      plan_expires_at: expires.toISOString(),
+      email: ctx.email,
+      plan: cfg.key === "year_20gb" ? "plus" : "pro",
+      storage_limit: cfg.limit,
+      plan_expiry: expires.toISOString(),
+      is_paid: true,
     });
     return NextResponse.json({ ok: true, demo: true });
   }

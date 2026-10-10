@@ -1,9 +1,11 @@
 type UserPlan = {
-  user_email: string;
-  plan: "free" | "year_20gb" | "year_100gb";
-  storage_limit_bytes: number;
-  storage_used_bytes: number;
-  plan_expires_at: string | null;
+  email: string;
+  plan: "free" | "plus" | "pro";
+  storage_limit: number;
+  storage_used: number;
+  plan_expiry: string | null;
+  is_paid: boolean;
+  is_blocked: boolean;
 };
 
 const users = new Map<string, UserPlan>();
@@ -12,14 +14,20 @@ export function demoGetUser(email: string): UserPlan {
   const e = email.toLowerCase();
   if (!users.has(e)) {
     users.set(e, {
-      user_email: e,
+      email: e,
       plan: "free",
-      storage_limit_bytes: 2 * 1024 ** 3,
-      storage_used_bytes: 0,
-      plan_expires_at: null,
+      storage_limit: 2 * 1024 ** 3,
+      storage_used: 0,
+      plan_expiry: null,
+      is_paid: false,
+      is_blocked: false,
     });
   }
   return users.get(e)!;
+}
+
+export function demoAllUsers() {
+  return [...users.values()];
 }
 
 export function demoUpdateUser(email: string, patch: Partial<UserPlan>) {

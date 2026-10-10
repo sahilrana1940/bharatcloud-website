@@ -14,7 +14,11 @@ export default function RecoverVerifyPage() {
       body: JSON.stringify({ user_email: email, code }),
     });
     const j = await res.json();
-    setMsg(res.ok ? "Verified — you can reset PIN in /personal settings" : j.error);
+    if (res.ok) {
+      const z = await fetch("/api/recovery/zip");
+      const zj = await z.json();
+      setMsg(`Verified — ${zj.files?.length ?? 0} files ready via signed URLs. Reset PIN in /personal`);
+    } else setMsg(j.error);
   }
 
   return (
