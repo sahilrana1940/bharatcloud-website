@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       name: fileName,
       mime_type: file.type || "application/octet-stream",
       size: file.size,
-      web_view_link: null,
+      web_view_link: "",
       s3_path: storagePath,
       backup_status: "backedup" as const,
       is_shortcut: false,
