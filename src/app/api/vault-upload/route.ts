@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { demoGetUser, demoUpdateUser } from "@/lib/personal/users-demo";
 import { demoVaultInsert, type VaultRow } from "@/lib/personal/demo-store";
+import { emailDomain } from "@/lib/google/client";
 import { getUploadContext } from "@/lib/personal/access";
 import { generateWebpThumb, thumbObjectPath } from "@/lib/storage/thumbnail";
 import {
@@ -32,11 +33,13 @@ export async function POST(req: Request) {
   const objectPath = storageObjectPath(ctx.email, fileName);
   const thumbPath = thumbObjectPath(ctx.email, fileName);
   const mime = file.type || "application/octet-stream";
-  const type: VaultRow["type"] = ctx.companyDomain
+  const type: VaultRow["type"] = companyDomain
     ? "company_doc"
     : ((typeParam as VaultRow["type"]) ||
-        detectBackupType(fileName, mime, ctx.companyDomain));
-  const hotBucket = hotBucketFor(ctx.companyDomain);
+        detectBackupType(fileName, mime, companyDomain));
+  const companyDomain =
+    ctx.companyDomain || (ctx.isB2C ? null : emailDomain(ctx.email));
+  const hotBucket = hotBucketFor(companyDomain);
   const supabase = await getSupabaseOrNull();
 
   let thumbBuf: Buffer | null = null;
@@ -56,7 +59,7 @@ export async function POST(req: Request) {
     const row: VaultRow = {
       id,
       user_email: ctx.email,
-      company_domain: ctx.companyDomain,
+      company_domain: companyDomain,
       file_name: fileName,
       file_size: file.size,
       type,
@@ -101,7 +104,7 @@ export async function POST(req: Request) {
     .from(VAULT_TABLE)
     .insert({
       user_email: ctx.email,
-      company_domain: ctx.companyDomain,
+      company_domain: companyDomain,
       file_name: fileName,
       file_size: file.size,
       type,

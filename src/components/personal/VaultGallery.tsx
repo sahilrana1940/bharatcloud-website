@@ -100,7 +100,14 @@ export function VaultGallery({
           ? Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="h-32 animate-pulse rounded-xl bg-[#1E2639]" />
             ))
-          : items.map((item) => (
+          : null}
+        {!loading && items.length === 0 ? (
+          <p className="col-span-full rounded-xl border border-dashed border-white/10 py-12 text-center text-sm text-slate-500">
+            No files yet. Upload above — if upload fails, check Supabase storage buckets.
+          </p>
+        ) : null}
+        {!loading &&
+          items.map((item) => (
               <button
                 key={item.id}
                 type="button"
