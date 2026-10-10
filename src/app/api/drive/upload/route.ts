@@ -69,41 +69,52 @@ export async function POST(req: Request) {
 
   const publicUrl = publicBackupUrl(storagePath) || "";
 
-  const insertPayload: Record<string, unknown> = {
+  const corePayload = {
     company_id: session.companyId,
-    company_domain: domain,
     owner_email: ownerEmail,
     drive_file_id: driveFileId,
     name: baseName,
-    file_name: baseName,
     mime_type: file.type || "application/octet-stream",
     size: file.size,
-    file_size: file.size,
     s3_path: storagePath,
-    public_url: publicUrl,
-    backup_status: "backedup",
+    backup_status: "backedup" as const,
     is_shortcut: false,
+  };
+
+  const extendedPayload: Record<string, unknown> = {
+    company_domain: domain,
+    file_name: baseName,
+    file_size: file.size,
+    public_url: publicUrl,
     is_deleted: false,
     shared: false,
   };
 
   let row: Record<string, unknown> | null = null;
   let dbError: { message: string } | null = null;
-  let payload = { ...insertPayload };
 
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const res = await supabase.from("drive_files").insert(payload).select().single();
-    row = res.data;
-    dbError = res.error;
-    if (!dbError) break;
-    const m = dbError.message;
-    if (m.includes("company_domain")) delete payload.company_domain;
-    else if (m.includes("file_name")) delete payload.file_name;
-    else if (m.includes("file_size")) delete payload.file_size;
-    else if (m.includes("public_url")) delete payload.public_url;
-    else if (m.includes("is_deleted")) delete payload.is_deleted;
-    else if (m.includes("shared")) delete payload.shared;
-    else break;
+  const insertRes = await supabase.from("drive_files").insert(corePayload).select().single();
+  row = insertRes.data;
+  dbError = insertRes.error;
+
+  if (!dbError && row?.id) {
+    const patch = { ...extendedPayload };
+    for (let attempt = 0; attempt < 6 && Object.keys(patch).length > 0; attempt++) {
+      const { error: patchErr } = await supabase
+        .from("drive_files")
+        .update(patch)
+        .eq("id", row.id as string);
+      if (!patchErr) break;
+      const m = patchErr.message;
+      if (m.includes("company_domain")) delete patch.company_domain;
+      else if (m.includes("file_name")) delete patch.file_name;
+      else if (m.includes("file_size")) delete patch.file_size;
+      else if (m.includes("public_url")) delete patch.public_url;
+      else if (m.includes("is_deleted")) delete patch.is_deleted;
+      else if (m.includes("shared")) delete patch.shared;
+      else break;
+    }
+    row = { ...row, ...extendedPayload };
   }
 
   if (dbError || !row) {

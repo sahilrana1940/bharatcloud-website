@@ -35,8 +35,9 @@ export async function GET(req: Request) {
     search: url.searchParams.get("q") || "",
   });
 
-  if (result.error && mode === "google") {
-    return NextResponse.json({ error: result.error, files: [] }, { status: 400 });
+  if (result.error) {
+    const status = mode === "google" ? 400 : 500;
+    return NextResponse.json({ error: result.error, files: [] }, { status });
   }
 
   return NextResponse.json({ files: result.files });
