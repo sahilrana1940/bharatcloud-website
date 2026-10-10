@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { PRICING_PLANS, type PlanId } from "@/lib/b2b/plans";
 import { SiteHeader } from "@/components/b2b/SiteHeader";
+import { BRAND_PARENT, BRAND_PRODUCT } from "@/lib/brand";
 
 const features = [
   {
@@ -29,7 +30,7 @@ export function LandingPage() {
 
         <section className="mx-auto max-w-6xl px-6 pb-16 pt-16 text-center sm:pt-24">
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-sky-300/90">
-            BharatCloud B2B
+            {BRAND_PRODUCT} B2B · {BRAND_PARENT}
           </p>
           <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
             Apna Business Cloud,
@@ -87,7 +88,8 @@ export function LandingPage() {
         </section>
 
         <footer className="border-t border-white/10 py-10 text-center text-sm text-slate-500">
-          © {new Date().getFullYear()} BharatCloud.store
+          © {new Date().getFullYear()} {BRAND_PARENT} · {BRAND_PRODUCT} for
+          Business
         </footer>
       </div>
     </div>

@@ -1,5 +1,12 @@
+export const BRAND_PRODUCT = "BharatCloud";
+export const BRAND_PARENT = "Bharat Tijori";
+export const BRAND_DOMAIN = "bharattijori.com";
+export const BRAND_LEGACY_DOMAIN = "bharatcloud.store";
+
+export const BRAND_TAGLINE = `${BRAND_PRODUCT} for Business — by ${BRAND_PARENT}`;
+
 export const BRAND_FOOTER =
-  "🇮🇳 BharatCloud - 100% Made in India | Data Stored in Mumbai | Encrypted Vault | 60sec Secure URL";
+  `🇮🇳 ${BRAND_TAGLINE} · 100% Made in India | Mumbai-region storage | Encrypted vault | 60s secure download`;
 
 export const SUPER_ADMIN_EMAIL = "admin@bharatcloud.store";
 

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { BrandMark } from "@/components/brand/BrandMark";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -61,14 +62,12 @@ export function WorkspaceShell({
   return (
     <div className="flex min-h-screen bg-[#0A0E1A] text-slate-100">
       <aside className="hidden w-64 flex-shrink-0 flex-col border-r border-white/5 bg-[#0F1420] p-5 lg:flex">
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-400 shadow-lg shadow-sky-500/20">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-400 shadow-lg shadow-sky-500/20">
             <Cloud className="h-5 w-5 text-white" />
           </span>
-          <span className="text-sm font-semibold tracking-tight">
-            BharatCloud<span className="text-cyan-400">.store</span>
-          </span>
-        </Link>
+          <BrandMark />
+        </div>
 
         <nav className="mt-10 flex-1 space-y-1">
           {nav
