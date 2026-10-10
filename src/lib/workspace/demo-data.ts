@@ -39,6 +39,15 @@ export const DEMO_USERS: CompanyUserRow[] = [
     drive_used_gb: 12.0,
     drive_limit_gb: 15,
   },
+  {
+    id: "u5",
+    company_id: DEMO_COMPANY_ID,
+    email: "accounts@rjadam.com",
+    role: "member",
+    is_backup_enabled: true,
+    drive_used_gb: 3.4,
+    drive_limit_gb: 15,
+  },
 ];
 
 export const DEMO_DRIVE_FILES = [

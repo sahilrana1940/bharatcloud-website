@@ -19,7 +19,10 @@ Copy `.env.example` → `.env.local`:
 - `WASABI_*` or `E2E_S3_*` (bucket default: `bharatcloud-vault`) — see [Hostinger + Wasabi](docs/hostinger-wasabi.md)
 - `RAZORPAY_KEY`
 
-Run SQL: `supabase/migrations/001_b2b_vault.sql` and `002_organizations.sql`
+Run SQL migrations in order: `001` → `002` → `003` → **`004_workspace_backup.sql`**
+
+**Workspace backup:** `/login` → Google or **Demo workspace** → `/dashboard/drive`.  
+Env: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, Supabase + bucket `bharatcloud-backups`.
 
 ```bash
 npm ci

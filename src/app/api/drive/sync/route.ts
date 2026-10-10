@@ -4,6 +4,7 @@ import { driveClient } from "@/lib/google/client";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { DEMO_DRIVE_FILES } from "@/lib/workspace/demo-data";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
+import { prepareUploadBody } from "@/lib/storage/compress-upload";
 
 const BUCKET = "bharatcloud-backups";
 
@@ -53,7 +54,8 @@ export async function POST() {
 
     for (const f of listed.data.files || []) {
       if (!f.id || !f.name) continue;
-      const path = `${company?.domain}/${u.email}/${f.name}`;
+      let fileName = f.name;
+      let storagePath = `${company?.domain}/${u.email}/${fileName}`;
       await supabase.from("drive_files").upsert(
         {
           company_id: session.companyId,
@@ -63,7 +65,7 @@ export async function POST() {
           mime_type: f.mimeType,
           size: Number(f.size || 0),
           web_view_link: f.webViewLink,
-          s3_path: path,
+          s3_path: storagePath,
           backup_status: "backedup",
         },
         { onConflict: "company_id,drive_file_id" },
@@ -75,12 +77,22 @@ export async function POST() {
           { fileId: f.id, alt: "media" },
           { responseType: "arraybuffer" },
         );
-        await supabase.storage
-          .from(BUCKET)
-          .upload(path, Buffer.from(media.data as ArrayBuffer), {
-            upsert: true,
-            contentType: f.mimeType || "application/octet-stream",
-          });
+        const raw = Buffer.from(media.data as ArrayBuffer);
+        const prepared = await prepareUploadBody(raw, f.mimeType);
+        if (prepared.fileNameSuffix) {
+          const base = fileName.replace(/\.[^.]+$/, "");
+          fileName = `${base}.webp`;
+          storagePath = `${company?.domain}/${u.email}/${fileName}`;
+          await supabase
+            .from("drive_files")
+            .update({ name: fileName, s3_path: storagePath })
+            .eq("company_id", session.companyId)
+            .eq("drive_file_id", f.id);
+        }
+        await supabase.storage.from(BUCKET).upload(storagePath, prepared.body, {
+          upsert: true,
+          contentType: prepared.contentType,
+        });
         backed += 1;
       } catch {
         /* skip binary download errors in sync batch */
