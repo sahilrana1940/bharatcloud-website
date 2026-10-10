@@ -64,11 +64,6 @@ export async function GET(req: Request) {
     query = query.eq("company_domain", ctx.companyDomain);
   } else {
     query = query.eq("user_email", ctx.email);
-    if (ctx.companyDomain) {
-      query = query.or(
-        `company_domain.eq.${ctx.companyDomain},company_domain.is.null`,
-      );
-    }
   }
   if (type && type !== "qr") {
     if (ctx.companyDomain && type === "video") {
@@ -78,9 +73,13 @@ export async function GET(req: Request) {
     }
   }
 
-  const { data, count } = await query
+  const { data, count, error: listErr } = await query
     .order("created_at", { ascending: false })
     .range(offset, offset + PAGE - 1);
+
+  if (listErr) {
+    return NextResponse.json({ error: listErr.message, items: [] }, { status: 500 });
+  }
 
   const withThumbs = await Promise.all(
     (data || []).map(async (i) => ({

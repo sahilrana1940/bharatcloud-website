@@ -97,7 +97,7 @@ export async function POST(req: Request) {
     .from(BUCKET_VAULT)
     .upload(objectPath, buffer, { upsert: true, contentType: mime });
   if (vaultErr) {
-    return NextResponse.json({ error: vaultErr.message }, { status: 500 });
+    console.warn("[vault-upload] vault bucket mirror skipped:", vaultErr.message);
   }
 
   const { data: row, error: dbErr } = await supabase
