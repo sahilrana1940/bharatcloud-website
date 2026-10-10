@@ -11,6 +11,9 @@ update company_users
 set saas_role = 'company_owner', is_company_owner = true
 where role = 'admin' and saas_role = 'employee';
 
+-- Super admin (replace with your Google email):
+-- update company_users set saas_role = 'super_admin', is_company_owner = true where email = 'sahilrana1940@gmail.com';
+
 create or replace view team_members as
 select
   cu.id,

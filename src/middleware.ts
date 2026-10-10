@@ -18,7 +18,10 @@ export function middleware(req: NextRequest) {
   const email = req.cookies.get("bc_workspace_email")?.value;
   const role = readRole(req);
 
-  if (!email && (pathname.startsWith("/dashboard") || pathname.startsWith("/admin"))) {
+  if (
+    !email &&
+    (pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname.startsWith("/personal"))
+  ) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
@@ -49,5 +52,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*", "/dashboard", "/dashboard/:path*"],
+  matcher: ["/admin", "/admin/:path*", "/dashboard", "/dashboard/:path*", "/personal", "/personal/:path*"],
 };
