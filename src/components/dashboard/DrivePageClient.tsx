@@ -4,11 +4,13 @@ import {
   Cloud,
   FileText,
   FolderPlus,
+  ImageIcon,
   Link2,
   Play,
   Search,
   Shield,
   Upload,
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -29,12 +31,13 @@ function formatSize(bytes: number) {
   return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 }
 
-function extLabel(name: string, mime?: string | null) {
+function typeLabel(name: string, mime?: string | null) {
+  if (mime?.includes("jpeg") || /\.jpe?g$/i.test(name)) return "JPEG";
+  if (mime?.includes("png") || name.toLowerCase().endsWith(".png")) return "PNG";
+  if (mime?.includes("pdf") || name.toLowerCase().endsWith(".pdf")) return "PDF";
+  if (mime?.startsWith("video/") || /\.(mp4|mov|webm)$/i.test(name)) return "MP4";
   const ext = name.split(".").pop()?.toUpperCase();
   if (ext && ext.length <= 5) return ext;
-  if (mime?.includes("pdf")) return "PDF";
-  if (mime?.startsWith("video/")) return "MP4";
-  if (mime?.startsWith("image/")) return "IMG";
   return "FILE";
 }
 
@@ -80,82 +83,190 @@ function uploadFileWithProgress(
   });
 }
 
+function ThumbnailPreview({ file }: { file: DriveFile }) {
+  const kind = fileKind(file);
+  const [imgFailed, setImgFailed] = useState(false);
+  const url = file.publicLink;
+
+  const fallback = (
+    <div className="flex h-full w-full items-center justify-center bg-[#151b2e]">
+      {kind === "image" ? (
+        <ImageIcon className="h-12 w-12 text-slate-500" />
+      ) : (
+        <FileText className="h-12 w-12 text-slate-500" />
+      )}
+    </div>
+  );
+
+  if (kind === "image" && url && !imgFailed) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={file.name}
+        className="h-full w-full object-cover"
+        onError={() => setImgFailed(true)}
+      />
+    );
+  }
+
+  if (kind === "image" && (imgFailed || !url)) return fallback;
+
+  if (kind === "video") {
+    return (
+      <div className="relative h-full w-full bg-[#151b2e]">
+        {url ? (
+          <video
+            src={url}
+            muted
+            playsInline
+            preload="metadata"
+            className="h-full w-full object-cover"
+            onError={() => setImgFailed(true)}
+          />
+        ) : null}
+        {(imgFailed || !url) && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <ImageIcon className="h-12 w-12 text-slate-500" />
+          </div>
+        )}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/25">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm">
+            <Play className="h-6 w-6 fill-white text-white" />
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === "pdf") {
+    return (
+      <div className="relative flex h-full w-full items-center justify-center bg-[#151b2e]">
+        <FileText className="h-14 w-14 text-slate-500" />
+        <span className="absolute right-2 top-2 rounded-md bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">
+          PDF
+        </span>
+      </div>
+    );
+  }
+
+  return fallback;
+}
+
+function PreviewModal({
+  file,
+  onClose,
+  onCopy,
+  onWhatsApp,
+}: {
+  file: DriveFile;
+  onClose: () => void;
+  onCopy: (url: string | null) => void;
+  onWhatsApp: (url: string | null) => void;
+}) {
+  const kind = fileKind(file);
+  const url = file.publicLink;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-white/10 bg-[#1E2639]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <p className="truncate font-semibold text-white">{file.name}</p>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-white">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="max-h-[50vh] overflow-auto bg-black/40 p-2">
+          {kind === "image" && url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt="" className="mx-auto max-h-[48vh] object-contain" />
+          )}
+          {kind === "video" && url && (
+            <video src={url} controls className="mx-auto max-h-[48vh] w-full" />
+          )}
+          {kind !== "image" && kind !== "video" && (
+            <p className="py-12 text-center text-slate-500">Preview not available</p>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-3 p-4">
+          <button
+            type="button"
+            onClick={() => onCopy(url)}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#1E3A5F] py-2.5 text-sm font-medium text-blue-400"
+          >
+            <Link2 className="h-4 w-4" />
+            Copy Link
+          </button>
+          <button
+            type="button"
+            onClick={() => onWhatsApp(url)}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-600/20 py-2.5 text-sm font-medium text-emerald-400"
+          >
+            Share on WhatsApp
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FileCard({
   file,
   tab,
   userEmail,
   onCopy,
   onBackup,
+  onOpenPreview,
 }: {
   file: DriveFile;
   tab: "google" | "safe";
   userEmail: string;
   onCopy: (url: string | null) => void;
   onBackup: () => void;
+  onOpenPreview: () => void;
 }) {
-  const kind = fileKind(file);
   const ownerYou = file.owner_email === userEmail ? "you" : file.owner_email;
 
   return (
-    <article
-      className="group overflow-hidden rounded-2xl border border-white/10 bg-[#1E2639] shadow-lg transition hover:border-sky-500/40 hover:shadow-sky-500/10"
-    >
-      <div className="relative aspect-video bg-gradient-to-br from-slate-800 to-slate-900">
-        {kind === "image" && file.publicLink && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={file.publicLink}
-            alt=""
-            className="h-full w-full object-cover opacity-90"
-          />
-        )}
-        {kind === "video" && (
-          <>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-slate-800/50" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-                <Play className="h-7 w-7 fill-white text-white" />
-              </span>
-            </div>
-            <span className="absolute bottom-2 left-2 rounded bg-black/50 px-2 py-0.5 text-[10px] text-white backdrop-blur">
-              09/10/2024
-            </span>
-          </>
-        )}
-        {kind === "pdf" && (
-          <div className="flex h-full items-center justify-center">
-            <FileText className="h-16 w-16 text-slate-500" />
-            <span className="absolute right-2 top-2 rounded-md bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">
-              PDF
-            </span>
-          </div>
-        )}
-        {kind === "other" && (
-          <div className="flex h-full items-center justify-center text-slate-600">
-            <FileText className="h-12 w-12" />
-          </div>
-        )}
-      </div>
+    <article className="overflow-hidden rounded-2xl border border-white/10 bg-[#1E2639] shadow-lg transition hover:border-sky-500/40 hover:shadow-sky-500/10">
+      <button
+        type="button"
+        className="block w-full cursor-pointer text-left"
+        onClick={onOpenPreview}
+      >
+        <div className="relative h-[180px] w-full overflow-hidden bg-[#151b2e]">
+          <ThumbnailPreview file={file} />
+        </div>
+      </button>
       <div className="p-4">
-        <p className="truncate font-semibold text-slate-100">{file.name}</p>
-        <p className="mt-1 text-xs text-slate-500">
-          {formatSize(file.size)} • {extLabel(file.name, file.mime_type)}
+        <p className="truncate font-bold text-slate-100">{file.name}</p>
+        <p className="mt-1 text-xs text-slate-400">
+          {formatSize(file.size)} • {typeLabel(file.name, file.mime_type)}
         </p>
-        <p className="mt-0.5 text-xs text-slate-600">Owner: {ownerYou}</p>
+        <p className="mt-0.5 text-[11px] text-slate-500">Owner: {ownerYou}</p>
         {tab === "safe" ? (
           <button
             type="button"
-            onClick={() => onCopy(file.publicLink)}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-sky-500/10 py-2 text-sm font-medium text-sky-400 transition hover:bg-sky-500/20"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCopy(file.publicLink);
+            }}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-[#1E3A5F] py-2.5 text-sm font-medium text-blue-400 transition hover:bg-[#254a73]"
           >
-            <Link2 className="h-4 w-4" />
+            <Link2 className="h-4 w-4 shrink-0" />
             Copy link
           </button>
         ) : (
           <button
             type="button"
             onClick={onBackup}
-            className="mt-3 w-full rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 py-2 text-sm font-medium text-white"
+            className="mt-3 w-full rounded-lg bg-gradient-to-r from-sky-600 to-cyan-500 py-2.5 text-sm font-medium text-white"
           >
             Backup Now
           </button>
@@ -172,6 +283,7 @@ export function DrivePageClient({ userEmail }: { isAdmin?: boolean; userEmail: s
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [previewFile, setPreviewFile] = useState<DriveFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const source = tab === "google" ? "google" : "bharatcloud";
@@ -203,16 +315,24 @@ export function DrivePageClient({ userEmail }: { isAdmin?: boolean; userEmail: s
 
   function showToast(msg: string) {
     setToast(msg);
-    setTimeout(() => setToast(""), 2500);
+    setTimeout(() => setToast(""), 3000);
   }
 
   async function copyLink(link: string | null) {
     if (!link) {
-      showToast("No link available");
+      showToast("No public link — re-upload or check bucket settings");
       return;
     }
     await navigator.clipboard.writeText(link);
-    showToast("Link Copied!");
+    showToast("Link Copied! Share on WhatsApp");
+  }
+
+  function shareWhatsApp(link: string | null) {
+    if (!link) {
+      showToast("No link available");
+      return;
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(link)}`, "_blank");
   }
 
   async function onFilesPicked(fileList: FileList | null) {
@@ -306,6 +426,7 @@ export function DrivePageClient({ userEmail }: { isAdmin?: boolean; userEmail: s
             ref={fileInputRef}
             type="file"
             multiple
+            accept="image/*,video/*,.pdf,.doc,.docx"
             className="hidden"
             onChange={(e) => onFilesPicked(e.target.files)}
           />
@@ -313,7 +434,7 @@ export function DrivePageClient({ userEmail }: { isAdmin?: boolean; userEmail: s
             type="button"
             disabled={uploadProgress !== null}
             onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-400 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/40 transition hover:shadow-sky-400/50 hover:brightness-110 disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-400 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/40 transition hover:shadow-sky-400/50 hover:brightness-110 disabled:opacity-60 sm:w-auto"
           >
             <Upload className="h-5 w-5" />
             Upload to BharatCloud
@@ -368,13 +489,23 @@ export function DrivePageClient({ userEmail }: { isAdmin?: boolean; userEmail: s
               userEmail={userEmail}
               onCopy={copyLink}
               onBackup={() => backupNow(f)}
+              onOpenPreview={() => tab === "safe" && setPreviewFile(f)}
             />
           ))}
         </div>
       )}
 
+      {previewFile && (
+        <PreviewModal
+          file={previewFile}
+          onClose={() => setPreviewFile(null)}
+          onCopy={copyLink}
+          onWhatsApp={shareWhatsApp}
+        />
+      )}
+
       {toast && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl bg-sky-600 px-5 py-2.5 text-sm font-medium text-white shadow-xl">
+        <div className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-2xl bg-sky-600 px-5 py-2.5 text-sm font-medium text-white shadow-xl">
           {toast}
         </div>
       )}
