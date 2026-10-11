@@ -12,17 +12,15 @@ export async function GET(req: Request) {
   const { session } = auth;
 
   const url = new URL(req.url);
-  const returnTo = url.searchParams.get("returnTo") || "/dashboard/team";
+  const autostart = url.searchParams.get("autostart") === "1";
+  const returnTo =
+    url.searchParams.get("returnTo") ||
+    (autostart ? "/dashboard/team?autostart=1" : "/dashboard/team");
 
   const oauth2 = createOAuth2Client();
   if (!oauth2) {
-    return NextResponse.json(
-      {
-        error: "Google OAuth not configured on server",
-        hint:
-          "Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REDIRECT_URI in Vercel, then redeploy.",
-      },
-      { status: 503 },
+    return NextResponse.redirect(
+      new URL("/dashboard/team?setup=google", url.origin),
     );
   }
 
@@ -30,6 +28,7 @@ export async function GET(req: Request) {
     companyId: session.companyId,
     email: session.email.toLowerCase(),
     returnTo,
+    startBackupAfter: autostart,
   });
 
   const authUrl = oauth2.generateAuthUrl({

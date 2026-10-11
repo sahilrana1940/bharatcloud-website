@@ -4,6 +4,7 @@ export type GoogleOAuthState = {
   companyId: string;
   email: string;
   returnTo: string;
+  startBackupAfter?: boolean;
 };
 
 function secret() {
@@ -34,6 +35,7 @@ export function verifyGoogleOAuthState(token: string): GoogleOAuthState | null {
       companyId: parsed.companyId,
       email: parsed.email.toLowerCase(),
       returnTo: parsed.returnTo || "/dashboard/team",
+      startBackupAfter: Boolean(parsed.startBackupAfter),
     };
   } catch {
     return null;

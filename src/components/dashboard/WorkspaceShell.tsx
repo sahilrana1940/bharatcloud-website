@@ -46,17 +46,25 @@ export function WorkspaceShell({
   const [limitGb, setLimitGb] = useState(50);
 
   useEffect(() => {
-    fetch("/api/team/users")
+    fetch("/api/backup/summary")
       .then((r) => r.json())
-      .then((j) => {
-        const me = (j.users || []).find(
-          (u: { email: string; drive_used_gb: number; drive_limit_gb: number }) =>
-            u.email === j.session?.email,
-        );
-        if (me) {
-          setUsedGb(me.drive_used_gb);
-          setLimitGb(me.drive_limit_gb);
-        }
+      .then((s) => {
+        if (s.usedGb != null) setUsedGb(Number(s.usedGb));
+        if (s.limitGb != null) setLimitGb(Number(s.limitGb));
+      })
+      .catch(() => {
+        fetch("/api/team/users")
+          .then((r) => r.json())
+          .then((j) => {
+            const me = (j.users || []).find(
+              (u: { email: string; drive_used_gb: number; drive_limit_gb: number }) =>
+                u.email === j.session?.email,
+            );
+            if (me) {
+              setUsedGb(me.drive_used_gb);
+              setLimitGb(me.drive_limit_gb);
+            }
+          });
       });
   }, []);
 

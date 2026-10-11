@@ -22,12 +22,14 @@
 
 Enable for **Production** and **Preview**. Redeploy.
 
-## 3. Connect in the app
+## 3. Automatic backup flow (post-payment)
 
-1. Log in with password as `info@gorjrmcourier.com` (existing company).
-2. Open **Team** → **Connect Google Drive**.
-3. Sign in with the **same** Google account (`info@gorjrmcourier.com`).
-4. Green banner → **Sync Drive** on that user (backs up up to 50 files per run today).
+1. **Billing** → **I have paid** → redirects to **Team & backup** (set `PAYMENT_AUTO_APPROVE=1` on Vercel to auto-approve UPI for testing).
+2. Big CTA: **Connect Company Google Drive to Start Backup** → OAuth (`drive.readonly`, `gmail.readonly`, `contacts.readonly`).
+3. After OAuth, app calls `POST /api/backup/start-auto` and polls `/api/backup/tick` until Drive status is **Archived**.
+4. Archive uploads go to `ARCHIVE_S3_BUCKET` (default `rjrm-archiver`) as `{company_id}/…` keys.
+
+Run SQL migration `014_company_backup_jobs.sql` in Supabase.
 
 ## 4. Verify backup
 

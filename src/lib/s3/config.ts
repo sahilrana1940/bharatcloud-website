@@ -20,8 +20,16 @@ export function getS3Env() {
     process.env.WASABI_B2B_BUCKET?.trim() ||
     process.env.E2E_S3_B2B_BUCKET?.trim() ||
     "bharatcloud-vault";
+  const archiveBucket =
+    process.env.ARCHIVE_S3_BUCKET?.trim() ||
+    process.env.WASABI_ARCHIVE_BUCKET?.trim() ||
+    "rjrm-archiver";
 
-  return { endpoint, region, accessKeyId, secretAccessKey, b2bBucket };
+  return { endpoint, region, accessKeyId, secretAccessKey, b2bBucket, archiveBucket };
+}
+
+export function getArchiveBucket() {
+  return getS3Env().archiveBucket;
 }
 
 export function isS3Configured(): boolean {

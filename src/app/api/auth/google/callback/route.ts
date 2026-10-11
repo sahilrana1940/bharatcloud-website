@@ -57,6 +57,9 @@ export async function GET(req: Request) {
     }
     companyId = linkState.companyId;
     redirectPath = linkState.returnTo;
+    if (linkState.startBackupAfter && !redirectPath.includes("autostart=1")) {
+      redirectPath += redirectPath.includes("?") ? "&autostart=1" : "?autostart=1";
+    }
     const { data: member } = await supabase
       .from("company_users")
       .select("role")

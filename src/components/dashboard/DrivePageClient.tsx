@@ -9,10 +9,9 @@ import {
   Play,
   Search,
   Shield,
-  Upload,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type DriveFile = {
   id: string;
@@ -55,32 +54,6 @@ function fileKind(f: DriveFile) {
   }
   if (f.mime_type?.includes("pdf") || n.endsWith(".pdf")) return "pdf";
   return "other";
-}
-
-function uploadFileWithProgress(
-  file: File,
-  onProgress: (pct: number) => void,
-): Promise<{ file?: DriveFile; error?: string }> {
-  return new Promise((resolve) => {
-    const xhr = new XMLHttpRequest();
-    const fd = new FormData();
-    fd.append("file", file);
-    xhr.open("POST", "/api/drive/upload");
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
-    };
-    xhr.onload = () => {
-      try {
-        const j = JSON.parse(xhr.responseText);
-        if (xhr.status >= 200 && xhr.status < 300) resolve({ file: j.file });
-        else resolve({ error: j.error || "Upload failed" });
-      } catch {
-        resolve({ error: "Upload failed" });
-      }
-    };
-    xhr.onerror = () => resolve({ error: "Network error" });
-    xhr.send(fd);
-  });
 }
 
 function ThumbnailPreview({ file }: { file: DriveFile }) {
@@ -221,14 +194,12 @@ function FileCard({
   tab,
   userEmail,
   onCopy,
-  onBackup,
   onOpenPreview,
 }: {
   file: DriveFile;
   tab: "google" | "safe";
   userEmail: string;
   onCopy: (url: string | null) => void;
-  onBackup: () => void;
   onOpenPreview: () => void;
 }) {
   const ownerYou = file.owner_email === userEmail ? "you" : file.owner_email;
@@ -263,13 +234,12 @@ function FileCard({
             Copy link
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={onBackup}
-            className="mt-3 w-full rounded-lg bg-gradient-to-r from-sky-600 to-cyan-500 py-2.5 text-sm font-medium text-white"
+          <a
+            href="/dashboard/team"
+            className="mt-3 block w-full rounded-lg bg-gradient-to-r from-sky-600 to-cyan-500 py-2.5 text-center text-sm font-medium text-white"
           >
-            Backup Now
-          </button>
+            Auto-backup on Team
+          </a>
         )}
       </div>
     </article>
@@ -282,9 +252,7 @@ export function DrivePageClient({ userEmail }: { isAdmin?: boolean; userEmail: s
   const [allFiles, setAllFiles] = useState<DriveFile[]>([]);
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [previewFile, setPreviewFile] = useState<DriveFile | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const source = tab === "google" ? "google" : "bharatcloud";
 
@@ -333,38 +301,6 @@ export function DrivePageClient({ userEmail }: { isAdmin?: boolean; userEmail: s
       return;
     }
     window.open(`https://wa.me/?text=${encodeURIComponent(link)}`, "_blank");
-  }
-
-  async function onFilesPicked(fileList: FileList | null) {
-    if (!fileList?.length) return;
-    for (const file of Array.from(fileList)) {
-      setUploadProgress(0);
-      const result = await uploadFileWithProgress(file, setUploadProgress);
-      if (result.error) showToast(result.error);
-      else if (result.file) {
-        setAllFiles((prev) => [result.file!, ...prev]);
-        showToast(`Uploaded ${result.file.name}`);
-      }
-    }
-    setUploadProgress(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  }
-
-  async function backupNow(file: DriveFile) {
-    const res = await fetch("/api/drive/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        driveFileId: file.drive_file_id,
-        ownerEmail: file.owner_email,
-      }),
-    });
-    const j = await res.json();
-    if (!res.ok) showToast(j.error || "Backup failed");
-    else {
-      showToast("Backed up");
-      load();
-    }
   }
 
   return (
@@ -421,39 +357,10 @@ export function DrivePageClient({ userEmail }: { isAdmin?: boolean; userEmail: s
       </div>
 
       {tab === "safe" && (
-        <div className="mt-6">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/*,video/*,.pdf,.doc,.docx"
-            className="hidden"
-            onChange={(e) => onFilesPicked(e.target.files)}
-          />
-          <button
-            type="button"
-            disabled={uploadProgress !== null}
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-400 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/40 transition hover:shadow-sky-400/50 hover:brightness-110 disabled:opacity-60 sm:w-auto"
-          >
-            <Upload className="h-5 w-5" />
-            Upload to BharatCloud
-          </button>
-          {uploadProgress !== null && (
-            <div className="mt-4 max-w-sm">
-              <div className="mb-1 flex justify-between text-xs text-slate-500">
-                <span>Uploading…</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-800">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-sky-500 to-cyan-400 transition-all"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
+        <p className="mt-6 rounded-2xl border border-white/10 bg-[#1E2639]/60 px-4 py-3 text-sm text-slate-400">
+          Files appear here after automatic Google backup from{" "}
+          <a href="/dashboard/team" className="text-cyan-400 underline">Team &amp; backup</a>.
+        </p>
       )}
 
       {loading ? (
@@ -468,7 +375,7 @@ export function DrivePageClient({ userEmail }: { isAdmin?: boolean; userEmail: s
             Everything is organized and safe
           </p>
           <p className="mt-2 max-w-sm text-sm text-slate-500">
-            Upload to BharatCloud Safe Drive — no Google required.
+            Connect Google on Team &amp; backup after payment to fill this view.
           </p>
           <button
             type="button"
@@ -488,7 +395,6 @@ export function DrivePageClient({ userEmail }: { isAdmin?: boolean; userEmail: s
               tab={tab}
               userEmail={userEmail}
               onCopy={copyLink}
-              onBackup={() => backupNow(f)}
               onOpenPreview={() => tab === "safe" && setPreviewFile(f)}
             />
           ))}

@@ -12,7 +12,7 @@ export const GOOGLE_SCOPES = [
   "openid",
   "email",
   "profile",
-  "https://www.googleapis.com/auth/admin.directory.user.readonly",
-  "https://www.googleapis.com/auth/drive",
+  "https://www.googleapis.com/auth/drive.readonly",
   "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/contacts.readonly",
 ].join(" ");
