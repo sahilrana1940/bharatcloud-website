@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { CloudUpload } from "lucide-react";
+import { CloudUpload, Search, Upload } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function EmployeeDashboardPage() {
   const router = useRouter();
@@ -10,9 +12,9 @@ export default function EmployeeDashboardPage() {
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
-    if (h < 12) return "Good Morning";
-    if (h < 17) return "Good Afternoon";
-    return "Good Evening";
+    if (h < 12) return "Good morning";
+    if (h < 17) return "Good afternoon";
+    return "Good evening";
   }, []);
 
   async function startBackup() {
@@ -27,11 +29,11 @@ export default function EmployeeDashboardPage() {
         return;
       }
       if (res.status === 402) {
-        window.alert("Payment Required — complete billing or ask admin to enable test bypass.");
+        window.alert("Payment required — ask your admin to complete billing.");
         return;
       }
       if (res.ok) {
-        window.alert("Backup Started");
+        window.alert("Backup started");
         return;
       }
       const err = await res.json().catch(() => ({}));
@@ -42,27 +44,41 @@ export default function EmployeeDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 px-4 py-10 sm:px-8">
-      <div className="mx-auto max-w-lg">
-        <p className="text-sm font-medium text-slate-500">{greeting}</p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight">Your workspace</h1>
-        <p className="mt-2 text-slate-600">
-          Secure Google Drive backup to BharatCloud vault — one tap to start.
+    <div className="px-4 py-10 sm:px-8">
+      <div className="mx-auto max-w-3xl">
+        <p className="text-sm font-semibold uppercase tracking-widest text-cyan-600">{greeting}</p>
+        <h1 className="mt-2 text-4xl font-bold tracking-tight text-slate-900">Your workspace</h1>
+        <p className="mt-3 text-slate-600">
+          One tap to archive your Google Drive to BharatCloud. Upload field media from the links below.
         </p>
 
-        <button
+        <motion.button
           type="button"
           disabled={loading}
           onClick={startBackup}
-          className="mt-10 flex w-full items-center justify-center gap-3 rounded-2xl bg-[#22D3EE] px-6 py-5 text-lg font-bold text-slate-900 shadow-lg shadow-cyan-400/30 transition hover:bg-cyan-300 disabled:opacity-60"
+          whileHover={{ y: -2 }}
+          className="mt-10 flex w-full items-center justify-center gap-3 rounded-2xl bg-[#22D3EE] px-6 py-6 text-xl font-bold text-slate-900 shadow-xl shadow-cyan-400/35 disabled:opacity-60"
         >
-          <CloudUpload className="h-7 w-7" />
-          {loading ? "Starting…" : "Start My Backup"}
-        </button>
+          <CloudUpload className="h-8 w-8" />
+          {loading ? "Starting…" : "Start my backup"}
+        </motion.button>
 
-        <p className="mt-6 text-center text-xs text-slate-500">
-          Requires Google Drive connected in Settings and an active company plan.
-        </p>
+        <div className="mt-10 grid gap-4 sm:grid-cols-2">
+          <Link
+            href="/dashboard/employee/upload"
+            className="flex min-h-[120px] flex-col items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-cyan-300 hover:shadow-md"
+          >
+            <Upload className="h-9 w-9 text-cyan-500" />
+            <span className="font-semibold text-slate-800">Upload CCTV / video</span>
+          </Link>
+          <Link
+            href="/dashboard/employee/vault"
+            className="flex min-h-[120px] flex-col items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-cyan-300 hover:shadow-md"
+          >
+            <Search className="h-9 w-9 text-cyan-500" />
+            <span className="font-semibold text-slate-800">Search vault</span>
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -2,6 +2,14 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { Building2, IndianRupee, HardDrive, Users } from "lucide-react";
+
+import {
+  ProPageHeader,
+  ProPrimaryButton,
+  ProStatCard,
+  ProTableWrap,
+} from "@/components/ui/pro/primitives";
 
 type Stats = {
   companies: number;
@@ -57,54 +65,61 @@ export function AdminDashboardClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0E1A] px-4 pb-20 pt-8 text-slate-100 sm:px-8">
-      <h1 className="text-3xl font-bold">BharatCloud Super Admin</h1>
-      <p className="text-slate-500">Platform overview</p>
+    <div>
+      <ProPageHeader
+        eyebrow="BharatCloud"
+        title="Platform admin"
+        description="Companies, payments, and storage — manage the whole fleet from one console."
+        action={<ProPrimaryButton href="/admin/super">Open Nexus Super</ProPrimaryButton>}
+      />
 
       {stats && (
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            ["Total Companies", stats.companies],
-            ["Total Revenue (₹)", stats.revenue],
-            ["Storage Used (GB)", stats.storageGb.toFixed(1)],
-            ["Total Employees", stats.employees],
-          ].map(([label, value]) => (
-            <div key={label} className="rounded-2xl border border-white/10 bg-[#1E2639] p-5">
-              <p className="text-xs text-slate-400">{label}</p>
-              <p className="mt-2 text-2xl font-bold">{value}</p>
-            </div>
-          ))}
+        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <ProStatCard
+            label="Companies"
+            value={String(stats.companies)}
+            icon={<Building2 className="h-4 w-4 text-[#22D3EE]" />}
+          />
+          <ProStatCard
+            label="Revenue"
+            value={`₹${stats.revenue.toLocaleString()}`}
+            icon={<IndianRupee className="h-4 w-4 text-[#22D3EE]" />}
+          />
+          <ProStatCard
+            label="Storage"
+            value={`${stats.storageGb.toFixed(1)} GB`}
+            icon={<HardDrive className="h-4 w-4 text-[#22D3EE]" />}
+          />
+          <ProStatCard
+            label="Employees"
+            value={String(stats.employees)}
+            icon={<Users className="h-4 w-4 text-[#22D3EE]" />}
+          />
         </div>
       )}
 
-      <div className="mt-6 flex flex-wrap gap-4 text-sm text-cyan-400">
-        <Link href="/admin/storage" className="hover:underline">Storage tiers →</Link>
-        <Link href="/admin/recovery" className="hover:underline">Recovery →</Link>
-        <Link href="/admin/super" className="hover:underline">Super →</Link>
-      </div>
-
-      <div className="mt-8 flex gap-2">
-        <button
-          type="button"
-          onClick={() => setTab("companies")}
-          className={`rounded-xl px-4 py-2 text-sm ${tab === "companies" ? "bg-gradient-to-r from-sky-600 to-cyan-500 text-white" : "bg-[#1E2639] text-slate-400"}`}
-        >
-          Companies
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("payments")}
-          className={`rounded-xl px-4 py-2 text-sm ${tab === "payments" ? "bg-gradient-to-r from-sky-600 to-cyan-500 text-white" : "bg-[#1E2639] text-slate-400"}`}
-        >
-          Payments
-        </button>
+      <div className="mb-6 flex flex-wrap gap-2">
+        {(["companies", "payments"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={`rounded-xl px-4 py-2 text-sm font-semibold capitalize transition ${
+              tab === t
+                ? "bg-[#22D3EE] text-slate-900"
+                : "border border-white/10 bg-white/[0.04] text-white/60 hover:text-white"
+            }`}
+          >
+            {t}
+          </button>
+        ))}
       </div>
 
       {tab === "companies" ? (
-        <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-[#1E2639]">
-          <table className="w-full text-left text-sm">
+        <ProTableWrap>
+          <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
-              <tr className="border-b border-white/10 text-slate-400">
+              <tr className="border-b border-white/[0.08] text-xs uppercase tracking-wide text-white/45">
                 <th className="px-4 py-3">Domain</th>
                 <th className="px-4 py-3">Owner</th>
                 <th className="px-4 py-3">Employees</th>
@@ -115,30 +130,30 @@ export function AdminDashboardClient() {
             </thead>
             <tbody>
               {companies.map((c) => (
-                <tr key={c.domain} className="border-b border-white/5">
+                <tr key={c.domain} className="border-b border-white/[0.06]">
                   <td className="px-4 py-3 font-medium">{c.domain}</td>
-                  <td className="px-4 py-3">{c.owner_email}</td>
+                  <td className="px-4 py-3 text-white/70">{c.owner_email}</td>
                   <td className="px-4 py-3">{c.employees}</td>
                   <td className="px-4 py-3">{c.storage_gb} GB</td>
                   <td className="px-4 py-3 capitalize">{c.status}</td>
                   <td className="px-4 py-3">
                     <Link
                       href={`/dashboard/vault?domain=${encodeURIComponent(c.domain)}`}
-                      className="rounded-lg bg-[#1E3A5F] px-3 py-1.5 text-xs text-blue-300"
+                      className="rounded-lg bg-[#22D3EE]/20 px-3 py-1.5 text-xs font-semibold text-[#22D3EE]"
                     >
-                      View Vault
+                      View vault
                     </Link>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </ProTableWrap>
       ) : (
-        <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-[#1E2639]">
-          <table className="w-full text-left text-sm">
+        <ProTableWrap>
+          <table className="w-full min-w-[480px] text-left text-sm">
             <thead>
-              <tr className="border-b border-white/10 text-slate-400">
+              <tr className="border-b border-white/[0.08] text-xs uppercase tracking-wide text-white/45">
                 <th className="px-4 py-3">Domain</th>
                 <th className="px-4 py-3">Amount</th>
                 <th className="px-4 py-3">Date</th>
@@ -147,15 +162,17 @@ export function AdminDashboardClient() {
             </thead>
             <tbody>
               {payments.map((p) => (
-                <tr key={p.id} className="border-b border-white/5">
+                <tr key={p.id} className="border-b border-white/[0.06]">
                   <td className="px-4 py-3">{p.company_domain}</td>
                   <td className="px-4 py-3">₹{p.amount}</td>
-                  <td className="px-4 py-3">{new Date(p.created_at).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-white/60">
+                    {new Date(p.created_at).toLocaleString()}
+                  </td>
                   <td className="px-4 py-3">
                     <button
                       type="button"
                       onClick={() => approve(p.id)}
-                      className="rounded-lg bg-gradient-to-r from-blue-500 to-cyan-400 px-3 py-1.5 text-xs font-semibold text-white"
+                      className="rounded-lg bg-[#22D3EE] px-3 py-1.5 text-xs font-bold text-slate-900"
                     >
                       Approve
                     </button>
@@ -164,7 +181,7 @@ export function AdminDashboardClient() {
               ))}
             </tbody>
           </table>
-        </div>
+        </ProTableWrap>
       )}
     </div>
   );

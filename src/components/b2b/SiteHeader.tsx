@@ -6,37 +6,36 @@ type Props = {
   variant?: "landing" | "minimal" | "dark";
 };
 
+const navLinks = [
+  { href: "#features", label: "Product" },
+  { href: "#pricing", label: "Pricing" },
+  { href: "/login", label: "Login" },
+];
+
 export function SiteHeader({ variant = "landing" }: Props) {
-  const dark = variant === "dark";
+  const dark = variant === "dark" || variant === "landing";
   return (
     <header
       className={
         dark
-          ? "border-b border-white/10 bg-slate-950/50 backdrop-blur-xl"
+          ? "sticky top-0 z-50 border-b border-white/[0.08] bg-[#0A0A0B]/80 backdrop-blur-xl"
           : "border-b border-gray-100 bg-white/90 backdrop-blur"
       }
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/" className="flex items-center gap-2">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        <Link href="/" className="flex items-center gap-3">
           <span
-            className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-bold text-white ${
-              dark ? "bg-gradient-to-br from-sky-500 to-blue-600" : ""
-            }`}
-            style={dark ? undefined : { backgroundColor: "#ff6a00" }}
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#22D3EE] text-sm font-black text-slate-900 shadow-lg shadow-cyan-500/30"
           >
             BC
           </span>
           <span className="flex flex-col leading-tight">
-            <span
-              className={`text-lg font-semibold tracking-tight ${
-                dark ? "text-white" : "text-gray-900"
-              }`}
-            >
+            <span className={`text-lg font-bold tracking-tight ${dark ? "text-white" : "text-gray-900"}`}>
               {BRAND_PRODUCT}
             </span>
             <span
-              className={`text-[10px] font-medium uppercase tracking-wider ${
-                dark ? "text-sky-400/90" : "text-[#ff6a00]"
+              className={`text-[10px] font-semibold uppercase tracking-wider ${
+                dark ? "text-[#22D3EE]" : "text-cyan-600"
               }`}
             >
               by {BRAND_PARENT}
@@ -44,28 +43,33 @@ export function SiteHeader({ variant = "landing" }: Props) {
           </span>
         </Link>
         {(variant === "landing" || variant === "dark") && (
-          <nav className="flex items-center gap-3 sm:gap-4">
+          <nav className="hidden items-center gap-8 md:flex">
+            {navLinks.slice(0, 2).map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="text-sm font-medium text-white/70 transition hover:text-[#22D3EE]"
+              >
+                {l.label}
+              </Link>
+            ))}
+          </nav>
+        )}
+        {(variant === "landing" || variant === "dark") && (
+          <div className="flex items-center gap-3">
             <Link
               href="/login"
-              className={
-                dark
-                  ? "rounded-lg border border-white/15 px-4 py-2 text-sm font-medium text-white hover:bg-white/5"
-                  : "rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-800 hover:border-[#ff6a00]/40 hover:text-[#ff6a00]"
-              }
+              className="hidden rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white sm:inline-flex hover:bg-white/5"
             >
               Login
             </Link>
             <Link
               href="/signup"
-              className={
-                dark
-                  ? "rounded-lg bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-sky-500/20"
-                  : "rounded-full bg-[#ff6a00] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#e55f00]"
-              }
+              className="rounded-xl bg-[#22D3EE] px-5 py-2.5 text-sm font-bold text-slate-900 shadow-lg shadow-cyan-500/25 hover:bg-cyan-300"
             >
-              Sign up
+              Start free trial
             </Link>
-          </nav>
+          </div>
         )}
       </div>
     </header>

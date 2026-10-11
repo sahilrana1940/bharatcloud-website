@@ -1,156 +1,245 @@
-import Link from "next/link";
+"use client";
 
-import { PRICING_PLANS, type PlanId } from "@/lib/b2b/plans";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import {
+  Building2,
+  Cloud,
+  Lock,
+  Shield,
+  Users,
+  Zap,
+  Globe2,
+  Server,
+} from "lucide-react";
+
 import { SiteHeader } from "@/components/b2b/SiteHeader";
 import { BRAND_PARENT, BRAND_PRODUCT } from "@/lib/brand";
-
-const features = [
-  {
-    title: "Team Control",
-    body: "Roles, invites, and audit-friendly access for every department.",
-  },
-  {
-    title: "Shared Storage",
-    body: "One vault for contracts, GST, and field media — India-ready hosting.",
-  },
-  {
-    title: "Enterprise-grade Security",
-    body: "Versioning, soft delete, and encryption in transit by default.",
-  },
-];
+import { PRICING_PLANS, type PlanId } from "@/lib/b2b/plans";
+import { GlassPanel, ProGhostButton, ProPrimaryButton } from "@/components/ui/pro/primitives";
 
 const planOrder: PlanId[] = ["starter", "standard", "business"];
 
+const features = [
+  {
+    icon: Users,
+    title: "Team & roles",
+    body: "Invite admins and staff. Control who can backup, upload CCTV, or read the vault.",
+  },
+  {
+    icon: Cloud,
+    title: "Google Drive backup",
+    body: "One-click OAuth. Incremental archive to Wasabi with drive.readonly and quota meter.",
+  },
+  {
+    icon: Shield,
+    title: "Bharat Tijori vault",
+    body: "Encrypted storage, soft delete, and India-first compliance narrative your clients trust.",
+  },
+  {
+    icon: Lock,
+    title: "Security by default",
+    body: "AES-256-GCM token storage, workspace cookies, and 401/402 billing gates in production.",
+  },
+  {
+    icon: Zap,
+    title: "Fast onboarding",
+    body: "Signup → connect Drive → pay via UPI/Razorpay → auto backup jobs in minutes.",
+  },
+  {
+    icon: Server,
+    title: "Ops-ready admin",
+    body: "Super admin Nexus dashboard, payment approval, and per-company storage tiers.",
+  },
+];
+
+const stats = [
+  { value: "99.9%", label: "Uptime target" },
+  { value: "256-bit", label: "Encryption" },
+  { value: "₹999+", label: "Plans from" },
+  { value: "24/7", label: "Archive jobs" },
+];
+
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-900/40 via-slate-950 to-slate-950" />
+    <div className="relative min-h-screen overflow-hidden bg-[#0A0A0B] text-white">
+      <div className="pointer-events-none fixed inset-0 pro-mesh" />
+      <div className="pointer-events-none fixed -left-32 top-1/3 h-96 w-96 rounded-full bg-[#22D3EE]/10 blur-3xl" />
+      <div className="pointer-events-none fixed -right-32 top-20 h-80 w-80 rounded-full bg-blue-600/10 blur-3xl" />
+
       <div className="relative">
         <SiteHeader variant="dark" />
 
-        <section className="mx-auto max-w-6xl px-6 pb-16 pt-16 text-center sm:pt-24">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-sky-300/90">
-            {BRAND_PRODUCT} B2B · {BRAND_PARENT}
-          </p>
-          <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
-            Apna Business Cloud,
-            <span className="block bg-gradient-to-r from-sky-300 to-blue-500 bg-clip-text text-transparent">
-              India Me Safe
-            </span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-300">
-            Apni team ki files manage karo — premium storage built for Indian
-            companies.
-          </p>
-          <Link
-            href="/signup"
-            className="mt-10 inline-flex rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/25 transition hover:brightness-110"
-          >
-            Start Free Trial
-          </Link>
-        </section>
-
-        <section className="mx-auto grid max-w-6xl gap-6 px-6 py-12 sm:grid-cols-3">
-          {features.map((f) => (
-            <article
-              key={f.title}
-              className="rounded-2xl border border-white/10 bg-white/5 p-6 text-left backdrop-blur-xl"
+        <section className="mx-auto max-w-7xl px-6 pb-20 pt-16 sm:pt-28 lg:pt-32">
+          <div className="mx-auto max-w-4xl text-center">
+            <motion.p
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-sm font-semibold uppercase tracking-[0.25em] text-[#22D3EE]"
             >
-              <h2 className="text-lg font-semibold text-white">{f.title}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-slate-300">
-                {f.body}
-              </p>
-            </article>
-          ))}
+              {BRAND_PRODUCT} for Business · {BRAND_PARENT}
+            </motion.p>
+            <motion.h1
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="mt-6 text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl"
+            >
+              The cloud your
+              <span className="pro-gradient-text block">Indian team deserves.</span>
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="mx-auto mt-8 max-w-2xl text-lg text-white/60 sm:text-xl"
+            >
+              Backup Google Drive, manage company vault, and bill with UPI — one premium workspace for
+              owners, admins, and field teams.
+            </motion.p>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
+            >
+              <ProPrimaryButton href="/signup" className="px-10 py-4 text-base">
+                Start free trial
+              </ProPrimaryButton>
+              <ProGhostButton href="/login" className="px-10 py-4 text-base">
+                Sign in to workspace
+              </ProGhostButton>
+            </motion.div>
+          </div>
+
+          <div className="mt-20 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {stats.map((s) => (
+              <GlassPanel key={s.label} className="p-5 text-center">
+                <p className="text-2xl font-bold text-[#22D3EE] sm:text-3xl">{s.value}</p>
+                <p className="mt-1 text-xs text-white/50">{s.label}</p>
+              </GlassPanel>
+            ))}
+          </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-6 py-20" id="pricing">
-          <h2 className="text-center text-3xl font-semibold">Pricing</h2>
-          <p className="mt-2 text-center text-slate-400">
-            Transparent plans · Upgrade anytime
-          </p>
+        <section id="features" className="mx-auto max-w-7xl px-6 py-24">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold sm:text-4xl">Everything in one platform</h2>
+            <p className="mt-3 text-white/55">From super admin to shop-floor employee — same brand, pro UX.</p>
+          </div>
+          <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map((f) => (
+              <GlassPanel key={f.title} hover className="p-6 text-left">
+                <f.icon className="h-8 w-8 text-[#22D3EE]" />
+                <h3 className="mt-4 text-lg font-semibold">{f.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-white/55">{f.body}</p>
+              </GlassPanel>
+            ))}
+          </div>
+        </section>
+
+        <section className="border-y border-white/[0.08] bg-white/[0.02] py-20">
+          <div className="mx-auto grid max-w-7xl gap-12 px-6 lg:grid-cols-2 lg:items-center">
+            <div>
+              <Building2 className="h-10 w-10 text-[#22D3EE]" />
+              <h2 className="mt-4 text-3xl font-bold">Built for Indian SMBs & enterprises</h2>
+              <p className="mt-4 text-white/60">
+                GST docs, site photos, CCTV exports, and shared drives — archived with clear billing,
+                owner dashboards, and employee-friendly backup buttons.
+              </p>
+              <ul className="mt-6 space-y-3 text-sm text-white/70">
+                <li className="flex gap-2">
+                  <Globe2 className="h-4 w-4 shrink-0 text-[#22D3EE]" />
+                  India-first trust badges on every dashboard
+                </li>
+                <li className="flex gap-2">
+                  <Shield className="h-4 w-4 shrink-0 text-[#22D3EE]" />
+                  Production billing gates (401 / 402) before backup runs
+                </li>
+              </ul>
+            </div>
+            <GlassPanel className="pro-ring-accent p-8">
+              <p className="text-xs uppercase tracking-widest text-white/40">Live workspace preview</p>
+              <div className="mt-4 space-y-3 rounded-xl border border-white/[0.08] bg-black/40 p-4 font-mono text-xs text-white/60">
+                <p>
+                  <span className="text-[#22D3EE]">owner</span> @ company → Team & billing
+                </p>
+                <p>
+                  <span className="text-yellow-400">employee</span> → Start My Backup
+                </p>
+                <p>
+                  <span className="text-green-400">super_admin</span> → Nexus Admin + PAYMENT_BYPASS
+                </p>
+              </div>
+              <Link
+                href="/signup"
+                className="mt-6 inline-flex text-sm font-semibold text-[#22D3EE] hover:underline"
+              >
+                Create your company workspace →
+              </Link>
+            </GlassPanel>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-6 py-24" id="pricing">
+          <h2 className="text-center text-3xl font-bold sm:text-4xl">Simple, honest pricing</h2>
+          <p className="mt-3 text-center text-white/55">GST extra · Upgrade anytime · UPI supported</p>
           <div className="mt-14 grid gap-8 lg:grid-cols-3">
             {planOrder.map((id) => {
               const plan = PRICING_PLANS[id];
+              const highlight = plan.badge === "popular";
               return (
-                <PricingCard
+                <Link
                   key={id}
-                  planId={id}
-                  name={plan.name}
-                  price={plan.priceInr}
-                  users={plan.maxUsers}
-                  storageGb={plan.storageGb}
-                  badge={plan.badge}
-                />
+                  href={`/checkout?plan=${id}`}
+                  className={`group relative flex flex-col rounded-2xl border p-8 backdrop-blur-xl transition hover:-translate-y-1 ${
+                    highlight
+                      ? "border-[#22D3EE]/50 bg-[#22D3EE]/10 pro-ring-accent"
+                      : "border-white/[0.08] bg-white/[0.04] hover:border-[#22D3EE]/30"
+                  }`}
+                >
+                  {plan.badge === "popular" && (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#22D3EE] px-3 py-1 text-[10px] font-bold uppercase text-slate-900">
+                      Most popular
+                    </span>
+                  )}
+                  <h3 className="text-lg font-semibold">{plan.name}</h3>
+                  <div className="mt-4 flex items-baseline gap-1">
+                    <span className="text-4xl font-bold">₹{plan.priceInr}</span>
+                    <span className="text-sm text-white/45">+ GST / mo</span>
+                  </div>
+                  <ul className="mt-8 flex-1 space-y-2 text-sm text-white/60">
+                    <li>{plan.maxUsers} users</li>
+                    <li>{plan.storageGb >= 1024 ? "1 TB" : `${plan.storageGb} GB`} storage</li>
+                  </ul>
+                  <span
+                    className={`mt-8 w-full rounded-xl py-3 text-center text-sm font-bold ${
+                      highlight
+                        ? "bg-[#22D3EE] text-slate-900"
+                        : "border border-white/15 bg-white/5 group-hover:bg-white/10"
+                    }`}
+                  >
+                    Get started
+                  </span>
+                </Link>
               );
             })}
           </div>
         </section>
 
-        <footer className="border-t border-white/10 py-10 text-center text-sm text-slate-500">
-          © {new Date().getFullYear()} {BRAND_PARENT} · {BRAND_PRODUCT} for
-          Business
+        <section className="mx-auto max-w-4xl px-6 pb-28 text-center">
+          <h2 className="text-3xl font-bold">Ready to move your business to BharatCloud?</h2>
+          <p className="mt-4 text-white/55">Join teams already securing files on {BRAND_PARENT}.</p>
+          <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
+            <ProPrimaryButton href="/signup">Create company account</ProPrimaryButton>
+            <ProGhostButton href="/login">I have an account</ProGhostButton>
+          </div>
+        </section>
+
+        <footer className="border-t border-white/[0.08] py-12 text-center text-sm text-white/40">
+          © {new Date().getFullYear()} {BRAND_PARENT} · {BRAND_PRODUCT} for Business · Made in India 🇮🇳
         </footer>
       </div>
     </div>
-  );
-}
-
-function PricingCard({
-  planId,
-  name,
-  price,
-  users,
-  storageGb,
-  badge,
-}: {
-  planId: PlanId;
-  name: string;
-  price: number;
-  users: number;
-  storageGb: number;
-  badge?: "popular" | "business";
-}) {
-  const highlight = badge === "popular";
-  return (
-    <Link
-      href={`/checkout?plan=${planId}`}
-      className={`group relative flex flex-col rounded-2xl border p-8 backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-2xl ${
-        highlight
-          ? "border-sky-400/50 bg-gradient-to-b from-sky-500/20 to-blue-600/10 shadow-xl shadow-sky-500/10"
-          : "border-white/15 bg-white/5 hover:border-sky-500/30"
-      }`}
-    >
-      {badge === "popular" && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
-          Most Popular
-        </span>
-      )}
-      {badge === "business" && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-violet-400/50 bg-violet-500/20 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-violet-200">
-          Best for Business
-        </span>
-      )}
-      <h3 className="text-lg font-semibold text-white">{name}</h3>
-      <div className="mt-4 flex items-baseline gap-1">
-        <span className="text-4xl font-bold text-white">₹{price}</span>
-        <span className="text-sm text-slate-400">
-          <span className="text-xs">+ GST</span> / month
-        </span>
-      </div>
-      <ul className="mt-8 flex-1 space-y-3 text-sm text-slate-300">
-        <li>{users} Users</li>
-        <li>{storageGb >= 1024 ? "1TB" : `${storageGb}GB`} Storage</li>
-      </ul>
-      <span
-        className={`mt-8 w-full rounded-xl py-3 text-center text-sm font-semibold ${
-          highlight
-            ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white"
-            : "border border-white/20 bg-white/5 text-white group-hover:bg-white/10"
-        }`}
-      >
-        Get Started
-      </span>
-    </Link>
   );
 }

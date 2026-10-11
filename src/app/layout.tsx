@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { BharatCloudFooter } from "@/components/BharatCloudFooter";
+import { ConditionalFooter } from "@/components/layout/ConditionalFooter";
 import { BRAND_DOMAIN, BRAND_TAGLINE } from "@/lib/brand";
 import "./globals.css";
 
@@ -38,7 +38,7 @@ export default function RootLayout({
       >
         <div className="flex min-h-screen flex-col">
           <div className="flex-1">{children}</div>
-          <BharatCloudFooter />
+          <ConditionalFooter />
         </div>
       </body>
     </html>

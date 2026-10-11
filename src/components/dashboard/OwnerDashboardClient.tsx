@@ -2,9 +2,16 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { HardDrive, Users, Wallet } from "lucide-react";
 
 import { INDIA_BADGE } from "@/lib/storage/tiers";
-
+import {
+  GlassPanel,
+  ProPageHeader,
+  ProPrimaryButton,
+  ProStatCard,
+  ProTableWrap,
+} from "@/components/ui/pro/primitives";
 
 type Member = {
   email: string;
@@ -50,55 +57,63 @@ export function OwnerDashboardClient() {
   );
 
   return (
-    <div className="min-h-screen overflow-y-auto bg-[#0A0E1A] px-4 pb-[140px] pt-6 sm:px-8">
-      <h1 className="text-3xl font-bold text-white">Company Owner</h1>
-      <p className="text-slate-500">Full access for your company domain</p>
-      <p className="mt-1 text-[10px] text-slate-600">{INDIA_BADGE}</p>
-      <p className="mt-2 text-sm text-slate-400">
-        Hot {storage.hot}GB · Cold {storage.cold}GB · Vault {storage.vault}GB (7yr retention)
-      </p>
+    <div className="px-4 py-8 sm:px-8">
+      <ProPageHeader
+        eyebrow="Company owner"
+        title="Command center"
+        description={`Hot ${storage.hot}GB · Cold ${storage.cold}GB · Vault ${storage.vault}GB · ${INDIA_BADGE}`}
+        action={
+          <ProPrimaryButton href="/dashboard/company-admin">Company admin view</ProPrimaryButton>
+        }
+      />
 
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-white/10 bg-[#1E2639] p-5">
-          <p className="text-xs text-slate-400">Employees</p>
-          <p className="text-2xl font-bold text-white">{members.length}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-[#1E2639] p-5">
-          <p className="text-xs text-slate-400">Storage used</p>
-          <p className="text-2xl font-bold text-white">{totalStorage.toFixed(1)} GB</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-[#1E2639] p-5">
-          <Link href="/dashboard/vault" className="text-cyan-400 text-sm font-semibold">
-            Open company vault →
-          </Link>
-        </div>
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <ProStatCard
+          label="Team members"
+          value={String(members.length)}
+          icon={<Users className="h-4 w-4 text-[#22D3EE]" />}
+        />
+        <ProStatCard
+          label="Storage used"
+          value={`${totalStorage.toFixed(1)} GB`}
+          icon={<HardDrive className="h-4 w-4 text-[#22D3EE]" />}
+        />
+        <ProStatCard
+          label="Billing"
+          value="UPI / Pro"
+          hint="Manage subscription"
+          icon={<Wallet className="h-4 w-4 text-[#22D3EE]" />}
+        />
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="mb-6 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => syncAll("drive")}
-          className="rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-4 py-2 text-sm font-semibold text-white"
+          className="rounded-xl bg-[#22D3EE] px-4 py-2 text-sm font-bold text-slate-900"
         >
-          Sync All Drives
+          Sync all drives
         </button>
         <button
           type="button"
           onClick={() => syncAll("gmail")}
-          className="rounded-xl border border-white/10 bg-[#1E2639] px-4 py-2 text-sm text-slate-200"
+          className="rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2 text-sm text-white/80"
         >
-          Sync All Mails
+          Sync all mail
         </button>
-        <Link href="/dashboard/team" className="rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300">
+        <Link
+          href="/dashboard/team"
+          className="rounded-xl border border-white/15 px-4 py-2 text-sm text-white/80"
+        >
           Team settings
         </Link>
       </div>
-      {msg && <p className="mt-2 text-sm text-cyan-400">{msg}</p>}
+      {msg && <p className="mb-4 text-sm text-[#22D3EE]">{msg}</p>}
 
-      <div className="mt-8 overflow-hidden rounded-2xl border border-white/10 bg-[#1E2639]">
-        <table className="w-full text-left text-sm text-slate-200">
+      <ProTableWrap>
+        <table className="w-full min-w-[560px] text-left text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-slate-400">
+            <tr className="border-b border-white/[0.08] text-xs uppercase text-white/45">
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Drive</th>
@@ -107,27 +122,24 @@ export function OwnerDashboardClient() {
           </thead>
           <tbody>
             {members.map((m) => (
-              <tr key={m.email} className="border-b border-white/5">
+              <tr key={m.email} className="border-b border-white/[0.06]">
                 <td className="px-4 py-3">{m.email}</td>
-                <td className="px-4 py-3">{m.name || "—"}</td>
+                <td className="px-4 py-3 text-white/70">{m.name || "—"}</td>
                 <td className="px-4 py-3 capitalize">{m.drive_sync_status || "idle"}</td>
                 <td className="px-4 py-3 capitalize">{m.email_sync_status || "idle"}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </ProTableWrap>
 
-      <div className="mt-10 rounded-2xl border border-white/10 bg-[#1E2639] p-6">
-        <h2 className="text-xl font-semibold text-white">Billing</h2>
-        <p className="mt-2 text-sm text-slate-400">UPI subscription for your company</p>
-        <Link
-          href="/dashboard/billing"
-          className="mt-4 inline-flex rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-5 py-2.5 text-sm font-semibold text-white"
-        >
-          Open UPI billing →
-        </Link>
-      </div>
+      <GlassPanel className="mt-8 p-6">
+        <h2 className="text-lg font-semibold">Billing & upgrades</h2>
+        <p className="mt-2 text-sm text-white/55">UPI subscription and Razorpay links for your company.</p>
+        <ProPrimaryButton href="/dashboard/billing" className="mt-4">
+          Open billing
+        </ProPrimaryButton>
+      </GlassPanel>
     </div>
   );
 }

@@ -1,10 +1,16 @@
+import { AuthMarketingPanel } from "@/components/auth/AuthMarketingPanel";
 import { SignupForm } from "@/components/auth/SignupForm";
 
 export default function SignupPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-sky-50/50 to-white px-6 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white/80 p-8 shadow-xl backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
-        <SignupForm />
+    <div className="flex min-h-screen bg-[#F8FAFC]">
+      <AuthMarketingPanel />
+      <div className="flex flex-1 items-center justify-center px-6 py-12">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white p-8 shadow-2xl shadow-slate-200/50">
+          <p className="text-xs font-semibold uppercase tracking-widest text-cyan-600">Get started</p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900">Create your company</h1>
+          <SignupForm />
+        </div>
       </div>
     </div>
   );
