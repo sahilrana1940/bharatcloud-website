@@ -53,12 +53,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, payment: row });
   }
 
+  const autoApprove =
+    process.env.PAYMENT_AUTO_APPROVE === "1" ||
+    process.env.NODE_ENV === "development";
+  const status = autoApprove ? "approved" : "pending";
+
   const { data, error } = await supabase
     .from("payments")
     .insert({
       company_domain: domain,
       amount,
-      status: "pending",
+      status,
     })
     .select()
     .single();
@@ -67,5 +72,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, payment: data });
+  if (status === "approved") {
+    await supabase
+      .from("companies")
+      .update({ subscription_status: "active", plan_name: "pro" })
+      .eq("domain", domain);
+  }
+
+  return NextResponse.json({
+    ok: true,
+    payment: data,
+    redirect: "/dashboard/team?paid=1",
+    approved: status === "approved",
+  });
 }

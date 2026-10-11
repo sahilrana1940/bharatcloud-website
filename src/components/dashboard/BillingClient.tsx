@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { Toast } from "@/components/dashboard/Toast";
@@ -7,6 +8,7 @@ import { Toast } from "@/components/dashboard/Toast";
 const AMOUNT = 1999;
 
 export function BillingClient() {
+  const router = useRouter();
   const [toast, setToast] = useState("");
   const upiId = process.env.NEXT_PUBLIC_UPI_ID || "bharatcloud@upi";
 
@@ -29,8 +31,15 @@ export function BillingClient() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ amount: AMOUNT }),
     });
-    if (res.ok) notify("Thank you! Will activate in 2 hours");
-    else notify("Could not record payment — try again");
+    const j = await res.json();
+    if (res.ok) {
+      if (j.approved) {
+        router.push(j.redirect || "/dashboard/team?paid=1");
+        return;
+      }
+      notify("Thank you! We will activate within 2 hours, then open Team to connect Google.");
+      router.push("/dashboard/team");
+    } else notify("Could not record payment — try again");
   }
 
   return (

@@ -1,35 +1,11 @@
 "use client";
 
-import { Search, Shield, Upload } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Search, Shield } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
-import { GoogleDriveConnectBanner } from "@/components/dashboard/GoogleDriveConnectBanner";
 import { FileGrid, type GridFile } from "@/components/dashboard/FileGrid";
 import { PreviewModal } from "@/components/dashboard/PreviewModal";
 import { Toast } from "@/components/dashboard/Toast";
-
-function uploadFile(file: File, onProgress: (n: number) => void) {
-  return new Promise<{ file?: GridFile; error?: string }>((resolve) => {
-    const xhr = new XMLHttpRequest();
-    const fd = new FormData();
-    fd.append("file", file);
-    xhr.open("POST", "/api/drive/upload");
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
-    };
-    xhr.onload = () => {
-      try {
-        const j = JSON.parse(xhr.responseText);
-        if (xhr.status >= 200 && xhr.status < 300) resolve({ file: j.file });
-        else resolve({ error: j.error });
-      } catch {
-        resolve({ error: "Upload failed" });
-      }
-    };
-    xhr.onerror = () => resolve({ error: "Network error" });
-    xhr.send(fd);
-  });
-}
 
 export function DriveShell({
   userEmail,
@@ -62,9 +38,6 @@ export function DriveShell({
   const [files, setFiles] = useState<GridFile[]>([]);
   const [toast, setToast] = useState("");
   const [preview, setPreview] = useState<GridFile | null>(null);
-  const [progress, setProgress] = useState<number | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
   const load = useCallback(async () => {
     const res = await fetch(
       `/api/drive/list?source=${source}&owner=${encodeURIComponent(userEmail)}&q=${encodeURIComponent(q)}`,
@@ -91,18 +64,6 @@ export function DriveShell({
   function wa(url: string | null) {
     if (!url) return;
     window.open(`https://wa.me/?text=${encodeURIComponent(url)}`, "_blank");
-  }
-
-  async function onPick(fl: FileList | null) {
-    if (!fl) return;
-    for (const f of Array.from(fl)) {
-      setProgress(0);
-      const r = await uploadFile(f, setProgress);
-      if (r.file) setFiles((p) => [r.file!, ...p]);
-      if (r.error) notify(r.error);
-    }
-    setProgress(null);
-    if (inputRef.current) inputRef.current.value = "";
   }
 
   async function restoreFile(id: string) {
@@ -133,7 +94,13 @@ export function DriveShell({
         </header>
       )}
 
-      {listSource === "drive" && source === "bharatcloud" && <GoogleDriveConnectBanner />}
+      {listSource === "drive" && source === "bharatcloud" && (
+        <p className="mt-4 rounded-2xl border border-white/10 bg-[#1E2639]/60 px-4 py-3 text-sm text-slate-400">
+          Automatic backup runs from{" "}
+          <a href="/dashboard/team" className="text-cyan-400 underline">Team &amp; backup</a> after payment.
+          Manual upload is disabled.
+        </p>
+      )}
 
       {listSource === "drive" && (
         <div className="mt-6 flex flex-wrap gap-2 rounded-2xl bg-[#0F1420] p-1.5">
@@ -164,30 +131,6 @@ export function DriveShell({
         />
       </div>
 
-      {showUpload && source === "bharatcloud" && (
-        <div className="mt-4">
-          <input
-            ref={inputRef}
-            type="file"
-            multiple
-            accept="image/*,video/*,.pdf,.doc,.docx"
-            className="hidden"
-            onChange={(e) => onPick(e.target.files)}
-          />
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-400 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/30 sm:w-auto"
-          >
-            <Upload className="h-5 w-5" /> Upload to BharatCloud
-          </button>
-          {progress !== null && (
-            <div className="mt-3 h-2 max-w-sm overflow-hidden rounded-full bg-slate-800">
-              <div className="h-full bg-cyan-400 transition-all" style={{ width: `${progress}%` }} />
-            </div>
-          )}
-        </div>
-      )}
 
       <div className="mt-8">
         {files.length === 0 ? (
