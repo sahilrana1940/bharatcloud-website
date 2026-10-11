@@ -35,11 +35,13 @@ export function WorkspaceShell({
   role,
   userEmail,
   companyId,
+  isCompanyOwner = false,
 }: {
   children: React.ReactNode;
   role: "admin" | "member";
   userEmail: string;
   companyId?: string;
+  isCompanyOwner?: boolean;
 }) {
   const pathname = usePathname();
   const [usedGb, setUsedGb] = useState(4.3);
@@ -74,7 +76,7 @@ export function WorkspaceShell({
 
         <nav className="mt-10 flex-1 space-y-1">
           {nav
-            .filter((l) => !l.admin || role === "admin")
+            .filter((l) => !l.admin || role === "admin" || isCompanyOwner)
             .map((l) => {
               const active = pathname === l.href;
               return (

@@ -5,6 +5,8 @@ import { getWorkspaceSession } from "@/lib/workspace/session";
 
 export default async function TeamPage() {
   const session = await getWorkspaceSession();
-  if (session?.role !== "admin") redirect("/dashboard/drive");
+  if (!session || (session.role !== "admin" && !session.isCompanyOwner)) {
+    redirect("/dashboard/drive");
+  }
   return <TeamPageClient />;
 }
