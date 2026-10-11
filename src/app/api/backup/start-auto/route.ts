@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { companyHasPaidBackup } from "@/lib/billing/subscription";
+import {
+  fetchGoogleTokenRow,
+  isGoogleTokenRowConnected,
+} from "@/lib/google/token-row";
 import { processBackupJobChunk } from "@/lib/backup/process-job-chunk";
 import { resolveCompanyDomain } from "@/lib/workspace/company";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
@@ -27,16 +31,11 @@ export async function POST() {
     );
   }
 
-  const { data: tok } = await supabase
-    .from("google_oauth_tokens")
-    .select("refresh_token, access_token")
-    .eq("company_id", session.companyId)
-    .eq("email", session.email.toLowerCase())
-    .maybeSingle();
+  const tok = await fetchGoogleTokenRow(supabase, session.companyId, session.email);
 
-  if (!tok?.access_token && !tok?.refresh_token) {
+  if (!isGoogleTokenRowConnected(tok)) {
     return NextResponse.json(
-      { error: "Connect Google Drive first", connectUrl: "/api/auth/google/connect?autostart=1" },
+      { error: "Connect Google Drive first", connectUrl: "/settings" },
       { status: 400 },
     );
   }

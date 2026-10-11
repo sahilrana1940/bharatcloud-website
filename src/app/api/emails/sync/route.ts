@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { gmailClient } from "@/lib/google/client";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
@@ -22,15 +23,14 @@ export async function POST() {
 
   let imported = 0;
   for (const u of users || []) {
-    const { data: tok } = await supabase
-      .from("google_oauth_tokens")
-      .select("access_token")
-      .eq("company_id", session.companyId)
-      .eq("email", u.email)
-      .maybeSingle();
-    if (!tok?.access_token) continue;
+    const accessToken = await getValidGoogleAccessToken(
+      supabase,
+      session.companyId,
+      u.email,
+    );
+    if (!accessToken) continue;
 
-    const gmail = gmailClient(tok.access_token);
+    const gmail = gmailClient(accessToken);
     if (!gmail) continue;
 
     const list = await gmail.users.messages.list({

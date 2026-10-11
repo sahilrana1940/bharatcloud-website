@@ -1,4 +1,5 @@
 import { publicBackupUrl } from "@/lib/drive/public-url";
+import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { driveClient } from "@/lib/google/client";
 import {
   DEMO_DRIVE_FILES,
@@ -78,16 +79,15 @@ export async function listDriveFiles(opts: {
       .eq("is_deleted", false);
 
     const targetOwner = session.role === "member" ? session.email : ownerParam || session.email;
-    const { data: tok } = await supabase
-      .from("google_oauth_tokens")
-      .select("access_token")
-      .eq("company_id", session.companyId)
-      .eq("email", targetOwner)
-      .maybeSingle();
+    const accessToken = await getValidGoogleAccessToken(
+      supabase,
+      session.companyId,
+      targetOwner,
+    );
 
     let googleLive: DriveListItem[] = [];
-    if (tok?.access_token) {
-      const drive = driveClient(tok.access_token);
+    if (accessToken) {
+      const drive = driveClient(accessToken);
       if (drive) {
         const listed = await drive.files.list({
           pageSize: 50,

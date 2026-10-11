@@ -11,6 +11,7 @@ import {
   Share2,
   Shield,
   LogOut,
+  Settings,
   Trash2,
   User,
 } from "lucide-react";
@@ -28,6 +29,7 @@ const nav = [
   { href: "/dashboard/trash", label: "Trash", icon: Trash2 },
   { href: "/dashboard/team", label: "Team & backup", icon: User },
   { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function WorkspaceShell({

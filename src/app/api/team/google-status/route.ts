@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 
+import { getGoogleOAuthConfig } from "@/lib/google/config";
+import {
+  fetchGoogleTokenRow,
+  isGoogleTokenRowConnected,
+} from "@/lib/google/token-row";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
@@ -13,22 +18,14 @@ export async function GET() {
     return NextResponse.json({ connected: false, demo: true });
   }
 
-  const { data } = await supabase
-    .from("google_oauth_tokens")
-    .select("refresh_token, access_token, expiry")
-    .eq("company_id", session.companyId)
-    .eq("email", session.email.toLowerCase())
-    .maybeSingle();
-
-  const connected = Boolean(
-    data?.refresh_token || data?.access_token,
-  );
+  const row = await fetchGoogleTokenRow(supabase, session.companyId, session.email);
+  const { clientId, clientSecret } = getGoogleOAuthConfig();
 
   return NextResponse.json({
-    connected,
+    connected: isGoogleTokenRowConnected(row),
     email: session.email,
-    oauthConfigured: Boolean(
-      process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
-    ),
+    googleEmail: row?.google_email || null,
+    oauthConfigured: Boolean(clientId && clientSecret),
+    settingsUrl: "/settings",
   });
 }

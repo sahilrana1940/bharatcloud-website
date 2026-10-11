@@ -21,6 +21,7 @@ export function middleware(req: NextRequest) {
   if (
     !email &&
     (pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/settings") ||
       pathname.startsWith("/admin") ||
       pathname.startsWith("/personal"))
   ) {
@@ -61,5 +62,7 @@ export const config = {
     "/dashboard/:path*",
     "/personal",
     "/personal/:path*",
+    "/settings",
+    "/settings/:path*",
   ],
 };

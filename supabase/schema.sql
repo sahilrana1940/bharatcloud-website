@@ -103,6 +103,7 @@ create table if not exists company_settings (
 create table if not exists google_oauth_tokens (
   company_id uuid not null references companies(id) on delete cascade,
   email text not null,
+  google_email text,
   access_token text,
   refresh_token text,
   expiry timestamptz,

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { adminClient } from "@/lib/google/client";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { DEMO_USERS } from "@/lib/workspace/demo-data";
@@ -15,14 +16,13 @@ export async function POST() {
     return NextResponse.json({ users: DEMO_USERS, synced: DEMO_USERS.length });
   }
 
-  const { data: tokenRow } = await supabase
-    .from("google_oauth_tokens")
-    .select("access_token")
-    .eq("company_id", session.companyId)
-    .eq("email", session.email)
-    .maybeSingle();
+  const accessToken = await getValidGoogleAccessToken(
+    supabase,
+    session.companyId,
+    session.email,
+  );
 
-  if (!tokenRow?.access_token) {
+  if (!accessToken) {
     return NextResponse.json(
       { error: "Reconnect Google for admin account" },
       { status: 400 },
@@ -35,7 +35,7 @@ export async function POST() {
     .eq("id", session.companyId)
     .single();
 
-  const admin = adminClient(tokenRow.access_token);
+  const admin = adminClient(accessToken);
   if (!admin || !company) {
     return NextResponse.json({ error: "Admin SDK unavailable" }, { status: 503 });
   }
