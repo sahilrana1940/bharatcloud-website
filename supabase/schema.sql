@@ -1,8 +1,12 @@
--- BharatCloud consolidated schema (generated from supabase/migrations/*.sql)
--- Apply in order on a fresh database, or run individual migrations incrementally.
--- Multi-tenant core: companies.id + company_users(company_id, email)
+-- =============================================================================
+-- BharatCloud — complete database schema (Supabase / PostgreSQL)
+-- Generated from supabase/migrations/001–015. Safe to run on a fresh project.
+--
+-- Multi-tenant key: companies.id (= company_id on all tenant tables)
+-- Server API uses SUPABASE_SERVICE_ROLE_KEY (bypasses RLS below).
+-- =============================================================================
 
--- ========== 001_b2b_vault.sql ==========
+-- ########## 001_b2b_vault.sql ##########
 -- BharatCloud B2B Private Drive
 
 create table if not exists b2b_companies (
@@ -37,7 +41,7 @@ create table if not exists vault_trash (
 create index if not exists idx_b2b_ids_company on b2b_ids(company_id);
 create index if not exists idx_vault_trash_company on vault_trash(company_id);
 
--- ========== 002_organizations.sql ==========
+-- ########## 002_organizations.sql ##########
 -- BharatCloud B2B SaaS — organizations & members
 
 create table if not exists organizations (
@@ -63,11 +67,11 @@ create table if not exists org_members (
 create index if not exists idx_org_members_org on org_members(org_id);
 create index if not exists idx_organizations_status on organizations(status);
 
--- ========== 003_org_phone.sql ==========
+-- ########## 003_org_phone.sql ##########
 alter table organizations
   add column if not exists owner_phone text;
 
--- ========== 004_workspace_backup.sql ==========
+-- ########## 004_workspace_backup.sql ##########
 -- BharatCloud Workspace Backup (Drive + Vault + Gmail)
 
 create table if not exists companies (
@@ -174,7 +178,7 @@ create policy drive_files_access on drive_files
     )
   );
 
--- ========== 005_saas_columns.sql ==========
+-- ########## 005_saas_columns.sql ##########
 -- BharatCloud SaaS columns + team_members alias
 
 alter table drive_files
@@ -264,7 +268,7 @@ create policy email_backups_insert on email_backups for insert with check (
   )
 );
 
--- ========== 006_payments_billing.sql ==========
+-- ########## 006_payments_billing.sql ##########
 -- Payments + billing helpers (run after 004/005)
 
 create table if not exists payments (
@@ -292,7 +296,7 @@ create unique index if not exists email_backups_gmail_id_unique
   on email_backups (gmail_id)
   where gmail_id is not null;
 
--- ========== 007_role_system.sql ==========
+-- ########## 007_role_system.sql ##########
 -- 3-role SaaS access (columns on company_users; exposed via team_members view)
 
 alter table company_users
@@ -328,7 +332,7 @@ select
 from company_users cu
 join companies c on c.id = cu.company_id;
 
--- ========== 008_personal_backups_tiers.sql ==========
+-- ########## 008_personal_backups_tiers.sql ##########
 -- Hot / Cold / Vault tiered personal backups (B2C + B2B)
 
 create table if not exists personal_backups (
@@ -376,7 +380,7 @@ values
   ('bharatcloud-vault', 'bharatcloud-vault', false, 524288000, null)
 on conflict (id) do update set public = false;
 
--- ========== 009_unified_vault_b2b_b2c.sql ==========
+-- ########## 009_unified_vault_b2b_b2c.sql ##########
 -- Unified B2B + B2C vault (4 private buckets, personal_vault, locks, recovery)
 
 insert into storage.buckets (id, name, public)
@@ -472,7 +476,7 @@ create policy personal_vault_select_b2c on personal_vault for select using (
 
 create policy personal_vault_insert_own on personal_vault for insert with check (user_email = auth.email());
 
--- ========== 010_master_course.sql ==========
+-- ########## 010_master_course.sql ##########
 -- BharatCloud Master: 5 private buckets + core tables
 
 insert into storage.buckets (id, name, public)
@@ -554,7 +558,7 @@ create policy own_users on personal_users for all using (email = auth.email());
 drop policy if exists own on app_locks;
 create policy own_locks on app_locks for all using (user_email = auth.email());
 
--- ========== 011_ensure_storage_buckets.sql ==========
+-- ########## 011_ensure_storage_buckets.sql ##########
 -- Run in Supabase SQL Editor if uploads fail with "Bucket not found"
 insert into storage.buckets (id, name, public)
 values
@@ -566,7 +570,7 @@ values
   ('bharatcloud-backups', 'bharatcloud-backups', false)
 on conflict (id) do update set public = false;
 
--- ========== 012_personal_vault_columns.sql ==========
+-- ########## 012_personal_vault_columns.sql ##########
 -- Fix: "Could not find the mime_type column of personal_vault"
 -- Run in Supabase SQL Editor if vault upload fails after older partial migrations.
 
@@ -578,7 +582,7 @@ alter table personal_vault add column if not exists cold_path text;
 -- Refresh PostgREST schema cache (Supabase API)
 notify pgrst, 'reload schema';
 
--- ========== 013_drive_files_columns.sql ==========
+-- ########## 013_drive_files_columns.sql ##########
 -- Fix: "Could not find the company_domain column of drive_files"
 -- Run if migration 005 was not applied on your Supabase project.
 
@@ -601,7 +605,7 @@ where c.id = df.company_id
 
 notify pgrst, 'reload schema';
 
--- ========== 014_company_backup_jobs.sql ==========
+-- ########## 014_company_backup_jobs.sql ##########
 -- Automatic Google Drive archive jobs (post-payment backup)
 
 create table if not exists company_backup_jobs (
@@ -642,7 +646,7 @@ create index if not exists company_archive_files_company on company_archive_file
 
 notify pgrst, 'reload schema';
 
--- ========== 015_payments_company_id.sql ==========
+-- ########## 015_payments_company_id.sql ##########
 -- Multi-tenant: link payments to companies.id
 
 alter table payments
@@ -657,3 +661,40 @@ create index if not exists payments_company_status on payments (company_id, stat
 
 notify pgrst, 'reload schema';
 
+-- =============================================================================
+-- CANONICAL STORAGE BUCKETS (company-files + app bucket names)
+-- Run once; duplicates above are idempotent. Next.js upload paths use
+-- bharatcloud-company-hot by default (see src/lib/storage/tiers.ts).
+-- =============================================================================
+
+insert into storage.buckets (id, name, public, file_size_limit)
+values
+  ('company-files', 'company-files', false, 524288000),
+  ('bharatcloud-company-hot', 'bharatcloud-company-hot', false, 524288000),
+  ('bharatcloud-personal-hot', 'bharatcloud-personal-hot', false, 524288000),
+  ('bharatcloud-cold', 'bharatcloud-cold', false, 524288000),
+  ('bharatcloud-vault', 'bharatcloud-vault', false, 524288000),
+  ('bharatcloud-thumbs', 'bharatcloud-thumbs', false, 524288000),
+  ('bharatcloud-backups', 'bharatcloud-backups', false, 524288000),
+  ('bharatcloud-hot', 'bharatcloud-hot', false, 524288000)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = coalesce(excluded.file_size_limit, storage.buckets.file_size_limit);
+
+alter table storage.objects enable row level security;
+
+drop policy if exists company_files_read on storage.objects;
+create policy company_files_read on storage.objects
+  for select to authenticated
+  using (
+    bucket_id in ('company-files', 'bharatcloud-company-hot', 'bharatcloud-vault', 'bharatcloud-personal-hot')
+  );
+
+drop policy if exists company_files_insert on storage.objects;
+create policy company_files_insert on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id in ('company-files', 'bharatcloud-company-hot', 'bharatcloud-vault', 'bharatcloud-personal-hot')
+  );
+
+notify pgrst, 'reload schema';
