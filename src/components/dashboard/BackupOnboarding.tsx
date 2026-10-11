@@ -1,10 +1,10 @@
 "use client";
 
 import { Cloud, Loader2 } from "lucide-react";
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { BackupValueStrip } from "@/components/dashboard/BackupValueStrip";
+import { openUpgradePaymentLink } from "@/lib/billing/upgrade-pro";
 
 function formatGb(bytes: number) {
   if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
@@ -21,12 +21,14 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
   const [bytesCompressed, setBytesCompressed] = useState(0);
   const [bytesOriginal, setBytesOriginal] = useState(0);
   const [savedPct, setSavedPct] = useState(0);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
-    const [cfg, g, pay, sum] = await Promise.all([
+    const [cfg, g, bill, pay, sum] = await Promise.all([
       fetch("/api/config/public").then((r) => r.json()),
       fetch("/api/team/google-status").then((r) => r.json()),
+      fetch("/api/billing/status").then((r) => r.json()),
       fetch("/api/payments").then((r) => r.json()),
       fetch("/api/backup/summary").then((r) => r.json()),
     ]);
@@ -34,11 +36,11 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
     setS3Ok(cfg.s3Configured !== false);
     setGoogleLinked(Boolean(g.connected));
     const payments = pay.payments || [];
-    setPaid(
-      payments.some((p: { status: string }) =>
-        ["approved", "paid", "active"].includes(p.status),
-      ),
+    const paidViaCompany = bill.active === true || bill.subscriptionStatus === "active";
+    const paidViaPayments = payments.some((p: { status: string }) =>
+      ["approved", "paid", "active"].includes(p.status),
     );
+    setPaid(paidViaCompany || paidViaPayments);
     if (sum.jobStatus === "running" || sum.jobStatus === "queued") {
       setJobStatus(String(sum.jobStatus));
       setFilesDone(sum.filesDone || 0);
@@ -112,6 +114,19 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
     }
   }, [jobStatus, runTick]);
 
+  async function upgradeToPro() {
+    setCheckoutLoading(true);
+    try {
+      const result = await openUpgradePaymentLink({
+        companyEmail: userEmail,
+        plan: "pro",
+      });
+      if (!result.ok) alert(result.error);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }
+
   if (!paid) {
     return (
       <>
@@ -119,12 +134,16 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
           <p className="text-slate-300">
             BharatCloud Pro unlocks <strong>automatic Google Drive archive</strong> for your company.
           </p>
-          <Link
-            href="/dashboard/billing"
-            className="mt-4 inline-block rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-6 py-3 text-sm font-semibold text-white"
+          <button
+            type="button"
+            disabled={checkoutLoading}
+            onClick={() => upgradeToPro()}
+            className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-6 py-3 text-sm font-semibold text-white disabled:opacity-60"
           >
-            View plans &amp; pay (₹1999/mo)
-          </Link>
+            {checkoutLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Upgrade to Pro
+          </button>
+          <p className="mt-3 text-xs text-slate-500">Secure checkout via Razorpay · ₹1999/mo</p>
         </div>
         <BackupValueStrip />
       </>
