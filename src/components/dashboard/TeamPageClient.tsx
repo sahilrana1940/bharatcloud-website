@@ -1,10 +1,11 @@
 "use client";
 
-import { RefreshCw, UserPlus } from "lucide-react";
+import { Loader2, RefreshCw, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { BackupOnboarding } from "@/components/dashboard/BackupOnboarding";
 import { Toast } from "@/components/dashboard/Toast";
+import { openUpgradePaymentLink } from "@/lib/billing/upgrade-pro";
 
 type Member = {
   id: string;
@@ -28,17 +29,42 @@ export function TeamPageClient({
   const [members, setMembers] = useState<Member[]>([]);
   const [toast, setToast] = useState("");
   const [globalProgress, setGlobalProgress] = useState<string | null>(null);
+  const [proActive, setProActive] = useState<boolean | null>(null);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
   const load = useCallback(async () => {
     const res = await fetch("/api/team/users");
     const j = await res.json();
     if (res.ok) setMembers(j.users || []);
   }, []);
 
+  const loadBilling = useCallback(async () => {
+    const res = await fetch("/api/billing/status");
+    const j = await res.json();
+    if (res.ok) setProActive(Boolean(j.active));
+  }, []);
+
   useEffect(() => {
     load();
-    const id = setInterval(load, 4000);
+    loadBilling();
+    const id = setInterval(() => {
+      load();
+      loadBilling();
+    }, 4000);
     return () => clearInterval(id);
-  }, [load]);
+  }, [load, loadBilling]);
+
+  async function upgradeToPro() {
+    setUpgradeLoading(true);
+    try {
+      const result = await openUpgradePaymentLink({
+        companyEmail: userEmail,
+        plan: "pro",
+      });
+      notify(result.ok ? "Razorpay checkout opened — complete payment to unlock Pro" : result.error);
+    } finally {
+      setUpgradeLoading(false);
+    }
+  }
 
   function notify(msg: string) {
     setToast(msg);
@@ -95,6 +121,17 @@ export function TeamPageClient({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {proActive === false && (
+            <button
+              type="button"
+              disabled={upgradeLoading}
+              onClick={() => upgradeToPro()}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-500 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {upgradeLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Upgrade to Pro
+            </button>
+          )}
           {canManageTeam ? (
             <>
               <button

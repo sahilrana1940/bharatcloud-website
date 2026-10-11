@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+/** Paid backup gate — uses `companies` + `payments` only (not `organizations`). */
 export async function companyHasPaidBackup(
   supabase: SupabaseClient,
   companyId: string,
@@ -7,7 +8,7 @@ export async function companyHasPaidBackup(
 ): Promise<boolean> {
   const { data: co } = await supabase
     .from("companies")
-    .select("subscription_status")
+    .select("subscription_status, plan_name")
     .eq("id", companyId)
     .maybeSingle();
 
