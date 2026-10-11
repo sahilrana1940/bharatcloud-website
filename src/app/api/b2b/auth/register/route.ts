@@ -6,7 +6,15 @@ import {
   B2B_EMAIL_COOKIE,
   B2B_SESSION_COOKIE,
 } from "@/lib/b2b/session";
+import { attachSaasRoleCookies, getUserRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { resolveCompanyIdForEmail } from "@/lib/workspace/resolve-company";
+import {
+  workspaceCookieOptions,
+  WS_COMPANY_COOKIE,
+  WS_EMAIL_COOKIE,
+  WS_ROLE_COOKIE,
+} from "@/lib/workspace/session";
 
 export async function POST(req: Request) {
   const { companyName, email, password, phone } = await req.json();
@@ -85,7 +93,14 @@ export async function POST(req: Request) {
     });
   }
 
-  const res = NextResponse.json({ ok: true, orgId });
+  const workspaceCompanyId = await resolveCompanyIdForEmail(ownerEmail);
+  const saas = await getUserRole(ownerEmail);
+  const workspaceAdmin =
+    saas.is_company_owner ||
+    saas.role === "company_owner" ||
+    ownerEmail.startsWith("admin@");
+
+  const res = NextResponse.json({ ok: true, orgId, companyId: workspaceCompanyId });
   res.cookies.set(B2B_SESSION_COOKIE, orgId, {
     httpOnly: true,
     sameSite: "lax",
@@ -98,5 +113,10 @@ export async function POST(req: Request) {
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });
+  const wsOpts = workspaceCookieOptions();
+  res.cookies.set(WS_COMPANY_COOKIE, workspaceCompanyId, wsOpts);
+  res.cookies.set(WS_EMAIL_COOKIE, ownerEmail, wsOpts);
+  res.cookies.set(WS_ROLE_COOKIE, workspaceAdmin ? "admin" : "member", wsOpts);
+  attachSaasRoleCookies(res, saas);
   return res;
 }

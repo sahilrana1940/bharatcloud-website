@@ -40,7 +40,7 @@ export function middleware(req: NextRequest) {
     }
   }
 
-  if (pathname.startsWith("/dashboard/team") || pathname.startsWith("/dashboard/billing")) {
+  if (pathname.startsWith("/dashboard/billing")) {
     if (role === "employee") {
       return NextResponse.redirect(new URL("/dashboard/employee", req.url));
     }
