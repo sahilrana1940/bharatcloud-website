@@ -19,6 +19,7 @@ export default async function DashboardLayout({
         role={session.role}
         userEmail={session.email}
         companyId={session.companyId}
+        isCompanyOwner={session.isCompanyOwner}
       >
         {children}
       </WorkspaceShell>

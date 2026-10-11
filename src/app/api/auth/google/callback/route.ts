@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { createOAuth2Client, emailDomain } from "@/lib/google/client";
+import { verifyGoogleOAuthState } from "@/lib/google/oauth-state";
+import { saveGoogleOAuthTokens } from "@/lib/google/save-tokens";
 import {
   workspaceCookieOptions,
   WS_COMPANY_COOKIE,
@@ -13,6 +15,7 @@ import { getSupabaseOrNull } from "@/lib/workspace/db";
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
+  const stateRaw = url.searchParams.get("state");
   if (!code) {
     return NextResponse.json({ error: "Missing code" }, { status: 400 });
   }
@@ -34,13 +37,38 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Invalid Google profile" }, { status: 400 });
   }
 
+  const linkState = stateRaw ? verifyGoogleOAuthState(stateRaw) : null;
   const supabase = await getSupabaseOrNull();
   let companyId: string;
   let role: "admin" | "member" = "member";
+  let redirectPath: string;
 
-  if (!supabase) {
+  if (linkState) {
+    if (email !== linkState.email) {
+      return NextResponse.json(
+        {
+          error: `Google account must be ${linkState.email}. You signed in as ${email}.`,
+        },
+        { status: 403 },
+      );
+    }
+    if (!supabase) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 500 });
+    }
+    companyId = linkState.companyId;
+    redirectPath = linkState.returnTo;
+    const { data: member } = await supabase
+      .from("company_users")
+      .select("role")
+      .eq("company_id", companyId)
+      .eq("email", email)
+      .maybeSingle();
+    role = (member?.role as "admin" | "member") || "member";
+    await saveGoogleOAuthTokens(supabase, { companyId, email, tokens });
+  } else if (!supabase) {
     companyId = `co-${domain}`;
     role = email.startsWith("admin@") ? "admin" : "member";
+    redirectPath = defaultDashboardForRole(await getUserRole(email));
   } else {
     const { data: existing } = await supabase
       .from("companies")
@@ -88,21 +116,12 @@ export async function GET(req: Request) {
       );
     }
 
-    await supabase.from("google_oauth_tokens").upsert({
-      company_id: companyId,
-      email,
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      expiry: tokens.expiry_date
-        ? new Date(tokens.expiry_date).toISOString()
-        : null,
-    });
+    await saveGoogleOAuthTokens(supabase, { companyId, email, tokens });
+    redirectPath = defaultDashboardForRole(await getUserRole(email));
   }
 
   const saas = await getUserRole(email);
-  const res = NextResponse.redirect(
-    new URL(defaultDashboardForRole(saas), url.origin),
-  );
+  const res = NextResponse.redirect(new URL(redirectPath, url.origin));
   const opts = workspaceCookieOptions();
   res.cookies.set(WS_COMPANY_COOKIE, companyId, opts);
   res.cookies.set(WS_EMAIL_COOKIE, email, opts);

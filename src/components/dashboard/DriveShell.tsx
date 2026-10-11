@@ -3,6 +3,7 @@
 import { Search, Shield, Upload } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { GoogleDriveConnectBanner } from "@/components/dashboard/GoogleDriveConnectBanner";
 import { FileGrid, type GridFile } from "@/components/dashboard/FileGrid";
 import { PreviewModal } from "@/components/dashboard/PreviewModal";
 import { Toast } from "@/components/dashboard/Toast";
@@ -131,6 +132,8 @@ export function DriveShell({
           </div>
         </header>
       )}
+
+      {listSource === "drive" && source === "bharatcloud" && <GoogleDriveConnectBanner />}
 
       {listSource === "drive" && (
         <div className="mt-6 flex flex-wrap gap-2 rounded-2xl bg-[#0F1420] p-1.5">

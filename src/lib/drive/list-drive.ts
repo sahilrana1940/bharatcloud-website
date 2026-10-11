@@ -1,6 +1,5 @@
 import { publicBackupUrl } from "@/lib/drive/public-url";
 import { driveClient } from "@/lib/google/client";
-import { resolveCompanyDomain } from "@/lib/workspace/company";
 import {
   DEMO_DRIVE_FILES,
   DEMO_GOOGLE_DRIVE_FILES,
@@ -52,7 +51,6 @@ export async function listDriveFiles(opts: {
 }) {
   const { session, mode, ownerParam, search } = opts;
   const saasRole = session.saasRole || (session.role === "admin" ? "company_owner" : "employee");
-  const domain = await resolveCompanyDomain(session.companyId, session.email);
   const supabase = await getSupabaseOrNull();
 
   if (mode === "google") {
@@ -133,9 +131,8 @@ export async function listDriveFiles(opts: {
     return { files: filterSearch(files, search), error: null };
   }
 
+  // Scope by company_id only — company_domain may be missing if migration 005/013 was not run.
   let query = supabase.from("drive_files").select("*").eq("company_id", session.companyId);
-
-  if (domain) query = query.eq("company_domain", domain);
 
   if (mode === "trash") query = query.eq("is_deleted", true);
   else query = query.eq("is_deleted", false);
@@ -161,8 +158,45 @@ export async function listDriveFiles(opts: {
     query = query.eq("owner_email", ownerParam);
   }
 
-  const { data } = await query;
-  const files = (data || []).map((f) => mapRow(f));
+  let { data, error } = await query;
+
+  if (
+    error &&
+    /is_deleted|created_at|company_domain|shared/.test(error.message)
+  ) {
+    let fallback = supabase
+      .from("drive_files")
+      .select("*")
+      .eq("company_id", session.companyId)
+      .eq("is_shortcut", false);
+    if (mode === "bharatcloud") {
+      fallback = fallback.eq("backup_status", "backedup");
+    }
+    if (mode === "my-uploads" || session.role === "member" || saasRole === "employee") {
+      fallback = fallback.eq("owner_email", session.email);
+    } else if (ownerParam) {
+      fallback = fallback.eq("owner_email", ownerParam);
+    }
+    const res = await fallback.order("name", { ascending: false });
+    data = res.data;
+    error = res.error;
+  }
+
+  if (error) {
+    return { files: [], error: error.message };
+  }
+
+  let rows = data || [];
+  if (mode === "trash") {
+    rows = rows.filter((f) => Boolean((f as { is_deleted?: boolean }).is_deleted));
+  } else {
+    rows = rows.filter((f) => !(f as { is_deleted?: boolean }).is_deleted);
+  }
+  if (mode === "shared") {
+    rows = rows.filter((f) => Boolean((f as { shared?: boolean }).shared));
+  }
+
+  const files = rows.map((f) => mapRow(f));
   return { files: filterSearch(files, search), error: null };
 }
 
