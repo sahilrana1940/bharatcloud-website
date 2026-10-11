@@ -1,29 +1,54 @@
 import { NextResponse } from "next/server";
 
+import { isPaymentBypassEnabled } from "@/lib/billing/payment-bypass";
 import { companyHasPaidBackup } from "@/lib/billing/subscription";
+import {
+  backupUnauthorized,
+  canAccessCompany,
+  readWorkspaceCookieAuth,
+} from "@/lib/billing/workspace-cookies";
 import {
   fetchGoogleTokenRow,
   isGoogleTokenRowConnected,
 } from "@/lib/google/token-row";
 import { processBackupJobChunk } from "@/lib/backup/process-job-chunk";
-import { resolveCompanyDomain } from "@/lib/workspace/company";
-import { requireWorkspace } from "@/lib/workspace/auth-api";
+import { loadTenantCompany } from "@/lib/tenant";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
 export const maxDuration = 300;
 
 export async function POST() {
-  const auth = await requireWorkspace();
-  if (auth instanceof NextResponse) return auth;
-  const { session } = auth;
+  const ws = await readWorkspaceCookieAuth();
+  if (!ws) {
+    return backupUnauthorized();
+  }
 
   const supabase = await getSupabaseOrNull();
   if (!supabase) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
 
-  const domain = await resolveCompanyDomain(session.companyId, session.email);
-  const paid = await companyHasPaidBackup(supabase, session.companyId, domain);
+  const allowed = await canAccessCompany(ws.email, ws.companyId);
+  if (!allowed) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const company = await loadTenantCompany(ws.companyId);
+  if (!company) {
+    return NextResponse.json({ error: "Company not found" }, { status: 404 });
+  }
+
+  const bypass = isPaymentBypassEnabled();
+  let paid = bypass;
+
+  if (!paid) {
+    if (company.subscription_status === "active") {
+      paid = true;
+    } else {
+      paid = await companyHasPaidBackup(supabase, ws.companyId, company.domain);
+    }
+  }
+
   if (!paid) {
     return NextResponse.json(
       { error: "Active subscription required. Complete payment on Billing first." },
@@ -31,7 +56,7 @@ export async function POST() {
     );
   }
 
-  const tok = await fetchGoogleTokenRow(supabase, session.companyId, session.email);
+  const tok = await fetchGoogleTokenRow(supabase, ws.companyId, ws.email);
 
   if (!isGoogleTokenRowConnected(tok)) {
     return NextResponse.json(
@@ -43,8 +68,8 @@ export async function POST() {
   const { data: running } = await supabase
     .from("company_backup_jobs")
     .select("id, status")
-    .eq("company_id", session.companyId)
-    .eq("owner_email", session.email.toLowerCase())
+    .eq("company_id", ws.companyId)
+    .eq("owner_email", ws.email)
     .in("status", ["queued", "running"])
     .order("created_at", { ascending: false })
     .limit(1)
@@ -56,8 +81,8 @@ export async function POST() {
     const { data: job, error } = await supabase
       .from("company_backup_jobs")
       .insert({
-        company_id: session.companyId,
-        owner_email: session.email.toLowerCase(),
+        company_id: ws.companyId,
+        owner_email: ws.email,
         status: "queued",
       })
       .select("id")
