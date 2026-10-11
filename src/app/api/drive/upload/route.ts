@@ -5,6 +5,7 @@ import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { resolveCompanyDomain } from "@/lib/workspace/company";
 import { DEMO_DRIVE_FILES } from "@/lib/workspace/demo-data";
 import { BUCKET_COMPANY_HOT } from "@/lib/storage/tiers";
+import { serviceRoleConfigHint } from "@/lib/supabase/role";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
 const BUCKET = BUCKET_COMPANY_HOT;
@@ -118,7 +119,14 @@ export async function POST(req: Request) {
   }
 
   if (dbError || !row) {
-    return NextResponse.json({ error: dbError?.message || "DB insert failed" }, { status: 500 });
+    const msg = dbError?.message || "DB insert failed";
+    if (msg.includes("row-level security")) {
+      return NextResponse.json(
+        { error: `Database security (RLS): ${serviceRoleConfigHint()}` },
+        { status: 500 },
+      );
+    }
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 
   return NextResponse.json({
