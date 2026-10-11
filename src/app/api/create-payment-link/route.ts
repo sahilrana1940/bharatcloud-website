@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { isPaymentBypassEnabled } from "@/lib/billing/payment-bypass";
 import {
   createRazorpayPaymentLink,
   WORKSPACE_PLANS,
@@ -40,6 +41,22 @@ export async function POST(req: Request) {
     /\/$/,
     "",
   );
+
+  if (isPaymentBypassEnabled()) {
+    const supabase = await getSupabaseOrNull();
+    if (supabase) {
+      await supabase
+        .from("companies")
+        .update({ subscription_status: "active", plan_name: plan.planName })
+        .eq("id", companyId);
+    }
+    return NextResponse.json({
+      ok: true,
+      bypass: true,
+      message: "PAYMENT_BYPASS enabled — Pro unlocked without Razorpay",
+      redirect: `${appUrl}/dashboard/team?paid=1`,
+    });
+  }
 
   const supabase = await getSupabaseOrNull();
   if (supabase) {

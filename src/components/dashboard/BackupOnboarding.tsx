@@ -36,7 +36,10 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
     setS3Ok(cfg.s3Configured !== false);
     setGoogleLinked(Boolean(g.connected));
     const payments = pay.payments || [];
-    const paidViaCompany = bill.active === true || bill.subscriptionStatus === "active";
+    const paidViaCompany =
+      bill.paymentBypass === true ||
+      bill.active === true ||
+      bill.subscriptionStatus === "active";
     const paidViaPayments = payments.some((p: { status: string }) =>
       ["approved", "paid", "active"].includes(p.status),
     );

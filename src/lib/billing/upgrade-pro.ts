@@ -15,6 +15,10 @@ export async function openUpgradePaymentLink(opts?: {
   if (!res.ok) {
     return { ok: false, error: data.error || "Could not create payment link" };
   }
+  if (data.bypass && data.redirect) {
+    window.location.href = data.redirect;
+    return { ok: true };
+  }
   if (!data.url) {
     return { ok: false, error: "No payment URL returned" };
   }

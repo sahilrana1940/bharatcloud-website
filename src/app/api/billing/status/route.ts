@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { isPaymentBypassEnabled } from "@/lib/billing/payment-bypass";
 import { companyHasPaidBackup } from "@/lib/billing/subscription";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
@@ -23,14 +24,14 @@ export async function GET() {
     });
   }
 
-  const active = await companyHasPaidBackup(
-    supabase,
-    tenant.companyId,
-    tenant.company.domain,
-  );
+  const bypass = isPaymentBypassEnabled();
+  const active =
+    bypass ||
+    (await companyHasPaidBackup(supabase, tenant.companyId, tenant.company.domain));
 
   return NextResponse.json({
     active,
+    paymentBypass: bypass,
     companyId: tenant.companyId,
     domain: tenant.company.domain,
     plan: tenant.company.plan_name || "starter",
