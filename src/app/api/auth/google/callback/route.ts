@@ -67,7 +67,12 @@ export async function GET(req: Request) {
       .eq("email", email)
       .maybeSingle();
     role = (member?.role as "admin" | "member") || "member";
-    await saveGoogleOAuthTokens(supabase, { companyId, email, tokens });
+    await saveGoogleOAuthTokens(supabase, {
+      companyId,
+      email,
+      googleEmail: email,
+      tokens,
+    });
   } else if (!supabase) {
     companyId = `co-${domain}`;
     role = email.startsWith("admin@") ? "admin" : "member";
@@ -119,7 +124,12 @@ export async function GET(req: Request) {
       );
     }
 
-    await saveGoogleOAuthTokens(supabase, { companyId, email, tokens });
+    await saveGoogleOAuthTokens(supabase, {
+      companyId,
+      email,
+      googleEmail: email,
+      tokens,
+    });
     redirectPath = defaultDashboardForRole(await getUserRole(email));
   }
 

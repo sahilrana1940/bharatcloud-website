@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { driveClient } from "@/lib/google/client";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { DEMO_DRIVE_FILES } from "@/lib/workspace/demo-data";
@@ -44,18 +45,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "S3 object missing" }, { status: 400 });
   }
 
-  const { data: tok } = await supabase
-    .from("google_oauth_tokens")
-    .select("access_token")
-    .eq("company_id", session.companyId)
-    .eq("email", file.owner_email)
-    .maybeSingle();
+  const accessToken = await getValidGoogleAccessToken(
+    supabase,
+    session.companyId,
+    file.owner_email as string,
+  );
 
-  if (!tok?.access_token) {
+  if (!accessToken) {
     return NextResponse.json({ error: "User Google token missing" }, { status: 400 });
   }
 
-  const drive = driveClient(tok.access_token);
+  const drive = driveClient(accessToken);
   if (!drive) {
     return NextResponse.json({ error: "Drive client unavailable" }, { status: 503 });
   }

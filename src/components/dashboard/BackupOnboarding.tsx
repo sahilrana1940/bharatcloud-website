@@ -182,7 +182,7 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
             <li>• No manual file IDs or share links</li>
           </ul>
           <a
-            href="/api/auth/google/connect?autostart=1"
+            href="/settings"
             className="mt-6 inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-400 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-sky-500/30"
           >
             Connect Google Drive &amp; Start Backup

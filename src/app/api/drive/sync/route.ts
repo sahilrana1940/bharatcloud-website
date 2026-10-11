@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { backupDriveFile } from "@/lib/drive/backup-one";
+import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { driveClient } from "@/lib/google/client";
 import { publicBackupUrl } from "@/lib/drive/public-url";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
@@ -69,14 +70,13 @@ export async function POST(req: Request) {
       .eq("id", session.companyId)
       .single();
 
-    const { data: tok } = await supabase
-      .from("google_oauth_tokens")
-      .select("access_token")
-      .eq("company_id", session.companyId)
-      .eq("email", ownerEmail)
-      .maybeSingle();
+    const accessToken = await getValidGoogleAccessToken(
+      supabase,
+      session.companyId,
+      ownerEmail,
+    );
 
-    if (!tok?.access_token || !company?.domain) {
+    if (!accessToken || !company?.domain) {
       return NextResponse.json({ error: "Google token missing" }, { status: 400 });
     }
 
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
         domain: company.domain,
         ownerEmail,
         driveFileId: body.driveFileId,
-        accessToken: tok.access_token,
+        accessToken,
       });
       return NextResponse.json({
         ok: true,
@@ -124,15 +124,14 @@ export async function POST(req: Request) {
 
   let backed = 0;
   for (const u of users || []) {
-    const { data: tok } = await supabase
-      .from("google_oauth_tokens")
-      .select("access_token")
-      .eq("company_id", session.companyId)
-      .eq("email", u.email)
-      .maybeSingle();
-    if (!tok?.access_token) continue;
+    const accessToken = await getValidGoogleAccessToken(
+      supabase,
+      session.companyId,
+      u.email,
+    );
+    if (!accessToken) continue;
 
-    const drive = driveClient(tok.access_token);
+    const drive = driveClient(accessToken);
     if (!drive) continue;
 
     const listed = await drive.files.list({
@@ -149,7 +148,7 @@ export async function POST(req: Request) {
           domain: company?.domain || "unknown",
           ownerEmail: u.email,
           driveFileId: f.id,
-          accessToken: tok.access_token,
+          accessToken,
         });
         backed += 1;
       } catch {

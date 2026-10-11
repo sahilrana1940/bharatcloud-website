@@ -58,7 +58,7 @@ export function GoogleDriveConnectBanner() {
       </div>
       {oauthConfigured ? (
         <a
-          href="/api/auth/google/connect?returnTo=%2Fdashboard%2Fdrive%3Fgoogle%3Dconnected"
+          href="/settings"
           className="mt-3 inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-5 py-2.5 text-sm font-semibold text-white sm:mt-0"
         >
           <Link2 className="h-4 w-4" /> Connect Google Drive

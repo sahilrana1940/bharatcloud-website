@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
+import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { gmailClient } from "@/lib/google/client";
+import { fetchGoogleTokenRow } from "@/lib/google/token-row";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { resolveCompanyDomain } from "@/lib/workspace/company";
 import { DEMO_EMAILS } from "@/lib/workspace/demo-data";
@@ -42,14 +44,14 @@ async function runGmailSync(
       .eq("company_id", session.companyId)
       .eq("email", m.email);
 
-    const { data: tokenRow } = await supabase
-      .from("google_oauth_tokens")
-      .select("access_token, refresh_token")
-      .eq("company_id", session.companyId)
-      .eq("email", m.email)
-      .maybeSingle();
+    const tokenRow = await fetchGoogleTokenRow(supabase, session.companyId, m.email);
+    const accessToken = await getValidGoogleAccessToken(
+      supabase,
+      session.companyId,
+      m.email,
+    );
 
-    if (!tokenRow?.access_token) {
+    if (!accessToken) {
       await supabase
         .from("company_users")
         .update({ email_sync_status: "error" })
@@ -58,7 +60,7 @@ async function runGmailSync(
       continue;
     }
 
-    const gmail = gmailClient(tokenRow.access_token);
+    const gmail = gmailClient(accessToken);
     if (!gmail) continue;
 
     const list = await gmail.users.messages.list({ userId: "me", maxResults: 100 });
@@ -85,7 +87,7 @@ async function runGmailSync(
       const hasAtt = Boolean(attPart?.filename);
       let s3Path: string | null = null;
 
-      if (attPart?.body?.attachmentId && tokenRow.refresh_token) {
+      if (attPart?.body?.attachmentId && tokenRow?.refresh_token) {
         try {
           const att = await gmail.users.messages.attachments.get({
             userId: "me",
