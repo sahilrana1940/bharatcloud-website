@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCw, UserPlus } from "lucide-react";
+import { Link2, RefreshCw, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { Toast } from "@/components/dashboard/Toast";
@@ -21,6 +21,8 @@ export function TeamPageClient() {
   const [members, setMembers] = useState<Member[]>([]);
   const [toast, setToast] = useState("");
   const [globalProgress, setGlobalProgress] = useState<string | null>(null);
+  const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
+  const [oauthConfigured, setOauthConfigured] = useState(true);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/team/users");
@@ -28,16 +30,37 @@ export function TeamPageClient() {
     if (res.ok) setMembers(j.users || []);
   }, []);
 
+  const loadGoogle = useCallback(async () => {
+    const res = await fetch("/api/team/google-status");
+    const j = await res.json();
+    if (res.ok) {
+      setGoogleConnected(Boolean(j.connected));
+      setOauthConfigured(j.oauthConfigured !== false);
+    }
+  }, []);
+
   useEffect(() => {
     load();
+    loadGoogle();
     const id = setInterval(load, 4000);
     return () => clearInterval(id);
-  }, [load]);
+  }, [load, loadGoogle]);
 
   function notify(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(""), 3500);
   }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("google") === "connected") {
+      notify("Google Drive connected — try Sync Drive on one video.");
+      loadGoogle();
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on return from OAuth
+  }, []);
 
   async function syncDrive(email?: string) {
     notify(email ? `Drive sync started for ${email}` : "Syncing all drives…");
@@ -110,6 +133,34 @@ export function TeamPageClient() {
           </button>
         </div>
       </div>
+
+      {googleConnected === false && (
+        <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 sm:flex sm:items-center sm:justify-between sm:gap-4">
+          <div>
+            <p className="font-medium text-amber-100">Connect Google Drive (Phase 2)</p>
+            <p className="mt-1 text-sm text-amber-200/80">
+              {oauthConfigured
+                ? "Link the same work email you use for Google Drive, then run Sync Drive to copy files to BharatCloud storage."
+                : "Server missing GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET in Vercel — add them and redeploy first."}
+            </p>
+          </div>
+          {oauthConfigured ? (
+            <a
+              href="/api/auth/google/connect?returnTo=%2Fdashboard%2Fteam%3Fgoogle%3Dconnected"
+              className="mt-3 inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-5 py-2.5 text-sm font-semibold text-white sm:mt-0"
+            >
+              <Link2 className="h-4 w-4" /> Connect Google Drive
+            </a>
+          ) : null}
+        </div>
+      )}
+
+      {googleConnected === true && (
+        <p className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+          Google Drive linked for this account. Use <strong>Sync Drive</strong> to back up files (start with one
+          user, then bulk migration).
+        </p>
+      )}
 
       {(globalProgress || syncing || progressLine) && (
         <div className="mt-6 rounded-2xl border border-cyan-500/20 bg-[#1E2639] p-4">
