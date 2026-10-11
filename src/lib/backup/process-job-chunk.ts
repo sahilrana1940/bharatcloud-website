@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { compressForArchive } from "@/lib/backup/compress-media";
+import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { driveClient } from "@/lib/google/client";
 import { archiveObjectKey, uploadToArchive } from "@/lib/s3/archive";
 
@@ -24,14 +25,9 @@ export async function processBackupJobChunk(
   const companyId = job.company_id as string;
   const ownerEmail = job.owner_email as string;
 
-  const { data: tok } = await supabase
-    .from("google_oauth_tokens")
-    .select("access_token")
-    .eq("company_id", companyId)
-    .eq("email", ownerEmail)
-    .maybeSingle();
+  const accessToken = await getValidGoogleAccessToken(supabase, companyId, ownerEmail);
 
-  if (!tok?.access_token) {
+  if (!accessToken) {
     await supabase
       .from("company_backup_jobs")
       .update({ status: "failed", error_message: "Google token missing", updated_at: new Date().toISOString() })
@@ -44,7 +40,7 @@ export async function processBackupJobChunk(
     return { done: true, filesDone: 0, error: "Google token missing" };
   }
 
-  const drive = driveClient(tok.access_token);
+  const drive = driveClient(accessToken);
   if (!drive) {
     return { done: true, filesDone: 0, error: "Drive client unavailable" };
   }

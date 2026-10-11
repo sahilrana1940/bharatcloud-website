@@ -43,16 +43,25 @@ export async function POST(req: Request) {
   const result = await processBackupJobChunk(supabase, jobId);
   const { data: job } = await supabase
     .from("company_backup_jobs")
-    .select("files_done, files_total, bytes_compressed, status")
+    .select("files_done, files_total, bytes_original, bytes_compressed, status")
     .eq("id", jobId)
     .maybeSingle();
+
+  const bytesOriginal = Number((job as { bytes_original?: number })?.bytes_original ?? 0);
+  const bytesCompressed = Number(job?.bytes_compressed ?? 0);
+  const savedPct =
+    bytesOriginal > 0
+      ? Math.round((1 - bytesCompressed / bytesOriginal) * 100)
+      : 0;
 
   return NextResponse.json({
     ok: true,
     jobId,
     done: result.done,
     filesDone: job?.files_done ?? result.filesDone,
-    bytesCompressed: job?.bytes_compressed ?? 0,
+    bytesOriginal,
+    bytesCompressed,
+    savedPct: Math.max(0, savedPct),
     status: job?.status,
     error: result.error,
   });

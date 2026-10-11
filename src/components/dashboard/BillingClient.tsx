@@ -1,16 +1,35 @@
 "use client";
 
+import { Check } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Toast } from "@/components/dashboard/Toast";
 
 const AMOUNT = 1999;
 
+const PRO_FEATURES = [
+  "Automatic full Google Drive archive",
+  "Gmail & contacts read for future backup",
+  "Encrypted vault + company hot storage",
+  "India-hosted archive bucket (rjrm-archiver)",
+  "Team dashboard & per-user backup status",
+];
+
 export function BillingClient() {
   const router = useRouter();
   const [toast, setToast] = useState("");
+  const [active, setActive] = useState(false);
   const upiId = process.env.NEXT_PUBLIC_UPI_ID || "bharatcloud@upi";
+
+  useEffect(() => {
+    fetch("/api/billing/status")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.active) setActive(true);
+      });
+  }, []);
 
   const upiLink = useMemo(
     () =>
@@ -37,15 +56,44 @@ export function BillingClient() {
         router.push(j.redirect || "/dashboard/team?paid=1");
         return;
       }
-      notify("Thank you! We will activate within 2 hours, then open Team to connect Google.");
+      notify("Payment recorded — we will activate soon.");
       router.push("/dashboard/team");
     } else notify("Could not record payment — try again");
+  }
+
+  if (active) {
+    return (
+      <div className="min-h-screen overflow-y-auto bg-[#0A0E1A] px-4 pb-[140px] pt-6 sm:px-8 lg:pb-10">
+        <h1 className="text-3xl font-bold text-white">Billing</h1>
+        <div className="mt-8 max-w-lg rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6">
+          <p className="font-semibold text-emerald-100">BharatCloud Pro is active</p>
+          <p className="mt-2 text-sm text-emerald-200/90">
+            Connect Google on Team &amp; backup to start your automatic archive.
+          </p>
+          <Link
+            href="/dashboard/team"
+            className="mt-4 inline-block rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-6 py-3 text-sm font-semibold text-white"
+          >
+            Go to Team &amp; backup
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen overflow-y-auto bg-[#0A0E1A] px-4 pb-[140px] pt-6 sm:px-8 lg:pb-10">
       <h1 className="text-3xl font-bold text-white">Billing</h1>
       <p className="mt-1 text-slate-500">BharatCloud Pro — ₹{AMOUNT}/month via UPI</p>
+
+      <ul className="mt-6 max-w-lg space-y-2">
+        {PRO_FEATURES.map((f) => (
+          <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
+            <Check className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
+            {f}
+          </li>
+        ))}
+      </ul>
 
       <div className="mt-8 max-w-md rounded-2xl border border-white/10 bg-[#1E2639] p-6 text-center">
         <p className="text-sm text-slate-400">Scan to pay</p>
@@ -74,7 +122,7 @@ export function BillingClient() {
         onClick={confirmPaid}
         className="mt-8 w-full max-w-md rounded-xl bg-emerald-600/90 py-3.5 text-sm font-semibold text-white"
       >
-        I have paid ✅
+        I have paid — start backup setup
       </button>
 
       <Toast message={toast} />
