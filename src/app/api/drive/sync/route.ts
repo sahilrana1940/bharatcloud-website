@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { backupDriveFile } from "@/lib/drive/backup-one";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
-import { driveClient } from "@/lib/google/client";
+import { fetchDriveFilesListPage } from "@/lib/google/drive-api";
 import { publicBackupUrl } from "@/lib/drive/public-url";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { DEMO_DRIVE_FILES, DEMO_GOOGLE_DRIVE_FILES } from "@/lib/workspace/demo-data";
@@ -131,16 +131,9 @@ export async function POST(req: Request) {
     );
     if (!accessToken) continue;
 
-    const drive = driveClient(accessToken);
-    if (!drive) continue;
+    const listed = await fetchDriveFilesListPage(accessToken, { pageSize: 50 });
 
-    const listed = await drive.files.list({
-      pageSize: 50,
-      fields: "files(id,name,mimeType,size,webViewLink)",
-      q: "trashed=false",
-    });
-
-    for (const f of listed.data.files || []) {
+    for (const f of listed.files || []) {
       if (!f.id || !f.name) continue;
       try {
         await backupDriveFile(supabase, {

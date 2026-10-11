@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { compressForArchive } from "@/lib/backup/compress-media";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
+import { fetchDriveFilesListPage } from "@/lib/google/drive-api";
 import { driveClient } from "@/lib/google/client";
 import { archiveObjectKey, uploadToArchive } from "@/lib/s3/archive";
 
@@ -55,14 +56,12 @@ export async function processBackupJobChunk(
     .eq("company_id", companyId)
     .eq("email", ownerEmail);
 
-  const list = await drive.files.list({
+  const list = await fetchDriveFilesListPage(accessToken, {
     pageSize: FILES_PER_TICK,
     pageToken: (job.drive_page_token as string) || undefined,
-    fields: "nextPageToken, files(id,name,mimeType,size)",
-    q: "trashed=false",
   });
 
-  const files = list.data.files || [];
+  const files = list.files || [];
   let bytesOriginal = Number(job.bytes_original || 0);
   let bytesCompressed = Number(job.bytes_compressed || 0);
   let filesDone = Number(job.files_done || 0);
@@ -140,7 +139,7 @@ export async function processBackupJobChunk(
     }
   }
 
-  const nextToken = list.data.nextPageToken || null;
+  const nextToken = list.nextPageToken || null;
   const done = !nextToken;
 
   await supabase

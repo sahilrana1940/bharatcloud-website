@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { getValidGoogleAccessToken } from "@/lib/google/access-token";
+import { fetchDriveAbout } from "@/lib/google/drive-api";
 import { getGoogleOAuthConfig } from "@/lib/google/config";
 import {
   fetchGoogleTokenRow,
@@ -21,10 +23,28 @@ export async function GET() {
   const row = await fetchGoogleTokenRow(supabase, session.companyId, session.email);
   const { clientId, clientSecret } = getGoogleOAuthConfig();
 
+  let storageQuota: { usedGb: number; limitGb: number | null } | null = null;
+  if (isGoogleTokenRowConnected(row)) {
+    try {
+      const accessToken = await getValidGoogleAccessToken(
+        supabase,
+        session.companyId,
+        session.email,
+      );
+      if (accessToken) {
+        const { quota } = await fetchDriveAbout(accessToken);
+        storageQuota = { usedGb: quota.usedGb, limitGb: quota.limitGb };
+      }
+    } catch {
+      storageQuota = null;
+    }
+  }
+
   return NextResponse.json({
     connected: isGoogleTokenRowConnected(row),
     email: session.email,
     googleEmail: row?.google_email || null,
+    storageQuota,
     oauthConfigured: Boolean(clientId && clientSecret),
   });
 }
