@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 
+import { getBillingPlan } from "@/lib/billing/plans";
 import {
   demoPaymentInsert,
   demoPaymentsList,
 } from "@/lib/payments/store";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
-
-const DEFAULT_AMOUNT = 1999;
 
 export async function GET() {
   const auth = await requireWorkspace();
@@ -49,13 +48,18 @@ export async function POST(req: Request) {
   const companyId = tenant?.companyId ?? session.companyId;
   const domain = tenant?.company.domain;
 
-  let amount = DEFAULT_AMOUNT;
+  let amount = getBillingPlan("starter").price;
+  let planId = "starter";
   try {
     const body = await req.json();
-    if (body.amount) amount = Number(body.amount);
+    if (body.plan) planId = String(body.plan);
+    const plan = getBillingPlan(planId);
+    planId = plan.id;
+    amount = body.amount ? Number(body.amount) : plan.price;
   } catch {
-    /* default amount */
+    /* defaults */
   }
+  const plan = getBillingPlan(planId);
 
   const supabase = await getSupabaseOrNull();
 
@@ -87,7 +91,11 @@ export async function POST(req: Request) {
   if (status === "approved") {
     await supabase
       .from("companies")
-      .update({ subscription_status: "active", plan_name: "pro" })
+      .update({
+        subscription_status: "active",
+        plan_name: plan.id,
+        storage_limit_gb: plan.storageGb,
+      })
       .eq("id", companyId);
   }
 

@@ -1,22 +1,42 @@
+import { BILLING_PLANS, type BillingPlanId } from "@/lib/billing/plans";
+
 const RAZORPAY_API = "https://api.razorpay.com/v1";
 
-export type WorkspacePlanId = "pro" | "business";
+export type WorkspacePlanId = BillingPlanId | "pro";
 
 export const WORKSPACE_PLANS: Record<
   WorkspacePlanId,
   { amountPaise: number; label: string; planName: string }
 > = {
-  pro: {
-    amountPaise: 199_900,
-    label: "BharatCloud Pro (monthly)",
-    planName: "pro",
+  starter: {
+    amountPaise: 99_900,
+    label: "BharatCloud Starter (monthly)",
+    planName: "starter",
+  },
+  standard: {
+    amountPaise: 219_900,
+    label: "BharatCloud Standard (monthly)",
+    planName: "standard",
   },
   business: {
-    amountPaise: 499_900,
+    amountPaise: 349_900,
     label: "BharatCloud Business (monthly)",
     planName: "business",
   },
+  pro: {
+    amountPaise: 99_900,
+    label: "BharatCloud Starter (legacy pro alias)",
+    planName: "starter",
+  },
 };
+
+for (const p of BILLING_PLANS) {
+  WORKSPACE_PLANS[p.id] = {
+    amountPaise: p.price * 100,
+    label: `BharatCloud ${p.name} (monthly)`,
+    planName: p.id,
+  };
+}
 
 function basicAuth(): string | null {
   const keyId = process.env.RAZORPAY_KEY_ID?.trim();

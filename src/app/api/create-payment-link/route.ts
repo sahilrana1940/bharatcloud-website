@@ -29,10 +29,13 @@ export async function POST(req: Request) {
     );
   }
 
-  const planKey = (body.plan || "pro").toLowerCase() as WorkspacePlanId;
+  const planKey = (body.plan || "starter").toLowerCase() as WorkspacePlanId;
   const plan = WORKSPACE_PLANS[planKey];
   if (!plan) {
-    return NextResponse.json({ error: "Invalid plan. Use pro or business." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid plan. Use starter, standard, or business." },
+      { status: 400 },
+    );
   }
 
   const companyId = tenant?.companyId ?? session.companyId;
