@@ -1,125 +1,142 @@
-# BharatCloud — production verify checklist
+# PROD VERIFY CHECKLIST
 
-> **Note:** This repo does **not** use `BYPASS_PAID_CHECK`, `workspaces`, or `POST /api/workspace`.  
-> Paid backup uses **`companies` + `payments`** (`companyHasPaidBackup`), not `organizations.is_paid`.
+**Repo:** `sahilrana1940/bharatcloud-website`  
+**Doc:** `docs/PROD_VERIFY_CHECKLIST.md`  
+**Reference commit:** `f77795a` (update after each doc change on `main`)
 
 ---
 
 ## Ek line
 
-- **Develop:** zyada tar done (`main` on `bharatcloud-website`).
-- **Bacha:** Vercel env + Supabase migrations + end-to-end smoke (login → pay/bypass → Google → backup).
+**Develop:** zyada tar done.  
+**Bacha:** production par ek baar end-to-end verify + env/DB confirm — yahi "check" ka kaam hai.
 
 ---
 
-## 1. ENV / DB confirm (~5 min)
+## Implementation truth (Core sir — read once)
 
-### Vercel (Production)
+| Your template term | This codebase |
+|--------------------|---------------|
+| `BYPASS_PAID_CHECK` | **`PAYMENT_BYPASS`** (`1` = bypass). Also `PAYMENT_AUTO_APPROVE=1` bypasses paid gate. |
+| `TRANSCODER_ENABLED` | **Not used** — no ffmpeg worker; videos pass-through by design. |
+| `organizations.is_paid` | **Not used** for Team/backup. Use **`companies.subscription_status`** + **`payments.status`**. |
+| `workspaces` / `POST /api/workspace` | **Does not exist**. Use **`/api/backup/*`**, **`/api/billing/status`**. |
+| Drive “1 year chunk” | **Google `nextPageToken`** on `company_backup_jobs.drive_page_token` — **8 files per tick**, not calendar years. |
 
-| Variable | Prod value | Notes |
-|----------|------------|--------|
-| `PAYMENT_BYPASS` | **`0` or unset** | `1` = skip paid gate (dev only) |
-| `PAYMENT_AUTO_APPROVE` | **`0`** unless UPI manual test | `1` = instant approve on “I have paid” |
-| `SUPABASE_SERVICE_ROLE_KEY` | set | Not anon key |
-| `ENCRYPTION_KEY` | set | OAuth tokens encrypted |
-| `GOOGLE_CLIENT_ID` / `SECRET` | set | |
-| `GOOGLE_REDIRECT_URI` | `…/api/auth/google/drive/callback` | |
-| `NEXT_PUBLIC_UPI_ID` | e.g. `9469276461@idfcfirst` | Billing QR |
-| `ARCHIVE_S3_BUCKET` + Wasabi keys | set | Drive archive |
-| `RAZORPAY_KEY_ID` / `SECRET` | set if using Upgrade to Pro | + webhook → `/api/razorpay/webhook` |
+Paid logic: `src/lib/billing/subscription.ts` → `companyHasPaidBackup()`.
 
-**Not in this codebase:** `BYPASS_PAID_CHECK`, `TRANSCODER_ENABLED` (videos are pass-through; no ffmpeg worker).
+---
 
-### Supabase SQL
+## 5-Step Production Verify (order me karna hai)
+
+### 1. `GET /api/billing/status` → unpaid = `active: false`
+
+- **Paid company:** `{ "active": true, "subscriptionStatus": "active", ... }` (or `paymentBypass: true` only in dev)
+- **Free/unpaid company:** `{ "active": false }` (when `PAYMENT_BYPASS` off)
+- **DB confirm (correct table):**
 
 ```sql
--- Workspace tenant (dashboard backup gate)
 SELECT id, domain, subscription_status, plan_name, storage_limit_gb
 FROM companies
-WHERE domain = 'gorjrmcourier.com';
+WHERE domain = 'YOUR_DOMAIN';
 
--- Payments (status must be approved/paid/active for unlock without bypass)
-SELECT id, company_id, company_domain, amount, status, created_at
-FROM payments
-ORDER BY created_at DESC
-LIMIT 5;
-
--- Google connected?
-SELECT company_id, email, google_email, expiry
-FROM google_oauth_tokens
-WHERE email = 'info@gorjrmcourier.com';
-
--- Backup job pagination (6-year Drive = many ticks, not one request)
-SELECT id, status, files_done, drive_page_token, error_message, updated_at
-FROM company_backup_jobs
-ORDER BY created_at DESC
-LIMIT 3;
+SELECT company_id, status, amount FROM payments
+WHERE company_domain = 'YOUR_DOMAIN'
+ORDER BY created_at DESC LIMIT 3;
 ```
 
-**`organizations` table:** used by **B2B signup/login** (`/b2b/*`), **not** for dashboard Team paid check.  
-Do **not** rely on `organizations.plan` for Team & backup unlock.
+> **Not** `organizations` — that table is for `/b2b` flows only.
+
+**Browser:** `fetch('/api/billing/status').then(r=>r.json()).then(console.log)`
 
 ---
 
-## 2. Bypass status
+### 2. `POST /api/backup/start-auto` → **402** (unpaid) / **200** (paid)
 
-| Env | Meaning |
-|-----|--------|
-| `PAYMENT_BYPASS=1` or `PAYMENT_AUTO_APPROVE=1` | Paid APIs behave as subscribed (testing) |
-| Both **off** | Production: need `companies.subscription_status='active'` or approved `payments` |
+- **Unpaid:** `402` + `"Active subscription required. Complete payment on Billing first."`  
+  (Not the string `"Free plan"` — same meaning.)
+- **Paid:** `200` + backup job created / first chunk started
+- **ENV:** `PAYMENT_BYPASS=0` (unset) and `PAYMENT_AUTO_APPROVE=0` on **Production**
 
-**Current:** set on Vercel — you must confirm (Dashboard → Environment Variables).
-
-### Agar bypass **OFF** (production mode)
-
-1. **Unpaid company:** `GET /api/billing/status` → `active: false`  
-   `POST /api/backup/start-auto` → **402** subscription required  
-2. **Paid company:** After UPI + approve / Razorpay webhook → `billing/status` → `active: true`  
-   `POST /api/backup/start-auto` → **200**, job created  
-3. **Session / tenant:** Wrong or missing workspace cookies → **401** on APIs (not `x-org-id` header)  
-4. **Drive chunk test:** `POST /api/backup/tick` repeatedly → `files_done` increases; job keeps `drive_page_token` until `status=completed` (not full Drive in one call)  
-5. **Video:** Archive uploads original; no transcoder — check logs for archive skip/fail only  
-
-### Agar bypass **ON** (dev mode)
-
-1. `GET /api/billing/status` → `paymentBypass: true`, `active: true`  
-2. Team page: no Pro lock; backup APIs work without payment  
-3. **Before go-live:** set `PAYMENT_BYPASS=0`, redeploy  
+**Browser:** `fetch('/api/backup/start-auto', { method: 'POST' }).then(r=>r.json()).then(console.log)`
 
 ---
 
-## 3. Five-step browser test (logged in)
+### 3. Login cookies missing → **401**
 
-1. **Billing** — pick plan (999/2199/3499); QR `tn=Bharat Cloud {plan}`; or Razorpay Upgrade  
-2. **Team & backup** — Pro unlocked; **Upgrade to Pro** hidden if active  
-3. **Settings** — Google Drive connected (`info@…`)  
-4. Console: `fetch('/api/drive/google-check').then(r=>r.json()).then(console.log)` — quota + `filesList.returned`  
-5. **Backup:** `POST /api/backup/start-auto` then poll `POST /api/backup/tick` — or **Sync All Drives** (50 files per sync call)  
+- Without workspace session cookies, any protected route (e.g. `/api/backup/start-auto`, `/api/backup/tick`) → **401 Unauthorized**
+- After login (`bc_workspace_email`, company cookie), APIs work
+
+**Test:** `curl -X POST https://YOUR_DOMAIN/api/backup/start-auto` (no Cookie header) → 401
 
 ---
 
-## 4. Final prod verify (YES/NO)
+### 4. Multiple `POST /api/backup/tick` → `files_done` badhe, job `completed` tak
+
+- Each tick processes up to **8** Drive files (`process-job-chunk.ts`)
+- Response: `filesDone`, `done: false` until Google returns no `nextPageToken`
+- Job row: `company_backup_jobs.status` → `running` → `completed`
+- **6 saal ka Drive:** bahut saari ticks / time — **ek tick mein poora Drive nahi**
+
+```sql
+SELECT id, status, files_done, drive_page_token, error_message, updated_at
+FROM company_backup_jobs
+ORDER BY created_at DESC LIMIT 5;
+```
+
+**Browser loop (logged in):**
+
+```javascript
+const tick = () =>
+  fetch("/api/backup/tick", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
+    .then((r) => r.json())
+    .then(console.log);
+```
+
+---
+
+### 5. Video → archive upload; transcoding skipped (logs)
+
+- Videos upload to **`ARCHIVE_S3_BUCKET`** (Wasabi/S3) as **original bytes**
+- Vercel logs (backup tick):  
+  `[backup] video archive: transcoding skipped (pass-through) <filename>`
+- No `TRANSCODER_ENABLED` env — cost saving is **default** (no transcode)
+
+---
+
+## ENV / DB confirm
+
+- [ ] `PAYMENT_BYPASS=0` or unset (prod)
+- [ ] `PAYMENT_AUTO_APPROVE=0` (prod, unless manual UPI test policy)
+- [ ] Paid check = **`companies` + `payments`**, not `organizations` / `workspaces`
+- [ ] `SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY`, Google OAuth, archive S3/Wasabi set
+- [ ] Supabase migrations **001–016** applied on prod project
+- [ ] Prod DB backup taken (Supabase dashboard)
+
+---
+
+## Final status (fill after test)
 
 | Check | YES/NO |
 |-------|--------|
-| Paid company: `backup/start-auto` works? | |
-| Unpaid company: blocked (402) when bypass off? | |
-| Google `drive/google-check` OK? | |
-| Backup job paginates (`drive_page_token` / multiple ticks)? | |
-| Wasabi/archive bucket usage monitored in cloud console? | |
+| Paid org: `billing/status` active? | |
+| Unpaid org: `active: false`? | |
+| Unpaid: `start-auto` → 402? | |
+| No cookies → 401? | |
+| Multiple `tick` → `files_done` ↑, job completed? | |
+| Video log: transcoding skipped? | |
+| `drive/google-check` OK? | |
 
 ---
 
-## Quick API commands (with session cookie from browser)
-
-Replace `BASE` and paste cookies from DevTools → Application → Cookies.
+## curl quick pack
 
 ```bash
 BASE="https://www.bharatcloud.store"
-# COOKIE='bc_workspace_email=...; bc_workspace_company=...'
+COOKIE='bc_workspace_email=...; bc_workspace_company=...'
 
 curl -s "$BASE/api/billing/status" -H "Cookie: $COOKIE" | jq .
-curl -s "$BASE/api/drive/google-check" -H "Cookie: $COOKIE" | jq .
 curl -s -X POST "$BASE/api/backup/start-auto" -H "Cookie: $COOKIE" | jq .
 curl -s -X POST "$BASE/api/backup/tick" -H "Cookie: $COOKIE" -H "Content-Type: application/json" -d '{}' | jq .
+curl -s "$BASE/api/drive/google-check" -H "Cookie: $COOKIE" | jq .
 ```

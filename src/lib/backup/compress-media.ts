@@ -14,6 +14,7 @@ export async function compressForArchive(
     outName = `${base}.webp`;
   }
   if (mime.startsWith("video/")) {
+    console.info("[backup] video archive: transcoding skipped (pass-through)", fileName);
     return { body: buffer, contentType: mime, outName: fileName };
   }
   return {
