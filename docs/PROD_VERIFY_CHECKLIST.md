@@ -131,12 +131,53 @@ const tick = () =>
 
 ## curl quick pack
 
-```bash
-BASE="https://www.bharatcloud.store"
-COOKIE='bc_workspace_email=...; bc_workspace_company=...'
+**This app does not read `x-org-id`.** Auth = workspace cookies after login:
 
-curl -s "$BASE/api/billing/status" -H "Cookie: $COOKIE" | jq .
-curl -s -X POST "$BASE/api/backup/start-auto" -H "Cookie: $COOKIE" | jq .
-curl -s -X POST "$BASE/api/backup/tick" -H "Cookie: $COOKIE" -H "Content-Type: application/json" -d '{}' | jq .
-curl -s "$BASE/api/drive/google-check" -H "Cookie: $COOKIE" | jq .
+- `bc_workspace_email`
+- `bc_workspace_company` (UUID from `companies.id`)
+
+Copy cookies from browser: DevTools → Application → Cookies → your domain.
+
+```bash
+export PROD_URL="https://www.bharatcloud.store"
+
+# Unpaid test user (company with subscription_status != active, no approved payment)
+export FREE_COOKIE='bc_workspace_email=UNPAID_USER@domain.com; bc_workspace_company=UNPAID_COMPANY_UUID'
+
+# Paid test user (subscription active or approved payment)
+export PAID_COOKIE='bc_workspace_email=info@gorjrmcourier.com; bc_workspace_company=PAID_COMPANY_UUID'
+
+# 1. Billing status
+curl -s "$PROD_URL/api/billing/status" -H "Cookie: $FREE_COOKIE" | jq .
+# Expect: "active": false   (when PAYMENT_BYPASS off)
+
+curl -s "$PROD_URL/api/billing/status" -H "Cookie: $PAID_COOKIE" | jq .
+# Expect: "active": true
+
+# 2. Unpaid → 402
+curl -s -w "\nHTTP %{http_code}\n" -X POST "$PROD_URL/api/backup/start-auto" \
+  -H "Cookie: $FREE_COOKIE"
+# Expect body: Active subscription required... + HTTP 402
+
+# 3. No login cookies → 401
+curl -s -w "\nHTTP %{http_code}\n" -X POST "$PROD_URL/api/backup/start-auto"
+# Expect: {"error":"Unauthorized"} + HTTP 401
+
+# 4. Paid → 200 (Google must be connected too or 400)
+curl -s -w "\nHTTP %{http_code}\n" -X POST "$PROD_URL/api/backup/start-auto" \
+  -H "Cookie: $PAID_COOKIE"
+# Expect: HTTP 200 + job payload
+
+# Optional: backup tick loop
+curl -s -X POST "$PROD_URL/api/backup/tick" -H "Cookie: $PAID_COOKIE" \
+  -H "Content-Type: application/json" -d '{}' | jq .
+
+curl -s "$PROD_URL/api/drive/google-check" -H "Cookie: $PAID_COOKIE" | jq .
+```
+
+**Wrong (ignored by server):**
+
+```bash
+# x-org-id is NOT used in bharatcloud-website
+curl -H "x-org-id: FREE_ORG_ID" ...
 ```
