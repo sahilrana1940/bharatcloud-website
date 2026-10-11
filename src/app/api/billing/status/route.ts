@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 
-import { isPaymentBypassEnabled } from "@/lib/billing/payment-bypass";
+import {
+  isPaymentBypassEnabled,
+  PAYMENT_BYPASS_COOKIE,
+  readPaymentBypassFlag,
+} from "@/lib/billing/payment-bypass";
 import { companyHasPaidBackup } from "@/lib/billing/subscription";
+import { isSuperAdminEmail } from "@/lib/brand";
+import { getSessionRole } from "@/lib/auth";
 import {
   billingStatusUnauthorized,
   canAccessCompany,
@@ -9,6 +15,7 @@ import {
 } from "@/lib/billing/workspace-cookies";
 import { loadTenantCompany } from "@/lib/tenant";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
+import { workspaceCookieOptions } from "@/lib/workspace/session";
 
 export async function GET() {
   const ws = await readWorkspaceCookieAuth();
@@ -20,11 +27,14 @@ export async function GET() {
   const company = await loadTenantCompany(ws.companyId);
 
   if (!supabase || !company) {
-    return NextResponse.json({
-      active: false,
-      error: company ? "Database not configured" : "Company not found",
-      companyId: ws.companyId,
-    }, { status: company ? 503 : 404 });
+    return NextResponse.json(
+      {
+        active: false,
+        error: company ? "Database not configured" : "Company not found",
+        companyId: ws.companyId,
+      },
+      { status: company ? 503 : 404 },
+    );
   }
 
   const allowed = await canAccessCompany(ws.email, ws.companyId);
@@ -35,7 +45,7 @@ export async function GET() {
     );
   }
 
-  const bypass = isPaymentBypassEnabled();
+  const bypass = await isPaymentBypassEnabled();
   let active = false;
 
   if (bypass) {
@@ -46,8 +56,11 @@ export async function GET() {
     active = await companyHasPaidBackup(supabase, ws.companyId, company.domain);
   }
 
+  const bypassFlag = await readPaymentBypassFlag();
+
   return NextResponse.json({
     active,
+    bypass: bypassFlag,
     paymentBypass: bypass,
     companyId: ws.companyId,
     domain: company.domain,
@@ -56,4 +69,27 @@ export async function GET() {
     storageLimitGb: company.storage_limit_gb,
     email: ws.email,
   });
+}
+
+export async function POST(req: Request) {
+  const role = await getSessionRole();
+  if (!role?.email || !isSuperAdminEmail(role.email)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let bypass = false;
+  try {
+    const body = (await req.json()) as { bypass?: boolean };
+    bypass = Boolean(body.bypass);
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const res = NextResponse.json({ bypass: bypass ? 1 : 0 });
+  res.cookies.set(
+    PAYMENT_BYPASS_COOKIE,
+    bypass ? "1" : "0",
+    workspaceCookieOptions(60 * 60 * 24 * 30),
+  );
+  return res;
 }

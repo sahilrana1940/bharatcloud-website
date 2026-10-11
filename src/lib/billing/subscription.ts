@@ -8,7 +8,7 @@ export async function companyHasPaidBackup(
   companyId: string,
   companyDomain?: string,
 ): Promise<boolean> {
-  if (isPaymentBypassEnabled()) return true;
+  if (await isPaymentBypassEnabled()) return true;
 
   const { data: co } = await supabase
     .from("companies")

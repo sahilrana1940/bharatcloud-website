@@ -38,7 +38,7 @@ export async function POST() {
     return NextResponse.json({ error: "Company not found" }, { status: 404 });
   }
 
-  const bypass = isPaymentBypassEnabled();
+  const bypass = await isPaymentBypassEnabled();
   let paid = bypass;
 
   if (!paid) {

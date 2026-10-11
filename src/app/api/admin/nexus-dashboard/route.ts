@@ -12,7 +12,7 @@ export async function GET() {
   }
 
   const supabase = await getSupabaseOrNull();
-  const paymentBypass = isPaymentBypassEnabled();
+  const paymentBypass = await isPaymentBypassEnabled();
 
   if (!supabase) {
     return NextResponse.json({

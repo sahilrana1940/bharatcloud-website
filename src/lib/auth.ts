@@ -144,6 +144,7 @@ export function canAccessPath(role: SaasRole, pathname: string): boolean {
     if (pathname.startsWith("/dashboard/employee")) return true;
     const ownerPaths = [
       "/dashboard/owner",
+      "/dashboard/company-admin",
       "/dashboard/vault",
       "/dashboard/team",
       "/dashboard/billing",

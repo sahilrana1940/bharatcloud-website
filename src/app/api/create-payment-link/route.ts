@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     "",
   );
 
-  if (isPaymentBypassEnabled()) {
+  if (await isPaymentBypassEnabled()) {
     const supabase = await getSupabaseOrNull();
     if (supabase) {
       await supabase
