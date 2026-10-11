@@ -75,10 +75,18 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: updErr.message }, { status: 500 });
   }
 
-  await supabase
-    .from("companies")
-    .update({ subscription_status: "active", plan_name: "pro" })
-    .eq("domain", payment.company_domain);
+  const companyId = (payment as { company_id?: string }).company_id;
+  if (companyId) {
+    await supabase
+      .from("companies")
+      .update({ subscription_status: "active", plan_name: "pro" })
+      .eq("id", companyId);
+  } else {
+    await supabase
+      .from("companies")
+      .update({ subscription_status: "active", plan_name: "pro" })
+      .eq("domain", payment.company_domain);
+  }
 
   return NextResponse.json({ ok: true });
 }

@@ -27,7 +27,7 @@ Enable for **Production** and **Preview**. Redeploy.
 1. **Billing** → **I have paid** → redirects to **Team & backup** (set `PAYMENT_AUTO_APPROVE=1` on Vercel to auto-approve UPI for testing).
 2. Big CTA: **Connect Company Google Drive to Start Backup** → OAuth (`drive.readonly`, `gmail.readonly`, `contacts.readonly`).
 3. After OAuth, app calls `POST /api/backup/start-auto` and polls `/api/backup/tick` until Drive status is **Archived**.
-4. Archive uploads go to `ARCHIVE_S3_BUCKET` (default `rjrm-archiver`) as `{company_id}/…` keys.
+4. Archive uploads go to `ARCHIVE_S3_BUCKET` (default `bharatcloud-archiver`) as `{company_id}/…` keys.
 
 Run SQL migration `014_company_backup_jobs.sql` in Supabase.
 

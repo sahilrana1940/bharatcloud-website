@@ -23,7 +23,7 @@ export function getS3Env() {
   const archiveBucket =
     process.env.ARCHIVE_S3_BUCKET?.trim() ||
     process.env.WASABI_ARCHIVE_BUCKET?.trim() ||
-    "rjrm-archiver";
+    "bharatcloud-archiver";
 
   return { endpoint, region, accessKeyId, secretAccessKey, b2bBucket, archiveBucket };
 }

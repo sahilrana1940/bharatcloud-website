@@ -158,7 +158,7 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
     return (
       <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-6 text-sm text-amber-100">
         Archive storage is not configured. Set <code>WASABI_*</code> or <code>E2E_S3_*</code> and{" "}
-        <code>ARCHIVE_S3_BUCKET=rjrm-archiver</code> on Vercel.
+        <code>ARCHIVE_S3_BUCKET</code> (e.g. bharatcloud-archiver) on Vercel.
       </div>
     );
   }
@@ -173,7 +173,7 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
           </h2>
           <p className="mt-2 text-sm text-slate-400">
             One click — we list your entire Drive, compress photos, and store copies in{" "}
-            <span className="text-slate-200">rjrm-archiver</span> for{" "}
+            <span className="text-slate-200">your company archive bucket</span> for{" "}
             <span className="text-slate-200">{userEmail}</span>.
           </p>
           <ul className="mx-auto mt-4 max-w-md text-left text-xs text-slate-500">

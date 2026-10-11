@@ -13,7 +13,7 @@ const PRO_FEATURES = [
   "Automatic full Google Drive archive",
   "Gmail & contacts read for future backup",
   "Encrypted vault + company hot storage",
-  "India-hosted archive bucket (rjrm-archiver)",
+  "India-hosted per-company archive bucket",
   "Team dashboard & per-user backup status",
 ];
 
