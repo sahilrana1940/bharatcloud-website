@@ -21,7 +21,8 @@ export function BillingClient() {
   const router = useRouter();
   const [toast, setToast] = useState("");
   const [active, setActive] = useState(false);
-  const upiId = process.env.NEXT_PUBLIC_UPI_ID || "bharatcloud@upi";
+  const upiId = process.env.NEXT_PUBLIC_UPI_ID || "9469276461@idfcfirst";
+  const payeeName = process.env.NEXT_PUBLIC_UPI_PAYEE_NAME || "Sahil Rana";
 
   useEffect(() => {
     fetch("/api/billing/status")
@@ -33,8 +34,8 @@ export function BillingClient() {
 
   const upiLink = useMemo(
     () =>
-      `upi://pay?pa=${encodeURIComponent(upiId)}&pn=BharatCloud&am=${AMOUNT}&cu=INR`,
-    [upiId],
+      `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${AMOUNT}&cu=INR`,
+    [upiId, payeeName],
   );
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiLink)}`;
@@ -99,7 +100,9 @@ export function BillingClient() {
         <p className="text-sm text-slate-400">Scan to pay</p>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={qrUrl} alt="UPI QR" className="mx-auto mt-4 rounded-xl bg-white p-2" width={220} height={220} />
-        <p className="mt-4 text-xs text-slate-500 break-all">{upiId}</p>
+        <p className="mt-2 text-sm text-slate-300">{payeeName}</p>
+        <p className="mt-1 text-xs text-slate-500 break-all">{upiId}</p>
+        <p className="mt-2 text-[10px] text-slate-600">IDFC FIRST Bank · BharatCloud Pro ₹{AMOUNT}</p>
       </div>
 
       <div className="mt-6 flex max-w-md flex-col gap-3 sm:flex-row">
