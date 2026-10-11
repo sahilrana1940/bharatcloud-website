@@ -2,7 +2,8 @@ import { google } from "googleapis";
 
 import { getGoogleOAuthConfig } from "@/lib/google/config";
 
-export const GOOGLE_DRIVE_OAUTH_SCOPE = "https://www.googleapis.com/auth/drive.file";
+export const GOOGLE_DRIVE_OAUTH_SCOPE =
+  "https://www.googleapis.com/auth/drive.readonly";
 
 export const GOOGLE_DRIVE_OAUTH_SCOPES = [
   "openid",

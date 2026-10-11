@@ -1,6 +1,6 @@
 import { publicBackupUrl } from "@/lib/drive/public-url";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
-import { driveClient } from "@/lib/google/client";
+import { fetchDriveFilesListPage } from "@/lib/google/drive-api";
 import {
   DEMO_DRIVE_FILES,
   DEMO_GOOGLE_DRIVE_FILES,
@@ -87,14 +87,9 @@ export async function listDriveFiles(opts: {
 
     let googleLive: DriveListItem[] = [];
     if (accessToken) {
-      const drive = driveClient(accessToken);
-      if (drive) {
-        const listed = await drive.files.list({
-          pageSize: 50,
-          fields: "files(id,name,size,mimeType,owners,webViewLink)",
-          q: "trashed=false",
-        });
-        googleLive = (listed.data.files || [])
+      try {
+        const listed = await fetchDriveFilesListPage(accessToken, { pageSize: 50 });
+        googleLive = (listed.files || [])
           .filter((f) => f.id && f.name)
           .map((f) => ({
             id: f.id!,
@@ -107,6 +102,8 @@ export async function listDriveFiles(opts: {
             publicLink: null,
             source: "google",
           }));
+      } catch {
+        googleLive = [];
       }
     }
 

@@ -44,15 +44,24 @@ export function WorkspaceShell({
   companyId?: string;
 }) {
   const pathname = usePathname();
-  const [usedGb, setUsedGb] = useState(4.3);
-  const [limitGb, setLimitGb] = useState(50);
+  const [usedGb, setUsedGb] = useState(0);
+  const [limitGb, setLimitGb] = useState(15);
+  const [quotaLabel, setQuotaLabel] = useState("Drive storage");
 
   useEffect(() => {
     fetch("/api/backup/summary")
       .then((r) => r.json())
       .then((s) => {
-        if (s.usedGb != null) setUsedGb(Number(s.usedGb));
-        if (s.limitGb != null) setLimitGb(Number(s.limitGb));
+        if (s.googleDrive?.connected) {
+          setQuotaLabel("Google Drive");
+          if (s.googleDrive.usedGb != null) setUsedGb(Number(s.googleDrive.usedGb));
+          if (s.googleDrive.limitGb != null) setLimitGb(Number(s.googleDrive.limitGb));
+          else if (s.limitGb != null) setLimitGb(Number(s.limitGb));
+        } else {
+          setQuotaLabel("Archive");
+          if (s.usedGb != null) setUsedGb(Number(s.usedGb));
+          if (s.limitGb != null) setLimitGb(Number(s.limitGb));
+        }
       })
       .catch(() => {
         fetch("/api/team/users")
@@ -70,7 +79,10 @@ export function WorkspaceShell({
       });
   }, []);
 
-  const pct = Math.min(100, Math.round((usedGb / limitGb) * 100));
+  const pct = Math.min(
+    100,
+    Math.round((usedGb / Math.max(limitGb, 0.01)) * 100),
+  );
 
   return (
     <div className="flex min-h-screen bg-[#0A0E1A] text-slate-100">
@@ -122,7 +134,7 @@ export function WorkspaceShell({
           </div>
           <div className="mt-3">
             <div className="mb-1 flex justify-between text-[10px] text-slate-500">
-              <span>Storage</span>
+              <span>{quotaLabel}</span>
               <span>{usedGb}GB / {limitGb}GB</span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">

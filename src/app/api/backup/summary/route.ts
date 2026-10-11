@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { getValidGoogleAccessToken } from "@/lib/google/access-token";
+import { fetchDriveAbout } from "@/lib/google/drive-api";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
@@ -68,14 +70,47 @@ export async function GET() {
       ? Math.round((1 - bytesCompressed / bytesOriginal) * 100)
       : 0;
 
+  const archiveUsedGb = Number(member?.drive_used_gb ?? bytesCompressed / 1024 ** 3);
+  const productLimitGb = Number(member?.drive_limit_gb ?? 15);
+
+  let googleDrive: {
+    connected: boolean;
+    usedGb: number;
+    limitGb: number | null;
+  } | null = null;
+
+  try {
+    const accessToken = await getValidGoogleAccessToken(
+      supabase,
+      session.companyId,
+      session.email,
+    );
+    if (accessToken) {
+      const { quota } = await fetchDriveAbout(accessToken);
+      googleDrive = {
+        connected: true,
+        usedGb: quota.usedGb,
+        limitGb: quota.limitGb,
+      };
+    }
+  } catch (e) {
+    console.warn("[backup/summary] drive.about.get failed:", e);
+  }
+
+  const sidebarUsedGb = googleDrive?.usedGb ?? archiveUsedGb;
+  const sidebarLimitGb = googleDrive?.limitGb ?? productLimitGb;
+
   return NextResponse.json({
     filesArchived: files?.length ?? 0,
     bytesOriginal,
     bytesCompressed,
     savedPct: Math.max(0, savedPct),
     driveStatus: member?.drive_sync_status || "idle",
-    usedGb: Number(member?.drive_used_gb ?? bytesCompressed / 1024 ** 3),
-    limitGb: Number(member?.drive_limit_gb ?? 15),
+    usedGb: sidebarUsedGb,
+    limitGb: sidebarLimitGb ?? productLimitGb,
+    archiveUsedGb,
+    archiveLimitGb: productLimitGb,
+    googleDrive,
     jobStatus: job?.status ?? null,
     filesDone: job?.files_done ?? 0,
   });
