@@ -2,7 +2,12 @@ import Link from "next/link";
 
 import { PRICING_PLANS, type PlanId } from "@/lib/b2b/plans";
 import { SiteHeader } from "@/components/b2b/SiteHeader";
-import { BRAND_PARENT, BRAND_PRODUCT } from "@/lib/brand";
+import {
+  BRAND_MISSION,
+  BRAND_PARENT,
+  BRAND_PRODUCT,
+  INDIA_TRUST_POINTS,
+} from "@/lib/brand";
 
 const features = [
   {
@@ -39,8 +44,8 @@ export function LandingPage() {
             </span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-300">
-            Apni team ki files manage karo — premium storage built for Indian
-            companies.
+            {BRAND_MISSION} Apni team ki files manage karo — Bharat ke liye,
+            India ke companies ke liye.
           </p>
           <Link
             href="/signup"
@@ -62,6 +67,33 @@ export function LandingPage() {
               </p>
             </article>
           ))}
+        </section>
+
+        <section
+          className="mx-auto max-w-6xl px-6 py-12"
+          id="bharat"
+          aria-labelledby="bharat-heading"
+        >
+          <h2
+            id="bharat-heading"
+            className="text-center text-2xl font-semibold text-white"
+          >
+            Built for Bharat
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-slate-400">
+            {BRAND_PARENT} + {BRAND_PRODUCT}: Indian name, Indian buyers, storage
+            and servers chosen for India — not a copy of US consumer cloud.
+          </p>
+          <ul className="mx-auto mt-8 grid max-w-3xl gap-4 sm:grid-cols-3">
+            {INDIA_TRUST_POINTS.map((line) => (
+              <li
+                key={line}
+                className="rounded-xl border border-sky-500/20 bg-sky-950/30 px-4 py-3 text-left text-xs leading-relaxed text-sky-100/90"
+              >
+                {line}
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section className="mx-auto max-w-6xl px-6 py-20" id="pricing">
