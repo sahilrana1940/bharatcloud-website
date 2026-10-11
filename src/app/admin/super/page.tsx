@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { SuperAdminClient } from "@/components/admin/SuperAdminClient";
+import { SuperAdminUltraPro } from "@/components/admin/SuperAdminUltraPro";
 import { isSuperAdminEmail } from "@/lib/brand";
 import { getWorkspaceSession } from "@/lib/workspace/session";
 
@@ -9,5 +9,5 @@ export default async function SuperAdminPage() {
   if (!session || !isSuperAdminEmail(session.email)) {
     redirect("/dashboard");
   }
-  return <SuperAdminClient />;
+  return <SuperAdminUltraPro />;
 }
