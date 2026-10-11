@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export async function companyHasPaidBackup(
   supabase: SupabaseClient,
   companyId: string,
-  companyDomain: string,
+  companyDomain?: string,
 ): Promise<boolean> {
   const { data: co } = await supabase
     .from("companies")
@@ -13,12 +13,23 @@ export async function companyHasPaidBackup(
 
   if (co?.subscription_status === "active") return true;
 
-  const { data: payments } = await supabase
+  const { data: byId } = await supabase
     .from("payments")
     .select("id")
-    .eq("company_domain", companyDomain)
+    .eq("company_id", companyId)
     .in("status", ["approved", "paid", "active"])
     .limit(1);
+  if (byId?.length) return true;
 
-  return Boolean(payments?.length);
+  if (companyDomain) {
+    const { data: byDomain } = await supabase
+      .from("payments")
+      .select("id")
+      .eq("company_domain", companyDomain)
+      .in("status", ["approved", "paid", "active"])
+      .limit(1);
+    return Boolean(byDomain?.length);
+  }
+
+  return false;
 }

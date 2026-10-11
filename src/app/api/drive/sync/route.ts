@@ -32,11 +32,12 @@ export async function POST(req: Request) {
         (f) => f.drive_file_id === body.driveFileId,
       );
       if (g) {
-        const s3_path = `rjadam.com/${g.owner_email}/${g.name}`;
+        const demoDomain = process.env.DEMO_COMPANY_DOMAIN || "demo.example.com";
+        const s3_path = `${demoDomain}/${g.owner_email}/${g.name}`;
         const copy = {
           id: `df-demo-${Date.now()}`,
           company_id: g.company_id,
-          company_domain: "rjadam.com",
+          company_domain: demoDomain,
           owner_email: g.owner_email,
           drive_file_id: g.drive_file_id,
           name: g.name,

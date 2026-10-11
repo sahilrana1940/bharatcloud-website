@@ -10,6 +10,6 @@ export async function GET() {
     googleOAuthConfigured: Boolean(clientId && process.env.GOOGLE_CLIENT_SECRET),
     s3Configured: isS3Configured(),
     setupGuideUrl: "/docs/GOOGLE_DRIVE_CONNECT.md",
-    archiveBucket: process.env.ARCHIVE_S3_BUCKET || "rjrm-archiver",
+    archiveBucket: process.env.ARCHIVE_S3_BUCKET || "bharatcloud-archiver",
   });
 }

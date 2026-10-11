@@ -5,7 +5,6 @@ import {
   demoPaymentsList,
 } from "@/lib/payments/store";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
-import { resolveCompanyDomain } from "@/lib/workspace/company";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
 const DEFAULT_AMOUNT = 1999;
@@ -13,8 +12,9 @@ const DEFAULT_AMOUNT = 1999;
 export async function GET() {
   const auth = await requireWorkspace();
   if (auth instanceof NextResponse) return auth;
-  const { session } = auth;
-  const domain = await resolveCompanyDomain(session.companyId, session.email);
+  const { session, tenant } = auth;
+  const companyId = tenant?.companyId ?? session.companyId;
+  const domain = tenant?.company.domain;
   const supabase = await getSupabaseOrNull();
 
   if (!supabase) {
@@ -23,11 +23,21 @@ export async function GET() {
     });
   }
 
-  const { data } = await supabase
+  const primary = await supabase
     .from("payments")
     .select("*")
-    .eq("company_domain", domain)
+    .eq("company_id", companyId)
     .order("created_at", { ascending: false });
+
+  let data = primary.data;
+  if (primary.error?.message.includes("company_id") && domain) {
+    const fallback = await supabase
+      .from("payments")
+      .select("*")
+      .eq("company_domain", domain)
+      .order("created_at", { ascending: false });
+    data = fallback.data;
+  }
 
   return NextResponse.json({ payments: data || [] });
 }
@@ -35,7 +45,9 @@ export async function GET() {
 export async function POST(req: Request) {
   const auth = await requireWorkspace();
   if (auth instanceof NextResponse) return auth;
-  const { session } = auth;
+  const { session, tenant } = auth;
+  const companyId = tenant?.companyId ?? session.companyId;
+  const domain = tenant?.company.domain;
 
   let amount = DEFAULT_AMOUNT;
   try {
@@ -45,11 +57,10 @@ export async function POST(req: Request) {
     /* default amount */
   }
 
-  const domain = await resolveCompanyDomain(session.companyId, session.email);
   const supabase = await getSupabaseOrNull();
 
   if (!supabase) {
-    const row = demoPaymentInsert(domain, amount);
+    const row = demoPaymentInsert(domain || "demo.example.com", amount);
     return NextResponse.json({ ok: true, payment: row });
   }
 
@@ -61,6 +72,7 @@ export async function POST(req: Request) {
   const { data, error } = await supabase
     .from("payments")
     .insert({
+      company_id: companyId,
       company_domain: domain,
       amount,
       status,
@@ -76,7 +88,7 @@ export async function POST(req: Request) {
     await supabase
       .from("companies")
       .update({ subscription_status: "active", plan_name: "pro" })
-      .eq("domain", domain);
+      .eq("id", companyId);
   }
 
   return NextResponse.json({

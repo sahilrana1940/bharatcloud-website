@@ -1,27 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { getWorkspaceSession } from "@/lib/workspace/session";
+import { requireTenant, type WorkspaceSessionSlice } from "@/lib/tenant";
 
 export async function requireWorkspace(
   adminOnly = false,
-): Promise<
-  | {
-      session: {
-        companyId: string;
-        email: string;
-        role: "admin" | "member";
-        saasRole?: "super_admin" | "company_owner" | "employee";
-        isCompanyOwner?: boolean;
-      };
-    }
-  | NextResponse
-> {
-  const session = await getWorkspaceSession();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (adminOnly && session.role !== "admin") {
-    return NextResponse.json({ error: "Admin only" }, { status: 403 });
-  }
-  return { session };
+): Promise<{ session: WorkspaceSessionSlice; tenant?: import("@/lib/tenant").TenantContext } | NextResponse> {
+  const result = await requireTenant(adminOnly);
+  if (result instanceof NextResponse) return result;
+  return { session: result.session, tenant: result.tenant };
 }
