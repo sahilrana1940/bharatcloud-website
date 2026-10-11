@@ -146,7 +146,9 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
             {checkoutLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Upgrade to Pro
           </button>
-          <p className="mt-3 text-xs text-slate-500">Secure checkout via Razorpay · ₹1999/mo</p>
+          <p className="mt-3 text-xs text-slate-500">
+            Or pay via UPI on Billing — plans from ₹999/mo
+          </p>
         </div>
         <BackupValueStrip />
       </>
