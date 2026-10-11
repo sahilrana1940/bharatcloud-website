@@ -26,7 +26,7 @@ const nav = [
   { href: "/dashboard/shared", label: "Shared with me", icon: Share2 },
   { href: "/dashboard/recent", label: "Recent", icon: Clock },
   { href: "/dashboard/trash", label: "Trash", icon: Trash2 },
-  { href: "/dashboard/team", label: "Team", icon: User, admin: true },
+  { href: "/dashboard/team", label: "Team & backup", icon: User },
   { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
 ];
 
@@ -35,13 +35,11 @@ export function WorkspaceShell({
   role,
   userEmail,
   companyId,
-  isCompanyOwner = false,
 }: {
   children: React.ReactNode;
   role: "admin" | "member";
   userEmail: string;
   companyId?: string;
-  isCompanyOwner?: boolean;
 }) {
   const pathname = usePathname();
   const [usedGb, setUsedGb] = useState(4.3);
@@ -75,9 +73,7 @@ export function WorkspaceShell({
         </div>
 
         <nav className="mt-10 flex-1 space-y-1">
-          {nav
-            .filter((l) => !l.admin || role === "admin" || isCompanyOwner)
-            .map((l) => {
+          {nav.map((l) => {
               const active = pathname === l.href;
               return (
                 <Link

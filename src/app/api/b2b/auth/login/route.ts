@@ -75,11 +75,11 @@ export async function POST(req: Request) {
   const wsOpts = workspaceCookieOptions();
   res.cookies.set(WS_COMPANY_COOKIE, workspaceCompanyId, wsOpts);
   res.cookies.set(WS_EMAIL_COOKIE, ownerEmail, wsOpts);
-  res.cookies.set(
-    WS_ROLE_COOKIE,
-    saas.is_company_owner || ownerEmail.startsWith("admin@") ? "admin" : "member",
-    wsOpts,
-  );
+  const workspaceAdmin =
+    saas.is_company_owner ||
+    saas.role === "company_owner" ||
+    ownerEmail.startsWith("admin@");
+  res.cookies.set(WS_ROLE_COOKIE, workspaceAdmin ? "admin" : "member", wsOpts);
   attachSaasRoleCookies(res, saas);
   return res;
 }

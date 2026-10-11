@@ -17,7 +17,13 @@ type Member = {
   drive_limit_gb?: number;
 };
 
-export function TeamPageClient() {
+export function TeamPageClient({
+  canManageTeam = false,
+  userEmail = "",
+}: {
+  canManageTeam?: boolean;
+  userEmail?: string;
+}) {
   const [members, setMembers] = useState<Member[]>([]);
   const [toast, setToast] = useState("");
   const [globalProgress, setGlobalProgress] = useState<string | null>(null);
@@ -110,27 +116,39 @@ export function TeamPageClient() {
           <p className="text-slate-500">Manage backup for every workspace user</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => syncDrive()}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-4 py-2.5 text-sm font-semibold text-white"
-          >
-            <RefreshCw className="h-4 w-4" /> Sync All Drives
-          </button>
-          <button
-            type="button"
-            onClick={() => syncGmail()}
-            className="rounded-xl border border-white/10 bg-[#1E2639] px-4 py-2.5 text-sm text-slate-200"
-          >
-            Sync All Mails
-          </button>
-          <button
-            type="button"
-            onClick={addUsers}
-            className="flex items-center gap-2 rounded-xl border border-cyan-500/40 px-4 py-2.5 text-sm text-cyan-300"
-          >
-            <UserPlus className="h-4 w-4" /> Add User
-          </button>
+          {canManageTeam ? (
+            <>
+              <button
+                type="button"
+                onClick={() => syncDrive()}
+                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                <RefreshCw className="h-4 w-4" /> Sync All Drives
+              </button>
+              <button
+                type="button"
+                onClick={() => syncGmail()}
+                className="rounded-xl border border-white/10 bg-[#1E2639] px-4 py-2.5 text-sm text-slate-200"
+              >
+                Sync All Mails
+              </button>
+              <button
+                type="button"
+                onClick={addUsers}
+                className="flex items-center gap-2 rounded-xl border border-cyan-500/40 px-4 py-2.5 text-sm text-cyan-300"
+              >
+                <UserPlus className="h-4 w-4" /> Add User
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => syncDrive(userEmail)}
+              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-4 py-2.5 text-sm font-semibold text-white"
+            >
+              <RefreshCw className="h-4 w-4" /> Sync my Google Drive
+            </button>
+          )}
         </div>
       </div>
 
@@ -203,20 +221,24 @@ export function TeamPageClient() {
                   <td className="px-4 py-3">{used}GB / {limit}GB</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => syncDrive(m.email)}
-                        className="rounded-lg bg-[#1E3A5F] px-3 py-1.5 text-xs text-blue-300"
-                      >
-                        Sync Drive
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => syncGmail(m.email)}
-                        className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-300"
-                      >
-                        Sync Gmail Now
-                      </button>
+                      {(canManageTeam || m.email === userEmail) && (
+                        <button
+                          type="button"
+                          onClick={() => syncDrive(m.email)}
+                          className="rounded-lg bg-[#1E3A5F] px-3 py-1.5 text-xs text-blue-300"
+                        >
+                          Sync Drive
+                        </button>
+                      )}
+                      {canManageTeam && (
+                        <button
+                          type="button"
+                          onClick={() => syncGmail(m.email)}
+                          className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-300"
+                        >
+                          Sync Gmail Now
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
