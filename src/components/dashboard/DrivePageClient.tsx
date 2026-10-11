@@ -216,7 +216,7 @@ function FileCard({
         </div>
       </button>
       <div className="p-4">
-        <p className="truncate font-bold text-slate-100">{file.name}</p>
+        <p className="truncate font-bold text-slate-900">{file.name}</p>
         <p className="mt-1 text-xs text-slate-400">
           {formatSize(file.size)} • {typeLabel(file.name, file.mime_type)}
         </p>
@@ -304,7 +304,7 @@ export function DrivePageClient({ userEmail }: { isAdmin?: boolean; userEmail: s
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0E1A] px-4 py-6 sm:px-8 lg:px-10">
+    <div className="min-h-screen bg-transparent px-4 py-6 sm:px-8 lg:px-10">
       <header className="flex flex-col gap-4 border-b border-white/5 pb-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">

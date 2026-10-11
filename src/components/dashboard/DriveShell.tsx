@@ -78,14 +78,14 @@ export function DriveShell({
 
   const shellClass = embedded
     ? "px-4 pt-4 sm:px-8"
-    : "min-h-screen overflow-y-auto bg-[#0A0E1A] px-4 pb-[140px] pt-6 sm:px-8 lg:pb-10";
+    : "min-h-screen overflow-y-auto bg-transparent px-4 pb-[140px] pt-6 sm:px-8 lg:pb-10";
 
   return (
     <div className={shellClass}>
       {!embedded && (
-        <header className="flex flex-col gap-2 border-b border-white/5 pb-6 sm:flex-row sm:items-start sm:justify-between">
+        <header className="flex flex-col gap-2 border-b border-slate-200 pb-6 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white">{title}</h1>
+            <h1 className="text-3xl font-bold text-slate-900">{title}</h1>
             <p className="text-slate-500">{subtitle}</p>
           </div>
           <div className="flex items-center gap-2 text-xs text-emerald-400">
@@ -95,7 +95,7 @@ export function DriveShell({
       )}
 
       {listSource === "drive" && source === "bharatcloud" && (
-        <p className="mt-4 rounded-2xl border border-white/10 bg-[#1E2639]/60 px-4 py-3 text-sm text-slate-400">
+        <p className="mt-4 rounded-2xl border border-slate-200 bg-cyan-50/80 px-4 py-3 text-sm text-slate-600">
           Automatic backup runs from{" "}
           <a href="/dashboard/team" className="text-cyan-400 underline">Team &amp; backup</a> after payment.
           Manual upload is disabled.
@@ -103,7 +103,7 @@ export function DriveShell({
       )}
 
       {listSource === "drive" && (
-        <div className="mt-6 flex flex-wrap gap-2 rounded-2xl bg-[#0F1420] p-1.5">
+        <div className="mt-6 flex flex-wrap gap-2 rounded-2xl bg-slate-100 p-1.5">
           <button
             type="button"
             onClick={() => setTab("google")}
@@ -127,14 +127,14 @@ export function DriveShell({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search files, folders, emails..."
-          className="w-full rounded-2xl border border-white/10 bg-[#1E2639] py-2.5 pl-10 pr-4 text-sm text-white"
+          className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 shadow-sm"
         />
       </div>
 
 
       <div className="mt-8">
         {files.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-white/10 py-16 text-center text-slate-500">
+          <p className="rounded-2xl border border-dashed border-slate-200 bg-white py-16 text-center text-slate-500">
             No files found. Upload or sync from Team page.
           </p>
         ) : (

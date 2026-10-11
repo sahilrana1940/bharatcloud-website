@@ -9,7 +9,7 @@ import { VaultUploadBar } from "@/components/personal/VaultUploadBar";
 export function EmployeeUploadClient() {
   const [refreshKey, setRefreshKey] = useState(0);
   return (
-    <div className="min-h-screen overflow-y-auto bg-[#0A0E1A] px-4 pb-[140px] pt-6 sm:px-8">
+    <div className="min-h-screen overflow-y-auto bg-transparent px-4 pb-[140px] pt-6 sm:px-8">
       <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-r from-sky-950/80 via-[#0f1420] to-cyan-950/50 p-6">
         <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-cyan-500/10 blur-2xl" />
         <div className="flex items-start gap-3">

@@ -82,101 +82,101 @@ export default function SuperAdminUltraProPage() {
 
   if (!stats) {
     return (
-      <div className="min-h-screen bg-[#0A0A0B] text-white/60 flex items-center justify-center">
+      <div className="min-h-screen text-slate-500 flex items-center justify-center">
         Loading Nexus Admin…
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0B] text-white p-4 sm:p-6">
+    <div className="min-h-screen text-slate-900 p-4 sm:p-6">
       <header
-        className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-4 mb-6"
+        className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between pro-glass rounded-2xl p-4 mb-6"
       >
         <div className="flex flex-wrap items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#22D3EE]" />
-          <span className="text-xl font-bold tracking-tight">Nexus Admin</span>
-          <span className="text-xs px-2 py-1 rounded-full border border-[#22D3EE]/40 text-[#22D3EE]">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-sky-500" />
+          <span className="text-xl font-bold tracking-tight text-slate-900">Nexus Admin</span>
+          <span className="text-xs px-2 py-1 rounded-full border border-cyan-200 bg-cyan-50 text-cyan-700">
             SUPER ADMIN
           </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
           <div
-            className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/[0.06] border border-white/[0.08]"
+            className="flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200"
           >
-            <span className="text-xs font-bold tracking-wide">PAYMENT_BYPASS</span>
+            <span className="text-xs font-bold tracking-wide text-slate-700">PAYMENT_BYPASS</span>
             <button
               type="button"
               disabled={toggling}
               onClick={toggleBypass}
-              className={`relative w-12 h-7 rounded-full transition ${bypass ? "bg-[#22D3EE]" : "bg-white/20"}`}
+              className={`relative w-12 h-7 rounded-full transition ${bypass ? "bg-cyan-500" : "bg-slate-300"}`}
               aria-pressed={bypass}
             >
               <span
                 className={`absolute top-1 left-0 w-5 h-5 bg-white rounded-full shadow transition-transform ${bypass ? "translate-x-6" : "translate-x-1"}`}
               />
             </button>
-            <span className="text-xs text-white/60">
+            <span className="text-xs text-slate-500">
               {bypass ? "ON (1) Test" : "OFF (0) Prod"}
             </span>
           </div>
 
           <div className="relative hidden md:block">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-white/40" />
+            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
             <input
               placeholder="Search companies, users, logs..."
-              className="bg-white/[0.06] border border-white/[0.08] rounded-xl pl-10 pr-4 py-2 w-[280px] text-sm outline-none focus:border-[#22D3EE]/50"
+              className="bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 w-[280px] text-sm outline-none focus:border-cyan-400"
             />
           </div>
-          <Bell className="w-5 h-5 text-white/70" />
-          <Settings className="w-5 h-5 text-white/70" />
+          <Bell className="w-5 h-5 text-slate-500" />
+          <Settings className="w-5 h-5 text-slate-500" />
         </div>
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <MetricCard
           title="Companies"
-          icon={<Building2 className="w-4 h-4 text-[#22D3EE]" />}
+          icon={<Building2 className="w-4 h-4 text-cyan-600" />}
           value={stats.data.companies.toLocaleString()}
           sub="Registered tenants"
         />
         <MetricCard
           title="Billing"
-          icon={<CreditCard className="w-4 h-4 text-[#22D3EE]" />}
+          icon={<CreditCard className="w-4 h-4 text-cyan-600" />}
           value={`₹${stats.data.billing.toLocaleString()}`}
           sub="Approved payments"
         />
         <MetricCard
           title="Backups"
-          icon={<CloudUpload className="w-4 h-4 text-[#22D3EE]" />}
+          icon={<CloudUpload className="w-4 h-4 text-cyan-600" />}
           value={stats.data.backups.toLocaleString()}
           sub="Backup job records"
         />
         <MetricCard
           title="User Access"
-          icon={<Users className="w-4 h-4 text-[#22D3EE]" />}
+          icon={<Users className="w-4 h-4 text-cyan-600" />}
           value={stats.data.users.toLocaleString()}
           sub="Workspace members"
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <section className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5">
-          <h3 className="font-bold mb-4 text-[#22D3EE]">Recent Companies</h3>
+        <section className="pro-glass rounded-2xl p-5">
+          <h3 className="font-bold mb-4 text-cyan-700">Recent Companies</h3>
           <div className="space-y-0">
             {stats.recentCompanies.map((c) => (
               <div
                 key={c.name}
-                className="flex justify-between items-center gap-2 py-3 border-b border-white/[0.06] text-sm"
+                className="flex justify-between items-center gap-2 py-3 border-b border-slate-100 text-sm"
               >
-                <span className="truncate flex-1">{c.name}</span>
-                <span className="text-xs px-2 py-1 bg-white/10 rounded shrink-0">{c.plan}</span>
+                <span className="truncate flex-1 text-slate-800">{c.name}</span>
+                <span className="text-xs px-2 py-1 bg-slate-100 rounded shrink-0 text-slate-600">{c.plan}</span>
                 <span
                   className={`text-xs px-2 py-1 rounded shrink-0 ${
                     c.status === "Suspended"
-                      ? "bg-red-500/20 text-red-400"
-                      : "bg-green-500/20 text-green-400"
+                      ? "bg-red-50 text-red-600"
+                      : "bg-emerald-50 text-emerald-700"
                   }`}
                 >
                   {c.status}
@@ -186,28 +186,28 @@ export default function SuperAdminUltraProPage() {
           </div>
         </section>
 
-        <section className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5">
-          <h3 className="font-bold mb-4 text-[#22D3EE]">System Logs</h3>
+        <section className="pro-glass rounded-2xl p-5">
+          <h3 className="font-bold mb-4 text-cyan-700">System Logs</h3>
           <div className="flex flex-wrap gap-2 mb-3 text-xs">
             {(
               [
-                ["all", "All", "bg-[#22D3EE]/20 text-[#22D3EE]"],
-                [402, "402", "bg-red-500/20 text-red-300"],
-                [401, "401", "bg-yellow-500/20 text-yellow-300"],
-                [200, "200", "bg-green-500/20 text-green-300"],
+                ["all", "All", "bg-cyan-50 text-cyan-700"],
+                [402, "402", "bg-red-50 text-red-600"],
+                [401, "401", "bg-amber-50 text-amber-700"],
+                [200, "200", "bg-emerald-50 text-emerald-700"],
               ] as const
             ).map(([key, label, cls]) => (
               <button
                 key={String(key)}
                 type="button"
                 onClick={() => setLogFilter(key as LogFilter)}
-                className={`px-2 py-1 rounded transition ${cls} ${logFilter === key ? "ring-1 ring-white/30" : "opacity-70"}`}
+                className={`px-2 py-1 rounded transition ${cls} ${logFilter === key ? "ring-1 ring-cyan-300" : "opacity-80"}`}
               >
                 {label}
               </button>
             ))}
           </div>
-          <div className="text-xs space-y-2 font-mono text-white/60 max-h-64 overflow-y-auto">
+          <div className="text-xs space-y-2 font-mono text-slate-600 max-h-64 overflow-y-auto">
             {filteredLogs.map((log, i) => (
               <p key={i}>
                 <LogCode code={log.code} />
@@ -215,7 +215,7 @@ export default function SuperAdminUltraProPage() {
                 {log.message}
               </p>
             ))}
-            {!filteredLogs.length && <p className="text-white/40">No logs for this filter.</p>}
+            {!filteredLogs.length && <p className="text-slate-400">No logs for this filter.</p>}
           </div>
         </section>
       </div>
@@ -237,20 +237,20 @@ function MetricCard({
   return (
     <motion.div
       whileHover={{ y: -2 }}
-      className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5"
+      className="pro-glass rounded-2xl p-5"
     >
-      <div className="flex gap-2 items-center text-white/60 text-sm mb-2">
+      <div className="flex gap-2 items-center text-slate-500 text-sm mb-2">
         {icon}
         {title}
       </div>
-      <div className="text-3xl font-bold">{value}</div>
-      <div className="text-xs text-white/50 mt-1">{sub}</div>
+      <div className="text-3xl font-bold text-slate-900">{value}</div>
+      <div className="text-xs text-slate-500 mt-1">{sub}</div>
     </motion.div>
   );
 }
 
 function LogCode({ code }: { code: number }) {
-  if (code === 402) return <span className="text-red-400">402 PAYMENT_REQUIRED</span>;
-  if (code === 401) return <span className="text-yellow-400">401 UNAUTHORIZED</span>;
-  return <span className="text-green-400">200 OK</span>;
+  if (code === 402) return <span className="text-red-600">402 PAYMENT_REQUIRED</span>;
+  if (code === 401) return <span className="text-amber-600">401 UNAUTHORIZED</span>;
+  return <span className="text-emerald-600">200 OK</span>;
 }

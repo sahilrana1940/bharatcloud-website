@@ -41,14 +41,14 @@ export function PaymentsAdminClient({ authed }: { authed: boolean }) {
 
   if (!authed) {
     return (
-      <div className="min-h-screen bg-[#0A0E1A] p-8 text-slate-300">
+      <div className="min-h-screen bg-transparent p-8 text-slate-300">
         <p>Admin login required. Use super admin or workspace admin session.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen overflow-y-auto bg-[#0A0E1A] px-4 pb-[140px] pt-6 sm:px-8">
+    <div className="min-h-screen overflow-y-auto bg-transparent px-4 pb-[140px] pt-6 sm:px-8">
       <h1 className="text-3xl font-bold text-white">Pending payments</h1>
       <div className="mt-8 overflow-hidden rounded-2xl border border-white/10 bg-[#1E2639]">
         <table className="w-full text-left text-sm text-slate-200">

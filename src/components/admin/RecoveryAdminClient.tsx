@@ -42,7 +42,7 @@ export function RecoveryAdminClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0E1A] px-4 py-8 text-slate-100">
+    <div className="min-h-screen bg-transparent px-4 py-8 text-slate-900">
       <h1 className="text-2xl font-bold">Recovery requests</h1>
       {code && <p className="mt-2 text-sm text-amber-300">{code}</p>}
       <ul className="mt-6 space-y-3">

@@ -51,7 +51,7 @@ export function SuperAdminClient() {
   const gb = (data.storageUsed / 1024 ** 3).toFixed(2);
 
   return (
-    <div className="min-h-screen bg-[#0A0E1A] px-4 py-8 text-slate-100">
+    <div className="min-h-screen bg-transparent px-4 py-8 text-slate-900">
       <h1 className="text-2xl font-bold">Super Admin</h1>
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-xl bg-[#1E2639] p-4">Users: {data.users}</div>

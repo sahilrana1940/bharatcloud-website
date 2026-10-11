@@ -46,14 +46,16 @@ export function ProPageHeader({
     <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         {eyebrow && (
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#22D3EE]">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-600">
             {eyebrow}
           </p>
         )}
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+        <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
           {title}
         </h1>
-        {description && <p className="mt-2 max-w-2xl text-sm text-white/55">{description}</p>}
+        {description && (
+          <p className="mt-2 max-w-2xl text-sm text-slate-600">{description}</p>
+        )}
       </div>
       {action}
     </header>
@@ -73,12 +75,12 @@ export function ProStatCard({
 }) {
   return (
     <GlassPanel hover className="p-5">
-      <div className="mb-2 flex items-center gap-2 text-sm text-white/55">
+      <div className="mb-2 flex items-center gap-2 text-sm text-slate-500">
         {icon}
         <span>{label}</span>
       </div>
-      <p className="text-3xl font-bold text-white">{value}</p>
-      {hint && <p className="mt-1 text-xs text-white/45">{hint}</p>}
+      <p className="text-3xl font-bold text-slate-900">{value}</p>
+      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
     </GlassPanel>
   );
 }
@@ -99,7 +101,7 @@ export function ProPrimaryButton({
   disabled?: boolean;
 }) {
   const cls = cn(
-    "inline-flex items-center justify-center gap-2 rounded-xl bg-[#22D3EE] px-6 py-3 text-sm font-bold text-slate-900 shadow-lg shadow-cyan-500/25 transition hover:bg-cyan-300 disabled:opacity-50",
+    "inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-sky-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-cyan-500/25 transition hover:from-cyan-400 hover:to-sky-400 disabled:opacity-50",
     className,
   );
   if (href) {
@@ -129,7 +131,7 @@ export function ProGhostButton({
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/[0.04] px-6 py-3 text-sm font-semibold text-white transition hover:border-[#22D3EE]/40 hover:bg-white/[0.08]",
+        "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-cyan-300 hover:text-cyan-700",
         className,
       )}
     >

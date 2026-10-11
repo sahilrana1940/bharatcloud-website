@@ -71,18 +71,18 @@ export function OwnerDashboardClient() {
         <ProStatCard
           label="Team members"
           value={String(members.length)}
-          icon={<Users className="h-4 w-4 text-[#22D3EE]" />}
+          icon={<Users className="h-4 w-4 text-cyan-600" />}
         />
         <ProStatCard
           label="Storage used"
           value={`${totalStorage.toFixed(1)} GB`}
-          icon={<HardDrive className="h-4 w-4 text-[#22D3EE]" />}
+          icon={<HardDrive className="h-4 w-4 text-cyan-600" />}
         />
         <ProStatCard
           label="Billing"
           value="UPI / Pro"
           hint="Manage subscription"
-          icon={<Wallet className="h-4 w-4 text-[#22D3EE]" />}
+          icon={<Wallet className="h-4 w-4 text-cyan-600" />}
         />
       </div>
 
@@ -90,30 +90,30 @@ export function OwnerDashboardClient() {
         <button
           type="button"
           onClick={() => syncAll("drive")}
-          className="rounded-xl bg-[#22D3EE] px-4 py-2 text-sm font-bold text-slate-900"
+          className="rounded-xl bg-gradient-to-r from-cyan-500 to-sky-500 px-4 py-2 text-sm font-bold text-white"
         >
           Sync all drives
         </button>
         <button
           type="button"
           onClick={() => syncAll("gmail")}
-          className="rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2 text-sm text-white/80"
+          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
         >
           Sync all mail
         </button>
         <Link
           href="/dashboard/team"
-          className="rounded-xl border border-white/15 px-4 py-2 text-sm text-white/80"
+          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
         >
           Team settings
         </Link>
       </div>
-      {msg && <p className="mb-4 text-sm text-[#22D3EE]">{msg}</p>}
+      {msg && <p className="mb-4 text-sm text-cyan-600">{msg}</p>}
 
       <ProTableWrap>
         <table className="w-full min-w-[560px] text-left text-sm">
           <thead>
-            <tr className="border-b border-white/[0.08] text-xs uppercase text-white/45">
+            <tr className="border-b border-slate-200 text-xs uppercase text-slate-500">
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Drive</th>
@@ -122,9 +122,9 @@ export function OwnerDashboardClient() {
           </thead>
           <tbody>
             {members.map((m) => (
-              <tr key={m.email} className="border-b border-white/[0.06]">
+              <tr key={m.email} className="border-b border-slate-100">
                 <td className="px-4 py-3">{m.email}</td>
-                <td className="px-4 py-3 text-white/70">{m.name || "—"}</td>
+                <td className="px-4 py-3 text-slate-600">{m.name || "—"}</td>
                 <td className="px-4 py-3 capitalize">{m.drive_sync_status || "idle"}</td>
                 <td className="px-4 py-3 capitalize">{m.email_sync_status || "idle"}</td>
               </tr>
@@ -135,7 +135,7 @@ export function OwnerDashboardClient() {
 
       <GlassPanel className="mt-8 p-6">
         <h2 className="text-lg font-semibold">Billing & upgrades</h2>
-        <p className="mt-2 text-sm text-white/55">UPI subscription and Razorpay links for your company.</p>
+        <p className="mt-2 text-sm text-slate-600">UPI subscription and Razorpay links for your company.</p>
         <ProPrimaryButton href="/dashboard/billing" className="mt-4">
           Open billing
         </ProPrimaryButton>

@@ -102,27 +102,27 @@ function Shell({
         <ProStatCard
           label="Storage"
           value={storageLabel}
-          icon={<Building2 className="h-4 w-4 text-[#22D3EE]" />}
+          icon={<Building2 className="h-4 w-4 text-cyan-600" />}
         />
         <ProStatCard
           label="Active backups"
           value={String(activeBackups)}
-          icon={<CloudUpload className="h-4 w-4 text-[#22D3EE]" />}
+          icon={<CloudUpload className="h-4 w-4 text-cyan-600" />}
         />
         <ProStatCard
           label="Members"
           value={String(members)}
-          icon={<Users className="h-4 w-4 text-[#22D3EE]" />}
+          icon={<Users className="h-4 w-4 text-cyan-600" />}
         />
       </div>
 
       <ProTableWrap>
-        <h2 className="border-b border-white/[0.08] px-5 py-4 font-bold text-[#22D3EE]">
+        <h2 className="border-b border-slate-200 px-5 py-4 font-bold text-cyan-700">
           Recent backup jobs
         </h2>
         <table className="w-full min-w-[520px] text-left text-sm">
             <thead>
-              <tr className="border-b border-white/[0.08] text-xs uppercase text-white/45">
+              <tr className="border-b border-slate-200 text-xs uppercase text-slate-500">
                 <th className="px-4 py-3">User</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Progress</th>
@@ -131,18 +131,18 @@ function Shell({
             </thead>
             <tbody>
               {jobs.map((j, i) => (
-                <tr key={i} className="border-b border-white/[0.06]">
+                <tr key={i} className="border-b border-slate-100">
                   <td className="px-4 py-3">{j.owner_email}</td>
                   <td className="px-4 py-3 capitalize">{j.status}</td>
                   <td className="px-4 py-3">{j.files_done}/{j.files_total}</td>
-                  <td className="px-4 py-3 text-white/60">
+                  <td className="px-4 py-3 text-slate-500">
                     {new Date(j.updated_at).toLocaleString()}
                   </td>
                 </tr>
               ))}
               {!jobs.length && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-white/40">
+                  <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
                     No backup jobs yet.
                   </td>
                 </tr>

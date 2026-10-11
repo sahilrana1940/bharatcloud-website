@@ -7,7 +7,7 @@ import { VaultGallery } from "@/components/personal/VaultGallery";
 
 export function EmployeeDashboardClient() {
   return (
-    <div className="min-h-screen overflow-y-auto bg-[#0A0E1A] px-4 pb-[140px] pt-8 sm:px-8">
+    <div className="min-h-screen overflow-y-auto bg-transparent px-4 pb-[140px] pt-8 sm:px-8">
       <h1 className="text-2xl font-bold text-white">Employee workspace</h1>
       <p className="text-slate-500">Upload CCTV and search company vault (read-only)</p>
 
@@ -21,7 +21,7 @@ export function EmployeeDashboardClient() {
         </Link>
         <Link
           href="/dashboard/employee/vault"
-          className="flex min-h-[120px] flex-col items-center justify-center gap-3 rounded-2xl border border-white/10 bg-[#1E2639] p-6 text-center font-semibold text-slate-100"
+          className="flex min-h-[120px] flex-col items-center justify-center gap-3 rounded-2xl border border-white/10 bg-[#1E2639] p-6 text-center font-semibold text-slate-900"
         >
           <Search className="h-10 w-10 text-cyan-400" />
           Search Vault

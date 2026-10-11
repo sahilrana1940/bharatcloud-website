@@ -78,22 +78,22 @@ export function AdminDashboardClient() {
           <ProStatCard
             label="Companies"
             value={String(stats.companies)}
-            icon={<Building2 className="h-4 w-4 text-[#22D3EE]" />}
+            icon={<Building2 className="h-4 w-4 text-cyan-600" />}
           />
           <ProStatCard
             label="Revenue"
             value={`₹${stats.revenue.toLocaleString()}`}
-            icon={<IndianRupee className="h-4 w-4 text-[#22D3EE]" />}
+            icon={<IndianRupee className="h-4 w-4 text-cyan-600" />}
           />
           <ProStatCard
             label="Storage"
             value={`${stats.storageGb.toFixed(1)} GB`}
-            icon={<HardDrive className="h-4 w-4 text-[#22D3EE]" />}
+            icon={<HardDrive className="h-4 w-4 text-cyan-600" />}
           />
           <ProStatCard
             label="Employees"
             value={String(stats.employees)}
-            icon={<Users className="h-4 w-4 text-[#22D3EE]" />}
+            icon={<Users className="h-4 w-4 text-cyan-600" />}
           />
         </div>
       )}
@@ -106,8 +106,8 @@ export function AdminDashboardClient() {
             onClick={() => setTab(t)}
             className={`rounded-xl px-4 py-2 text-sm font-semibold capitalize transition ${
               tab === t
-                ? "bg-[#22D3EE] text-slate-900"
-                : "border border-white/10 bg-white/[0.04] text-white/60 hover:text-white"
+                ? "bg-gradient-to-r from-cyan-500 to-sky-500 text-white"
+                : "border border-slate-200 bg-white text-slate-600 hover:text-slate-900"
             }`}
           >
             {t}
@@ -119,7 +119,7 @@ export function AdminDashboardClient() {
         <ProTableWrap>
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
-              <tr className="border-b border-white/[0.08] text-xs uppercase tracking-wide text-white/45">
+              <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-4 py-3">Domain</th>
                 <th className="px-4 py-3">Owner</th>
                 <th className="px-4 py-3">Employees</th>
@@ -130,16 +130,16 @@ export function AdminDashboardClient() {
             </thead>
             <tbody>
               {companies.map((c) => (
-                <tr key={c.domain} className="border-b border-white/[0.06]">
+                <tr key={c.domain} className="border-b border-slate-100">
                   <td className="px-4 py-3 font-medium">{c.domain}</td>
-                  <td className="px-4 py-3 text-white/70">{c.owner_email}</td>
+                  <td className="px-4 py-3 text-slate-600">{c.owner_email}</td>
                   <td className="px-4 py-3">{c.employees}</td>
                   <td className="px-4 py-3">{c.storage_gb} GB</td>
                   <td className="px-4 py-3 capitalize">{c.status}</td>
                   <td className="px-4 py-3">
                     <Link
                       href={`/dashboard/vault?domain=${encodeURIComponent(c.domain)}`}
-                      className="rounded-lg bg-[#22D3EE]/20 px-3 py-1.5 text-xs font-semibold text-[#22D3EE]"
+                      className="rounded-lg bg-cyan-50 px-3 py-1.5 text-xs font-semibold text-cyan-700"
                     >
                       View vault
                     </Link>
@@ -153,7 +153,7 @@ export function AdminDashboardClient() {
         <ProTableWrap>
           <table className="w-full min-w-[480px] text-left text-sm">
             <thead>
-              <tr className="border-b border-white/[0.08] text-xs uppercase tracking-wide text-white/45">
+              <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-4 py-3">Domain</th>
                 <th className="px-4 py-3">Amount</th>
                 <th className="px-4 py-3">Date</th>
@@ -162,17 +162,17 @@ export function AdminDashboardClient() {
             </thead>
             <tbody>
               {payments.map((p) => (
-                <tr key={p.id} className="border-b border-white/[0.06]">
+                <tr key={p.id} className="border-b border-slate-100">
                   <td className="px-4 py-3">{p.company_domain}</td>
                   <td className="px-4 py-3">₹{p.amount}</td>
-                  <td className="px-4 py-3 text-white/60">
+                  <td className="px-4 py-3 text-slate-500">
                     {new Date(p.created_at).toLocaleString()}
                   </td>
                   <td className="px-4 py-3">
                     <button
                       type="button"
                       onClick={() => approve(p.id)}
-                      className="rounded-lg bg-[#22D3EE] px-3 py-1.5 text-xs font-bold text-slate-900"
+                      className="rounded-lg bg-gradient-to-r from-cyan-500 to-sky-500 px-3 py-1.5 text-xs font-bold text-white"
                     >
                       Approve
                     </button>

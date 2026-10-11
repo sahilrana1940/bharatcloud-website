@@ -39,7 +39,7 @@ export function StorageAdminClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0E1A] px-4 pb-20 pt-8 text-slate-100 sm:px-8">
+    <div className="min-h-screen bg-transparent px-4 pb-20 pt-8 text-slate-900 sm:px-8">
       <h1 className="text-3xl font-bold">Storage tiers</h1>
       <p className="text-slate-500">Hot / Cold / Vault — private buckets, signed URLs only</p>
 
@@ -72,7 +72,7 @@ export function StorageAdminClient() {
           value={restoreId}
           onChange={(e) => setRestoreId(e.target.value)}
           placeholder="personal_vault UUID"
-          className="mt-3 w-full rounded-lg border border-white/10 bg-[#0A0E1A] px-3 py-2 text-sm"
+          className="mt-3 w-full rounded-lg border border-white/10 bg-transparent px-3 py-2 text-sm"
         />
         <button
           type="button"

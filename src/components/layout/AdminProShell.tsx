@@ -29,21 +29,26 @@ export function AdminProShell({ children }: { children: React.ReactNode }) {
   const fullBleed = pathname === "/admin/super";
 
   if (fullBleed) {
-    return <div className="min-h-screen bg-[#0A0A0B] text-white">{children}</div>;
+    return (
+      <div className="relative min-h-screen bg-slate-50 text-slate-900">
+        <ProMeshBackground />
+        <div className="relative">{children}</div>
+      </div>
+    );
   }
 
   return (
-    <div className="relative min-h-screen bg-[#0A0A0B] text-white">
+    <div className="relative min-h-screen bg-slate-50 text-slate-900">
       <ProMeshBackground />
       <div className="relative flex min-h-screen">
-        <aside className="hidden w-64 shrink-0 flex-col border-r border-white/[0.08] bg-black/20 p-5 lg:flex">
+        <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white/80 p-5 backdrop-blur-xl lg:flex">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#22D3EE] text-sm font-black text-slate-900">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-sky-600 text-sm font-black text-white">
               AD
             </span>
-            <BrandMark titleClass="text-white" accentClass="text-[#22D3EE]" href="/admin" />
+            <BrandMark titleClass="text-slate-900" accentClass="text-cyan-600" href="/admin" />
           </div>
-          <p className="mt-2 text-[10px] uppercase tracking-widest text-white/40">Platform admin</p>
+          <p className="mt-2 text-[10px] uppercase tracking-widest text-slate-400">Platform admin</p>
           <nav className="mt-8 flex-1 space-y-1">
             {links.map((l) => {
               const active = l.exact ? pathname === l.href : pathname.startsWith(l.href);
@@ -54,8 +59,8 @@ export function AdminProShell({ children }: { children: React.ReactNode }) {
                   className={cn(
                     "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
                     active
-                      ? "bg-[#22D3EE]/20 text-[#22D3EE]"
-                      : "text-white/55 hover:bg-white/[0.06] hover:text-white",
+                      ? "bg-cyan-50 text-cyan-700"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                   )}
                 >
                   <l.icon className="h-4 w-4 shrink-0" />
@@ -64,7 +69,7 @@ export function AdminProShell({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>
-          <Link href="/dashboard/drive" className="text-xs text-white/40 hover:text-[#22D3EE]">
+          <Link href="/dashboard/drive" className="text-xs text-slate-500 hover:text-cyan-600">
             ← Back to workspace
           </Link>
         </aside>
