@@ -20,6 +20,7 @@ import {
   Upload,
   Search,
   Building2,
+  Mail,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -43,6 +44,7 @@ const ICONS = {
   Upload,
   Search,
   Building: Building2,
+  Mail,
 } as const;
 
 export function WorkspaceShell({

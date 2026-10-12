@@ -14,6 +14,7 @@ export const WORKSPACE_NAV: WorkspaceNavItem[] = [
   { href: "/dashboard/drive", label: "My Drive", icon: "HardDrive", for: "employee" },
   { href: "/dashboard/employee/upload", label: "Upload video", icon: "Upload", for: "employee" },
   { href: "/dashboard/employee/vault", label: "Search vault", icon: "Search", for: "employee" },
+  { href: "/dashboard/employee/mail", label: "My mail archive", icon: "Mail", for: "employee" },
   { href: "/dashboard/owner", label: "Owner hub", icon: "LayoutDashboard", for: "owner" },
   { href: "/dashboard/company-admin", label: "Company admin", icon: "Building", for: "owner" },
   { href: "/dashboard/drive", label: "Drive", icon: "HardDrive", for: "owner" },
