@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { OwnerDashboardClient } from "@/components/dashboard/OwnerDashboardClient";
-import { getSessionRole } from "@/lib/auth";
+import { getUserRole } from "@/lib/auth";
 import { getWorkspaceSession } from "@/lib/workspace/session";
 
 export default async function OwnerDashboardPage() {

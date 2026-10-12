@@ -9,10 +9,15 @@ import type { SaasRole } from "@/lib/workspace/session";
 
 function readRole(req: NextRequest): SaasRole {
   const email = req.cookies.get("bc_workspace_email")?.value?.toLowerCase();
+  const isOwnerCookie = req.cookies.get("bc_is_company_owner")?.value === "1";
+  const wsAdmin = req.cookies.get("bc_workspace_role")?.value === "admin";
+  if (isOwnerCookie || wsAdmin) return "company_owner";
+
   const cached = req.cookies.get("bc_saas_role")?.value as SaasRole | undefined;
-  if (cached) return cached;
+  if (cached === "company_owner" || cached === "super_admin") return cached;
   if (isSuperAdminEmail(email)) return "super_admin";
   if (email?.startsWith("admin@")) return "company_owner";
+  if (cached) return cached;
   return "employee";
 }
 
@@ -36,6 +41,13 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     return NextResponse.next();
+  }
+
+  if (
+    role === "company_owner" &&
+    (pathname === "/dashboard/employee" || pathname.startsWith("/dashboard/employee/"))
+  ) {
+    return NextResponse.redirect(new URL("/dashboard/owner", req.url));
   }
 
   if (pathname.startsWith("/dashboard") || pathname.startsWith("/settings")) {
