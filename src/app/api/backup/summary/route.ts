@@ -21,11 +21,25 @@ export async function GET() {
     });
   }
 
-  const { data: files, error: filesErr } = await supabase
+  const email = session.email.toLowerCase();
+  const { data: myJobs } = await supabase
+    .from("company_backup_jobs")
+    .select("id")
+    .eq("company_id", session.companyId)
+    .eq("owner_email", email);
+  const myJobIds = (myJobs || []).map((j) => j.id as string);
+
+  const filesQuery = supabase
     .from("company_archive_files")
-    .select("original_size, compressed_size")
+    .select("original_size, compressed_size, job_id")
     .eq("company_id", session.companyId)
     .eq("status", "archived");
+
+  const { data: files, error: filesErr } = await filesQuery;
+  const scopedFiles =
+    myJobIds.length > 0
+      ? (files || []).filter((f) => f.job_id && myJobIds.includes(f.job_id as string))
+      : [];
 
   if (filesErr?.message.includes("company_archive_files")) {
     return NextResponse.json({
@@ -44,7 +58,7 @@ export async function GET() {
 
   let bytesOriginal = 0;
   let bytesCompressed = 0;
-  for (const f of files || []) {
+  for (const f of scopedFiles) {
     bytesOriginal += Number(f.original_size || 0);
     bytesCompressed += Number(f.compressed_size || 0);
   }
@@ -101,7 +115,7 @@ export async function GET() {
   const sidebarLimitGb = googleDrive?.limitGb ?? productLimitGb;
 
   return NextResponse.json({
-    filesArchived: files?.length ?? 0,
+    filesArchived: scopedFiles.length,
     bytesOriginal,
     bytesCompressed,
     savedPct: Math.max(0, savedPct),

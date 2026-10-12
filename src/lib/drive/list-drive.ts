@@ -144,11 +144,8 @@ export async function listDriveFiles(opts: {
   if (mode === "recent") query = query.order("created_at", { ascending: false }).limit(20);
   else query = query.order("created_at", { ascending: false });
 
-  const companyVault = mode === "vault" && (saasRole === "company_owner" || saasRole === "employee");
-  if (mode === "my-uploads") {
+  if (mode === "my-uploads" || mode === "vault") {
     query = query.eq("owner_email", session.email);
-  } else if (companyVault) {
-    /* all files in company_domain */
   } else if (session.role === "member" || saasRole === "employee") {
     query = query.eq("owner_email", session.email);
   } else if (ownerParam) {
@@ -169,7 +166,7 @@ export async function listDriveFiles(opts: {
     if (mode === "bharatcloud") {
       fallback = fallback.eq("backup_status", "backedup");
     }
-    if (mode === "my-uploads" || session.role === "member" || saasRole === "employee") {
+    if (mode === "my-uploads" || mode === "vault" || session.role === "member" || saasRole === "employee") {
       fallback = fallback.eq("owner_email", session.email);
     } else if (ownerParam) {
       fallback = fallback.eq("owner_email", ownerParam);
