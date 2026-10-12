@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   createGoogleDriveOAuth2Client,
-  GOOGLE_DRIVE_OAUTH_SCOPES,
+  googleDriveOAuthScopeList,
 } from "@/lib/google/drive-oauth";
 import { signGoogleOAuthState } from "@/lib/google/oauth-state";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
@@ -23,12 +23,9 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const returnTo = url.searchParams.get("returnTo") || "/settings?drive=connected";
-  const includeGmail = url.searchParams.get("gmail") === "1";
+  const includeGmail = url.searchParams.get("gmail") !== "0";
 
-  const scopes = GOOGLE_DRIVE_OAUTH_SCOPES.split(" ");
-  if (includeGmail) {
-    scopes.push("https://www.googleapis.com/auth/gmail.readonly");
-  }
+  const scopes = googleDriveOAuthScopeList(includeGmail);
 
   const state = signGoogleOAuthState({
     companyId: session.companyId,

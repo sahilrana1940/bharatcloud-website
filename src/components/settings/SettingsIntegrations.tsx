@@ -39,7 +39,7 @@ export function SettingsIntegrations() {
     setBusy(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/auth/google/drive/url");
+      const res = await fetch("/api/auth/google/drive/url?gmail=1");
       const j = await res.json();
       if (!res.ok || !j.url) {
         setMessage(j.error || "Could not start Google OAuth");
