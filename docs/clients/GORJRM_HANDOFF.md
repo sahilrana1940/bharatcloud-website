@@ -59,7 +59,11 @@ Har row ke liye **teen steps** same hain:
 SELECT cu.email, cu.role, cu.saas_role, cu.display_name
 FROM company_users cu
 JOIN companies c ON c.id = cu.company_id
-WHERE c.domain = 'gorjrmcourier.com'
+WHERE c.domain = 'gorjrmcourier.com';
+
+-- Login tracking (NOT auth public.profiles — use workspace_profiles):
+SELECT email, company_id, last_login_at FROM workspace_profiles
+WHERE email LIKE '%@gorjrmcourier.com'
 ORDER BY
   CASE WHEN cu.email = c.admin_email THEN 0 ELSE 1 END,
   cu.email;
