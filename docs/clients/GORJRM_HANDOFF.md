@@ -38,16 +38,10 @@ Har row ke liye **teen steps** same hain:
 
 **UI:** Owner login → `/dashboard/company-admin` — address card + live staff list + checklist.
 
-### Mail (Gmail backup) — ek company, ek list
+### Backup scope (GOR JRM)
 
-| Kaun | Kya dikhega |
-|------|-------------|
-| **Owner / admin** (`info@`) | **Emails** menu → **Company mail archive** — char staff + admin ki synced Gmail **ek hi list** (All users). |
-| **Employee** | **Emails menu nahi** — unki Gmail yahan open nahi hoti; sirf **Drive backup** + **vault** (CCTV/upload). |
-
-Har staff ko pehle **Settings → Google connect**, phir owner **Team → Sync mail** (ya Owner hub → Sync all mail). Backup DB: `email_backups` same `company_id`.
-
-Billing / system alerts abhi bhi mostly **owner email** par — char alag notification mailboxes nahi banate.
+**Sirf 2 cheezein:** (1) **Google Drive archive** → central vault, (2) **CCTV / Upload video** → employee vault.  
+**Email / Gmail backup nahi** (`ENABLE_EMAIL_BACKUP` off).
 
 ### Auto-link (ek hi company ID)
 

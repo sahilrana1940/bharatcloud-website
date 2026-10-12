@@ -165,7 +165,6 @@ export function canAccessPath(role: SaasRole, pathname: string): boolean {
     "/dashboard/billing",
     "/dashboard/trash",
     "/dashboard/team",
-    "/dashboard/emails",
     "/dashboard/shared",
     "/dashboard/recent",
     "/dashboard/vault",
