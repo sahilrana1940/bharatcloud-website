@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { isEmailBackupEnabled } from "@/lib/feature-flags";
 import { assertEmailBackupEnabled } from "@/lib/backup/email-backup-guard";
 import { sendArchivedMailForward } from "@/lib/email/company-forward";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
@@ -8,8 +9,10 @@ import { isWorkspaceOwner } from "@/lib/workspace/nav";
 
 /** Staff may only forward their own archived mail; sent from company admin_email. */
 export async function POST(req: Request) {
-  const disabled = assertEmailBackupEnabled();
-  if (disabled) return disabled;
+  if (isEmailBackupEnabled()) {
+    const disabled = assertEmailBackupEnabled();
+    if (disabled) return disabled;
+  }
 
   const auth = await requireWorkspace();
   if (auth instanceof NextResponse) return auth;
@@ -27,16 +30,49 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
   }
 
-  const { data: row, error } = await supabase
-    .from("email_backups")
+  type Row = {
+    company_id: string;
+    owner_email: string;
+    subject: string | null;
+    from_email: string | null;
+    date: string | null;
+    body_text: string | null;
+  };
+
+  let row: Row | null = null;
+
+  const { data: archiveRow } = await supabase
+    .from("archive_files")
     .select(
-      "id, company_id, owner_email, subject, from_email, date, body_text",
+      "company_id, owner_email, subject, from_email, message_date, file_name, metadata",
     )
     .eq("id", emailId)
     .eq("company_id", session.companyId)
+    .eq("type", "email")
     .maybeSingle();
 
-  if (error || !row) {
+  if (archiveRow) {
+    row = {
+      company_id: archiveRow.company_id as string,
+      owner_email: String(archiveRow.owner_email || ""),
+      subject: (archiveRow.subject as string) || (archiveRow.file_name as string),
+      from_email: (archiveRow.from_email as string) || null,
+      date: (archiveRow.message_date as string) || null,
+      body_text: (archiveRow.subject as string) || "",
+    };
+  } else {
+    const { data: backupRow, error } = await supabase
+      .from("email_backups")
+      .select(
+        "id, company_id, owner_email, subject, from_email, date, body_text",
+      )
+      .eq("id", emailId)
+      .eq("company_id", session.companyId)
+      .maybeSingle();
+    if (!error && backupRow) row = backupRow as Row;
+  }
+
+  if (!row) {
     return NextResponse.json({ error: "Email not found" }, { status: 404 });
   }
 
