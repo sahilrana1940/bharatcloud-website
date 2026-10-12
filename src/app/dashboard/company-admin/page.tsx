@@ -12,6 +12,12 @@ import { Building2, CloudUpload, Users } from "lucide-react";
 export default async function CompanyAdminDashboardPage() {
   const session = await getWorkspaceSession();
   if (!session) redirect("/login");
+  const isOwner =
+    session.saasRole === "company_owner" ||
+    session.saasRole === "super_admin" ||
+    session.isCompanyOwner ||
+    session.role === "admin";
+  if (!isOwner) redirect("/dashboard/employee");
 
   const jar = await cookies();
   const companyId = jar.get(WS_COMPANY_COOKIE)?.value?.trim() || session.companyId;

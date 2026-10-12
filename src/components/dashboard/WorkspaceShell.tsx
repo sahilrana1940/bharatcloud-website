@@ -17,34 +17,46 @@ import {
   User,
   X,
   LayoutDashboard,
+  Upload,
+  Search,
+  Building2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { BrandMark } from "@/components/brand/BrandMark";
+import { isWorkspaceOwner, workspaceNavFor } from "@/lib/workspace/nav";
+import type { SaasRole, WorkspaceRole } from "@/lib/workspace/session";
 import { cn } from "@/lib/utils";
 
-const nav = [
-  { href: "/dashboard/drive", label: "Drive", icon: HardDrive },
-  { href: "/dashboard/vault", label: "My Vault", icon: Shield },
-  { href: "/dashboard/emails", label: "Emails", icon: Inbox },
-  { href: "/dashboard/shared", label: "Shared", icon: Share2 },
-  { href: "/dashboard/recent", label: "Recent", icon: Clock },
-  { href: "/dashboard/trash", label: "Trash", icon: Trash2 },
-  { href: "/dashboard/team", label: "Team & backup", icon: User },
-  { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
-  { href: "/dashboard/owner", label: "Owner hub", icon: LayoutDashboard },
-  { href: "/dashboard/employee", label: "Employee home", icon: Cloud },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
+const ICONS = {
+  Cloud,
+  HardDrive,
+  Shield,
+  Inbox,
+  Share2,
+  Clock,
+  Trash2,
+  User,
+  CreditCard,
+  LayoutDashboard,
+  Settings,
+  Upload,
+  Search,
+  Building: Building2,
+} as const;
 
 export function WorkspaceShell({
   children,
   role,
+  saasRole,
+  isCompanyOwner,
   userEmail,
   companyId,
 }: {
   children: React.ReactNode;
-  role: "admin" | "member";
+  role: WorkspaceRole;
+  saasRole: SaasRole;
+  isCompanyOwner: boolean;
   userEmail: string;
   companyId?: string;
 }) {
@@ -53,6 +65,13 @@ export function WorkspaceShell({
   const [usedGb, setUsedGb] = useState(0);
   const [limitGb, setLimitGb] = useState(15);
   const [quotaLabel, setQuotaLabel] = useState("Drive storage");
+
+  const sessionSlice = useMemo(
+    () => ({ role, saasRole, isCompanyOwner }),
+    [role, saasRole, isCompanyOwner],
+  );
+  const navItems = useMemo(() => workspaceNavFor(sessionSlice), [sessionSlice]);
+  const ownerView = isWorkspaceOwner(sessionSlice);
 
   useEffect(() => {
     fetch("/api/backup/summary")
@@ -89,11 +108,12 @@ export function WorkspaceShell({
 
   const NavLinks = ({ onNavigate }: { onNavigate?: () => void }) => (
     <>
-      {nav.map((l) => {
+      {navItems.map((l) => {
         const active = pathname === l.href || pathname.startsWith(`${l.href}/`);
+        const Icon = ICONS[l.icon as keyof typeof ICONS] ?? Cloud;
         return (
           <Link
-            key={l.label}
+            key={`${l.href}-${l.label}`}
             href={l.href}
             onClick={onNavigate}
             className={cn(
@@ -103,7 +123,7 @@ export function WorkspaceShell({
                 : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
             )}
           >
-            <l.icon className="h-4 w-4 shrink-0" />
+            <Icon className="h-4 w-4 shrink-0" />
             {l.label}
           </Link>
         );
@@ -120,10 +140,10 @@ export function WorkspaceShell({
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-sky-500 shadow-md shadow-cyan-500/20">
             <Cloud className="h-5 w-5 text-white" />
           </span>
-          <BrandMark titleClass="text-slate-900" accentClass="text-cyan-600" href="/dashboard/drive" />
+          <BrandMark titleClass="text-slate-900" accentClass="text-cyan-600" href={ownerView ? "/dashboard/owner" : "/dashboard/employee"} />
         </div>
         <p className="mt-2 text-[10px] uppercase tracking-widest text-slate-400">
-          {role === "admin" ? "Company admin" : "Team member"}
+          {ownerView ? "Company owner" : "Team member"}
         </p>
 
         <nav className="mt-8 flex-1 space-y-1">
@@ -175,7 +195,9 @@ export function WorkspaceShell({
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open menu">
             <Menu className="h-6 w-6 text-slate-700" />
           </button>
-          <span className="text-sm font-semibold text-slate-800">Workspace</span>
+          <span className="text-sm font-semibold text-slate-800">
+            {ownerView ? "Owner workspace" : "Employee workspace"}
+          </span>
         </header>
         <main className="flex-1 overflow-auto bg-transparent">{children}</main>
       </div>

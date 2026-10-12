@@ -12,6 +12,8 @@ export default async function TeamPage() {
     session.isCompanyOwner ||
     session.saasRole === "company_owner";
 
+  if (!canManageTeam) redirect("/dashboard/employee");
+
   return (
     <TeamPageClient
       canManageTeam={canManageTeam}

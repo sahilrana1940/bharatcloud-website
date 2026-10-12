@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { DEMO_USERS } from "@/lib/workspace/demo-data";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
+import { isWorkspaceOwner } from "@/lib/workspace/nav";
 
 function mapDemoUsers() {
   return DEMO_USERS.map((u) => ({
@@ -38,8 +39,17 @@ export async function GET() {
     .eq("company_id", session.companyId)
     .order("email");
 
+  const ownerView = isWorkspaceOwner({
+    role: session.role,
+    saasRole: session.saasRole,
+    isCompanyOwner: session.isCompanyOwner,
+  });
+
   if (!viewError && fromView?.length) {
-    return NextResponse.json({ users: fromView, session });
+    const users = ownerView
+      ? fromView
+      : fromView.filter((u) => u.email?.toLowerCase() === session.email.toLowerCase());
+    return NextResponse.json({ users, session });
   }
 
   const { data, error } = await supabase
@@ -52,11 +62,15 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const users = (data || []).map((u) => ({
+  let users = (data || []).map((u) => ({
     ...u,
     name: u.display_name || u.email.split("@")[0],
     storage_used_gb: u.drive_used_gb,
   }));
+
+  if (!ownerView) {
+    users = users.filter((u) => u.email?.toLowerCase() === session.email.toLowerCase());
+  }
 
   return NextResponse.json({ users, session });
 }
