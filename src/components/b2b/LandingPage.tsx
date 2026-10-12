@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import {
   Building2,
   Cloud,
@@ -13,9 +12,7 @@ import {
   Server,
 } from "lucide-react";
 
-import { HeroProductPreview } from "@/components/b2b/HeroProductPreview";
-import { LandingPromoBar } from "@/components/b2b/LandingPromoBar";
-import { SiteHeader } from "@/components/b2b/SiteHeader";
+import { LandingHero } from "@/components/b2b/LandingHero";
 import { TrustStrip } from "@/components/b2b/TrustStrip";
 import { BRAND_PARENT, BRAND_PRODUCT } from "@/lib/brand";
 import { PRICING_PLANS, type PlanId } from "@/lib/b2b/plans";
@@ -66,87 +63,35 @@ const stats = [
 export function LandingPage() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-50 text-slate-900">
-      <div className="pointer-events-none fixed inset-0 pro-mesh" />
-      <div className="pointer-events-none fixed inset-x-0 top-0 h-[480px] hero-glow" />
-
       <div className="relative">
-        <LandingPromoBar />
-        <SiteHeader variant="dark" />
+        <LandingHero />
 
-        <section className="mx-auto max-w-7xl px-6 pb-16 pt-10 sm:pt-16 lg:pt-20">
-          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-            <div className="text-center lg:text-left">
-              <motion.span
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-gradient-to-r from-orange-50 to-emerald-50 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-700"
-              >
-                <span className="text-base">🇮🇳</span>
-                {BRAND_PRODUCT} · {BRAND_PARENT}
-              </motion.span>
-              <motion.h1
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 }}
-                className="mt-6 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl"
-              >
-                Your business cloud,
-                <span className="pro-gradient-text block">built for India.</span>
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="mx-auto mt-6 max-w-xl text-lg text-slate-600 lg:mx-0"
-              >
-                Team backup, encrypted vault, Google Drive sync, and UPI billing — one beautiful
-                workspace for owners, admins, and employees.
-              </motion.p>
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-                className="mt-8 flex flex-col items-center gap-4 sm:flex-row lg:justify-start"
-              >
-                <Link
-                  href="/signup"
-                  className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-orange-500 via-cyan-500 to-emerald-500 px-10 py-4 text-base font-bold text-white shadow-xl shadow-cyan-500/25 transition hover:brightness-105 sm:w-auto"
+        <div className="relative bg-slate-50">
+          <div className="pointer-events-none absolute inset-0 pro-mesh opacity-60" />
+          <section className="relative mx-auto max-w-7xl px-6 pb-8 pt-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {stats.map((s, i) => (
+                <GlassPanel
+                  key={s.label}
+                  className={`p-5 text-center ${
+                    i === 0
+                      ? "border-orange-100 bg-gradient-to-b from-orange-50/80 to-white"
+                      : i === 1
+                        ? "border-cyan-100 bg-gradient-to-b from-cyan-50/80 to-white"
+                        : i === 2
+                          ? "border-emerald-100 bg-gradient-to-b from-emerald-50/80 to-white"
+                          : ""
+                  }`}
                 >
-                  Start free trial
-                </Link>
-                <ProGhostButton href="/login" className="w-full px-10 py-4 text-base sm:w-auto">
-                  Sign in
-                </ProGhostButton>
-              </motion.div>
-              <p className="mt-4 text-xs text-slate-500">
-                No credit card for trial · Plans from <strong className="text-slate-700">₹999/mo</strong> + GST
-              </p>
+                  <p className="text-2xl font-bold text-slate-900 sm:text-3xl">{s.value}</p>
+                  <p className="mt-1 text-xs font-medium text-slate-500">{s.label}</p>
+                </GlassPanel>
+              ))}
             </div>
-            <HeroProductPreview />
-          </div>
+          </section>
 
-          <div className="mt-16 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {stats.map((s, i) => (
-              <GlassPanel
-                key={s.label}
-                className={`p-5 text-center ${
-                  i === 0
-                    ? "border-orange-100 bg-gradient-to-b from-orange-50/80 to-white"
-                    : i === 1
-                      ? "border-cyan-100 bg-gradient-to-b from-cyan-50/80 to-white"
-                      : i === 2
-                        ? "border-emerald-100 bg-gradient-to-b from-emerald-50/80 to-white"
-                        : ""
-                }`}
-              >
-                <p className="text-2xl font-bold text-slate-900 sm:text-3xl">{s.value}</p>
-                <p className="mt-1 text-xs font-medium text-slate-500">{s.label}</p>
-              </GlassPanel>
-            ))}
-          </div>
-        </section>
-
-        <TrustStrip />
+          <TrustStrip />
+        </div>
 
         <section id="features" className="mx-auto max-w-7xl px-6 py-24">
           <div className="text-center">
