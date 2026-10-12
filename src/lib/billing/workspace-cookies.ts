@@ -2,8 +2,15 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { isSuperAdminEmail } from "@/lib/brand";
-import { WS_COMPANY_COOKIE, WS_EMAIL_COOKIE } from "@/lib/workspace/session";
+import { resolveTenantCompanyId } from "@/lib/tenant";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
+import { resolveCompanyIdForEmail } from "@/lib/workspace/resolve-company";
+import {
+  WS_COMPANY_COOKIE,
+  WS_EMAIL_COOKIE,
+  workspaceCookieOptions,
+} from "@/lib/workspace/session";
+import { WORKSPACE_PROFILES_TABLE } from "@/lib/workspace/workspace-profiles";
 
 export type WorkspaceCookieAuth = {
   companyId: string;
@@ -27,6 +34,25 @@ export function backupUnauthorized(): NextResponse {
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
 
+/** True tenant id for this email (fixes stale `bc_workspace_company` cookie). */
+export async function resolveWorkspaceCompanyId(
+  email: string,
+  cookieCompanyId: string,
+): Promise<string> {
+  const normalized = email.trim().toLowerCase();
+  const fromMembership = await resolveTenantCompanyId(normalized, cookieCompanyId);
+  if (fromMembership) return fromMembership;
+  try {
+    return await resolveCompanyIdForEmail(normalized);
+  } catch {
+    return cookieCompanyId;
+  }
+}
+
+export function attachWorkspaceCompanyCookie(res: NextResponse, companyId: string) {
+  res.cookies.set(WS_COMPANY_COOKIE, companyId, workspaceCookieOptions());
+}
+
 /** Super admin may use any company cookie; others must be member or company admin_email. */
 export async function canAccessCompany(
   email: string,
@@ -37,19 +63,46 @@ export async function canAccessCompany(
   const supabase = await getSupabaseOrNull();
   if (!supabase) return true;
 
+  const normalized = email.trim().toLowerCase();
+  const effectiveId = await resolveWorkspaceCompanyId(normalized, companyId);
+
   const { data: member } = await supabase
     .from("company_users")
     .select("id")
-    .eq("company_id", companyId)
-    .eq("email", email)
+    .eq("company_id", effectiveId)
+    .eq("email", normalized)
     .maybeSingle();
   if (member) return true;
 
   const { data: co } = await supabase
     .from("companies")
     .select("admin_email")
-    .eq("id", companyId)
+    .eq("id", effectiveId)
     .maybeSingle();
 
-  return co?.admin_email?.toLowerCase() === email;
+  if (co?.admin_email?.toLowerCase() === normalized) return true;
+
+  const { data: wp } = await supabase
+    .from(WORKSPACE_PROFILES_TABLE)
+    .select("company_id")
+    .eq("email", normalized)
+    .maybeSingle();
+
+  return wp?.company_id === effectiveId;
+}
+
+/** Cookie auth with repaired `companyId` when membership does not match stale cookie. */
+export async function readWorkspaceAuthRepaired(): Promise<{
+  auth: WorkspaceCookieAuth;
+  repaired: boolean;
+} | null> {
+  const ws = await readWorkspaceCookieAuth();
+  if (!ws) return null;
+
+  const effectiveId = await resolveWorkspaceCompanyId(ws.email, ws.companyId);
+  const repaired = effectiveId !== ws.companyId;
+  return {
+    auth: { email: ws.email, companyId: effectiveId },
+    repaired,
+  };
 }
