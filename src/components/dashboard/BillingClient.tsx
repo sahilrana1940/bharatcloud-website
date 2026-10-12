@@ -14,7 +14,7 @@ import {
 
 const PRO_FEATURES = [
   "Automatic full Google Drive archive",
-  "Gmail & contacts read for future backup",
+  "Google Drive archive to central vault",
   "Encrypted vault + company hot storage",
   "India-hosted per-company archive bucket",
   "Team dashboard & per-user backup status",

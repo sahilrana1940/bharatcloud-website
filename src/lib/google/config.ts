@@ -16,11 +16,20 @@ export function getGoogleOAuthConfig() {
   return { clientId, clientSecret, redirectUri };
 }
 
-export const GOOGLE_SCOPES = [
+import { isEmailBackupEnabled } from "@/lib/feature-flags";
+
+const DRIVE_SCOPES = [
   "openid",
   "email",
   "profile",
   "https://www.googleapis.com/auth/drive.readonly",
+];
+
+const EMAIL_SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/contacts.readonly",
-].join(" ");
+];
+
+export const GOOGLE_SCOPES = [...DRIVE_SCOPES, ...(isEmailBackupEnabled() ? EMAIL_SCOPES : [])].join(
+  " ",
+);

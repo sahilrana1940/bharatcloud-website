@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { assertEmailBackupEnabled } from "@/lib/backup/email-backup-guard";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { resolveCompanyDomain } from "@/lib/workspace/company";
 import { DEMO_EMAILS } from "@/lib/workspace/demo-data";
@@ -7,6 +8,9 @@ import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { isWorkspaceOwner } from "@/lib/workspace/nav";
 
 export async function GET(req: Request) {
+  const disabled = assertEmailBackupEnabled();
+  if (disabled) return disabled;
+
   const auth = await requireWorkspace();
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;

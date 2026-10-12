@@ -1,17 +1,11 @@
 import { redirect } from "next/navigation";
 
-import { VaultEmailsClient } from "@/components/dashboard/VaultEmailsClient";
-import { isWorkspaceOwner } from "@/lib/workspace/nav";
-import { getWorkspaceSession } from "@/lib/workspace/session";
+import { isEmailBackupEnabled } from "@/lib/feature-flags";
 
+/** Email backup disabled — Drive + CCTV only. */
 export default async function EmailsPage() {
-  const session = await getWorkspaceSession();
-  if (!session) redirect("/login");
-  const owner = isWorkspaceOwner({
-    role: session.role,
-    saasRole: session.saasRole,
-    isCompanyOwner: session.isCompanyOwner,
-  });
-  if (!owner) redirect("/dashboard/employee");
-  return <VaultEmailsClient mode="emails" isAdmin={owner} />;
+  if (!isEmailBackupEnabled()) {
+    redirect("/dashboard/team");
+  }
+  redirect("/dashboard/team");
 }

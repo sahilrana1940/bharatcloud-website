@@ -102,17 +102,6 @@ export function TeamPageClient({
     load();
   }
 
-  async function syncGmail(email?: string) {
-    const q = email ? `?user=${encodeURIComponent(email)}` : "";
-    notify(email ? `Gmail sync started for ${email}` : "Syncing all mailboxes…");
-    setGlobalProgress("Backing up mail…");
-    const res = await fetch(`/api/gmail/sync${q}`, { method: "POST" });
-    const j = await res.json();
-    setGlobalProgress(j.status === "started" ? "Sync running in background…" : null);
-    notify(res.ok ? "Gmail sync started" : j.error || "Gmail sync failed");
-    load();
-  }
-
   async function addUsers() {
     const res = await fetch("/api/team/sync", { method: "POST" });
     const j = await res.json();
@@ -120,13 +109,7 @@ export function TeamPageClient({
     load();
   }
 
-  const syncing = members.some(
-    (m) =>
-      m.drive_sync_status === "syncing" ||
-      m.email_sync_status === "syncing" ||
-      (m.email_sync_progress && m.email_sync_progress.includes("/")),
-  );
-  const progressLine = members.find((m) => m.email_sync_progress)?.email_sync_progress;
+  const syncing = members.some((m) => m.drive_sync_status === "syncing");
 
   return (
     <div className="min-h-screen overflow-y-auto bg-transparent px-4 pb-[140px] pt-6 sm:px-8 lg:pb-10">
@@ -134,7 +117,7 @@ export function TeamPageClient({
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Team &amp; backup</h1>
           <p className="text-slate-500">
-            Automatic Google archive for every company on Bharat Tijori
+            Google Drive archive + CCTV upload — central vault for your company
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -160,13 +143,6 @@ export function TeamPageClient({
               </button>
               <button
                 type="button"
-                onClick={() => syncGmail()}
-                className="rounded-xl border border-white/10 bg-[#1E2639] px-4 py-2.5 text-sm text-slate-200"
-              >
-                Sync All Mails
-              </button>
-              <button
-                type="button"
                 onClick={addUsers}
                 className="flex items-center gap-2 rounded-xl border border-cyan-500/40 px-4 py-2.5 text-sm text-cyan-300"
               >
@@ -179,10 +155,10 @@ export function TeamPageClient({
 
       <BackupOnboarding userEmail={userEmail} />
 
-      {(globalProgress || syncing || progressLine) && (
+      {(globalProgress || syncing) && (
         <div className="mt-6 rounded-2xl border border-cyan-500/20 bg-[#1E2639] p-4">
           <p className="text-sm text-cyan-300">
-            {globalProgress || (progressLine ? `Backing up ${progressLine}…` : "Sync in progress…")}
+            {globalProgress || "Drive sync in progress…"}
           </p>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800">
             <div className="h-full w-2/3 animate-pulse bg-gradient-to-r from-sky-500 to-cyan-400" />
@@ -197,7 +173,6 @@ export function TeamPageClient({
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Drive Status</th>
-              <th className="px-4 py-3 font-medium">Email Status</th>
               <th className="px-4 py-3 font-medium">Storage Used</th>
               <th className="px-4 py-3 font-medium">Actions</th>
             </tr>
@@ -211,12 +186,6 @@ export function TeamPageClient({
                   <td className="px-4 py-3">{m.email}</td>
                   <td className="px-4 py-3">{m.name || m.email.split("@")[0]}</td>
                   <td className="px-4 py-3 capitalize">{m.drive_sync_status || "idle"}</td>
-                  <td className="px-4 py-3">
-                    <span className="capitalize">{m.email_sync_status || "idle"}</span>
-                    {m.email_sync_progress ? (
-                      <span className="ml-1 text-xs text-slate-500">({m.email_sync_progress})</span>
-                    ) : null}
-                  </td>
                   <td className="px-4 py-3">{used}GB / {limit}GB</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
@@ -237,13 +206,6 @@ export function TeamPageClient({
                             className="rounded-lg bg-cyan-600/80 px-3 py-1.5 text-xs font-semibold text-white"
                           >
                             Enable backup
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => syncGmail(m.email)}
-                            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-300"
-                          >
-                            Sync Gmail Now
                           </button>
                         </>
                       )}

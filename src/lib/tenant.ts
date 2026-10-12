@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { isWorkspaceOwner } from "@/lib/workspace/nav";
+import { resolveCompanyIdForEmail } from "@/lib/workspace/resolve-company";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 import {
   getWorkspaceSession,
@@ -76,15 +78,31 @@ export async function loadTenantCompany(companyId: string): Promise<TenantCompan
     };
   }
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("companies")
-    .select(
-      "id, domain, admin_email, plan_name, storage_limit_gb, subscription_status, godaddy_connected, central_drive_owner_email",
-    )
+    .select("*")
     .eq("id", companyId)
     .maybeSingle();
 
-  if (!data?.id) return null;
+  if (error || !data?.id) {
+    const { data: minimal } = await supabase
+      .from("companies")
+      .select("id, domain, admin_email, plan_name, storage_limit_gb, subscription_status")
+      .eq("id", companyId)
+      .maybeSingle();
+    if (!minimal?.id) return null;
+    return {
+      id: minimal.id as string,
+      domain: minimal.domain as string,
+      admin_email: minimal.admin_email as string,
+      plan_name: (minimal.plan_name as string) || "starter",
+      storage_limit_gb: Number(minimal.storage_limit_gb ?? 100),
+      subscription_status: minimal.subscription_status as string | null,
+      godaddy_connected: false,
+      central_drive_owner_email: minimal.admin_email as string,
+    };
+  }
+
   return {
     id: data.id as string,
     domain: data.domain as string,
@@ -93,7 +111,8 @@ export async function loadTenantCompany(companyId: string): Promise<TenantCompan
     storage_limit_gb: Number(data.storage_limit_gb ?? 100),
     subscription_status: data.subscription_status as string | null,
     godaddy_connected: Boolean(data.godaddy_connected),
-    central_drive_owner_email: (data.central_drive_owner_email as string) || null,
+    central_drive_owner_email:
+      (data.central_drive_owner_email as string) || (data.admin_email as string),
   };
 }
 
@@ -108,21 +127,31 @@ export async function requireTenant(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const companyId = await resolveTenantCompanyId(session.email, session.companyId);
+  let companyId = await resolveTenantCompanyId(session.email, session.companyId);
+  if (!companyId) {
+    companyId = await resolveCompanyIdForEmail(session.email);
+  }
   if (!companyId) {
     return NextResponse.json({ error: "No company membership" }, { status: 403 });
   }
 
-  const company = await loadTenantCompany(companyId);
+  let company = await loadTenantCompany(companyId);
+  if (!company) {
+    const repairedId = await resolveCompanyIdForEmail(session.email);
+    company = repairedId ? await loadTenantCompany(repairedId) : null;
+    if (company) companyId = company.id;
+  }
   if (!company) {
     return NextResponse.json({ error: "Company not found" }, { status: 404 });
   }
 
   if (
     adminOnly &&
-    session.role !== "admin" &&
-    !session.isCompanyOwner &&
-    session.saasRole !== "company_owner" &&
+    !isWorkspaceOwner({
+      role: session.role,
+      saasRole: session.saasRole,
+      isCompanyOwner: session.isCompanyOwner,
+    }) &&
     session.saasRole !== "super_admin"
   ) {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });

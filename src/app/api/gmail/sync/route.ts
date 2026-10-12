@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { assertEmailBackupEnabled } from "@/lib/backup/email-backup-guard";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { gmailClient } from "@/lib/google/client";
 import { fetchGoogleTokenRow } from "@/lib/google/token-row";
@@ -145,6 +146,9 @@ async function runGmailSync(
 }
 
 export async function POST(req: Request) {
+  const disabled = assertEmailBackupEnabled();
+  if (disabled) return disabled;
+
   const auth = await requireWorkspace(true);
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;

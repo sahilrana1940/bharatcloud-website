@@ -43,10 +43,9 @@ export function OwnerDashboardClient() {
       .catch(() => undefined);
   }, [load]);
 
-  async function syncAll(type: "drive" | "gmail") {
-    setMsg(type === "drive" ? "Syncing drives…" : "Syncing mail…");
-    if (type === "drive") await fetch("/api/drive/sync", { method: "POST" });
-    else await fetch("/api/gmail/sync", { method: "POST" });
+  async function syncAllDrives() {
+    setMsg("Syncing drives…");
+    await fetch("/api/drive/sync", { method: "POST" });
     setMsg("Sync started");
     load();
   }
@@ -89,17 +88,10 @@ export function OwnerDashboardClient() {
       <div className="mb-6 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => syncAll("drive")}
+          onClick={syncAllDrives}
           className="rounded-xl bg-gradient-to-r from-cyan-500 to-sky-500 px-4 py-2 text-sm font-bold text-white"
         >
           Sync all drives
-        </button>
-        <button
-          type="button"
-          onClick={() => syncAll("gmail")}
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
-        >
-          Sync all mail
         </button>
         <Link
           href="/dashboard/team"
@@ -117,7 +109,6 @@ export function OwnerDashboardClient() {
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Drive</th>
-              <th className="px-4 py-3">Email sync</th>
             </tr>
           </thead>
           <tbody>
@@ -126,7 +117,6 @@ export function OwnerDashboardClient() {
                 <td className="px-4 py-3">{m.email}</td>
                 <td className="px-4 py-3 text-slate-600">{m.name || "—"}</td>
                 <td className="px-4 py-3 capitalize">{m.drive_sync_status || "idle"}</td>
-                <td className="px-4 py-3 capitalize">{m.email_sync_status || "idle"}</td>
               </tr>
             ))}
           </tbody>
