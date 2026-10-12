@@ -34,7 +34,7 @@ Har row ke liye **teen steps** same hain:
 | **Owner / admin** | `info@gorjrmcourier.com` | ☐ | ☐ | ☐ |
 | **Employee 1 (Sunderbani hub)** | `sunderbanihub@gorjrmcourier.com` | ☐ | ☐ | ☐ |
 | **Employee 2 (Nowshera ODH)** | `nowsheraodh@gorjrmcourier.com` | ☐ | ☐ | ☐ |
-| **Employee 3** | _pending — email bhejein_ | ☐ | ☐ | ☐ |
+| **Employee 3 (Rajouri ODH)** | `rajouriodh@gorjrmcourier.com` | ☐ | ☐ | ☐ |
 
 **UI:** Owner login → `/dashboard/company-admin` — address card + live staff list + checklist.
 
