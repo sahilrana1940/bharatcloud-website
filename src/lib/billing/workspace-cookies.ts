@@ -4,7 +4,11 @@ import { NextResponse } from "next/server";
 import { isSuperAdminEmail } from "@/lib/brand";
 import { resolveTenantCompanyId } from "@/lib/tenant";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
+import { emailDomain } from "@/lib/google/client";
+import { emailMatchesDomain } from "@/lib/workspace/company-directory";
 import { resolveCompanyIdForEmail } from "@/lib/workspace/resolve-company";
+import { DEMO_COMPANY_ID } from "@/lib/workspace/demo-data";
+import { touchProfileLogin } from "@/lib/workspace/workspace-profiles";
 import {
   WS_COMPANY_COOKIE,
   WS_EMAIL_COOKIE,
@@ -82,13 +86,37 @@ export async function canAccessCompany(
 
   if (co?.admin_email?.toLowerCase() === normalized) return true;
 
+  const domain = emailDomain(normalized);
+  if (domain) {
+    const { data: tenantCo } = await supabase
+      .from("companies")
+      .select("id, admin_email, domain")
+      .eq("id", effectiveId)
+      .maybeSingle();
+    if (tenantCo && emailMatchesDomain(normalized, tenantCo.domain as string)) {
+      if (tenantCo.id === effectiveId) return true;
+      if (tenantCo.admin_email?.toLowerCase() === normalized) return true;
+    }
+  }
+
   const { data: wp } = await supabase
     .from(WORKSPACE_PROFILES_TABLE)
     .select("company_id")
     .eq("email", normalized)
     .maybeSingle();
 
-  return wp?.company_id === effectiveId;
+  if (wp?.company_id === effectiveId) return true;
+
+  try {
+    const provisioned = await resolveCompanyIdForEmail(normalized);
+    if (provisioned && provisioned !== DEMO_COMPANY_ID) {
+      return provisioned === effectiveId;
+    }
+  } catch {
+    /* ignore */
+  }
+
+  return false;
 }
 
 /** Cookie auth with repaired `companyId` when membership does not match stale cookie. */
@@ -99,8 +127,22 @@ export async function readWorkspaceAuthRepaired(): Promise<{
   const ws = await readWorkspaceCookieAuth();
   if (!ws) return null;
 
-  const effectiveId = await resolveWorkspaceCompanyId(ws.email, ws.companyId);
-  const repaired = effectiveId !== ws.companyId;
+  let effectiveId = await resolveWorkspaceCompanyId(ws.email, ws.companyId);
+  let repaired = effectiveId !== ws.companyId;
+
+  if (!(await canAccessCompany(ws.email, effectiveId))) {
+    const supabase = await getSupabaseOrNull();
+    try {
+      effectiveId = await resolveCompanyIdForEmail(ws.email);
+      repaired = true;
+      if (supabase) {
+        await touchProfileLogin(supabase, ws.email, effectiveId);
+      }
+    } catch {
+      /* keep prior effectiveId */
+    }
+  }
+
   return {
     auth: { email: ws.email, companyId: effectiveId },
     repaired,
