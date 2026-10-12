@@ -5,6 +5,11 @@ import { createGoogleDriveOAuth2Client } from "@/lib/google/drive-oauth";
 import { verifyGoogleOAuthState } from "@/lib/google/oauth-state";
 import { saveGoogleOAuthTokens } from "@/lib/google/save-tokens";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
+import {
+  WS_COMPANY_COOKIE,
+  WS_EMAIL_COOKIE,
+  workspaceCookieOptions,
+} from "@/lib/workspace/session";
 import { touchProfileLogin } from "@/lib/workspace/workspace-profiles";
 
 export async function GET(req: Request) {
@@ -14,9 +19,15 @@ export async function GET(req: Request) {
   const oauthError = url.searchParams.get("error");
 
   if (oauthError) {
-    return NextResponse.redirect(
-      new URL(`/settings?drive=error&reason=${encodeURIComponent(oauthError)}`, url.origin),
-    );
+    let returnTo = "/settings";
+    if (stateRaw) {
+      const st = verifyGoogleOAuthState(stateRaw);
+      if (st?.returnTo?.startsWith("/")) returnTo = st.returnTo;
+    }
+    const errDest = new URL(returnTo, url.origin);
+    errDest.searchParams.set("drive", "error");
+    errDest.searchParams.set("reason", oauthError);
+    return NextResponse.redirect(errDest);
   }
 
   if (!code || !stateRaw) {
@@ -51,14 +62,16 @@ export async function GET(req: Request) {
   }
 
   if (googleEmail !== linkState.email) {
-    return NextResponse.redirect(
-      new URL(
-        `/settings?drive=error&reason=${encodeURIComponent(
-          `Use Google account ${linkState.email}`,
-        )}`,
-        url.origin,
-      ),
+    const mismatch = new URL(
+      linkState.returnTo.startsWith("/") ? linkState.returnTo : "/settings",
+      url.origin,
     );
+    mismatch.searchParams.set("drive", "error");
+    mismatch.searchParams.set(
+      "reason",
+      `Use Google account ${linkState.email}`,
+    );
+    return NextResponse.redirect(mismatch);
   }
 
   await saveGoogleOAuthTokens(supabase, {
@@ -78,5 +91,9 @@ export async function GET(req: Request) {
     dest.searchParams.set("drive", "connected");
   }
 
-  return NextResponse.redirect(dest);
+  const res = NextResponse.redirect(dest);
+  const opts = workspaceCookieOptions();
+  res.cookies.set(WS_COMPANY_COOKIE, linkState.companyId, opts);
+  res.cookies.set(WS_EMAIL_COOKIE, linkState.email.toLowerCase(), opts);
+  return res;
 }

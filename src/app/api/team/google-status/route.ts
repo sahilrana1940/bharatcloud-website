@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getGoogleOAuthConfig } from "@/lib/google/config";
 import {
-  fetchGoogleTokenRow,
+  fetchGoogleTokenRowForWorkspace,
   isGoogleTokenRowConnected,
 } from "@/lib/google/token-row";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
@@ -18,7 +18,11 @@ export async function GET() {
     return NextResponse.json({ connected: false, demo: true });
   }
 
-  const row = await fetchGoogleTokenRow(supabase, session.companyId, session.email);
+  const row = await fetchGoogleTokenRowForWorkspace(
+    supabase,
+    session.companyId,
+    session.email,
+  );
   const { clientId, clientSecret } = getGoogleOAuthConfig();
 
   return NextResponse.json({
