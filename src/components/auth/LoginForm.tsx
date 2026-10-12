@@ -36,20 +36,6 @@ export function LoginForm() {
     window.location.href = "/api/auth/google";
   }
 
-  function googleDemo() {
-    window.location.href = "/api/auth/google/demo?email=admin@rjadam.com";
-  }
-
-  function personalDemo() {
-    window.location.href =
-      "/api/auth/google/demo?email=demo.user@gmail.com&mode=b2c";
-  }
-
-  function superAdminDemo() {
-    window.location.href =
-      "/api/auth/google/demo?email=admin@bharatcloud.store";
-  }
-
   return (
     <div className="w-full">
       <form onSubmit={onSubmit} className="space-y-4">
@@ -109,23 +95,8 @@ export function LoginForm() {
         Continue with Google Workspace
       </button>
 
-      <details className="mt-4 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2 text-sm">
-        <summary className="cursor-pointer font-medium text-slate-600">Demo logins</summary>
-        <div className="mt-2 space-y-1 border-t border-slate-200 pt-2">
-          <button type="button" className="block w-full text-left text-xs text-slate-600 hover:text-cyan-700" onClick={googleDemo}>
-            B2B workspace (rjadam.com)
-          </button>
-          <button type="button" className="block w-full text-left text-xs text-cyan-700 hover:underline" onClick={personalDemo}>
-            Personal HD Cloud (B2C demo)
-          </button>
-          <button type="button" className="block w-full text-left text-xs text-slate-500 hover:text-cyan-700" onClick={superAdminDemo}>
-            Super Admin demo
-          </button>
-        </div>
-      </details>
-
-      <p className="mt-6 text-center text-sm text-slate-500">
-        New here?{" "}
+      <p className="mt-8 text-center text-sm text-slate-500">
+        New company?{" "}
         <Link href="/signup" className="font-semibold text-cyan-700 hover:underline">
           Create account
         </Link>

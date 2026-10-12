@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { isDemoLoginEnabled, isB2cEnabled } from "@/lib/feature-flags";
 import { attachSaasRoleCookies, defaultDashboardForRole, getUserRole } from "@/lib/auth";
 import { isSuperAdminEmail } from "@/lib/brand";
 import { B2C_PERSONAL_COMPANY_ID } from "@/lib/workspace/b2c";
@@ -11,11 +12,23 @@ import {
   WS_ROLE_COOKIE,
 } from "@/lib/workspace/session";
 
-/** Demo workspace login when Google env is not set */
+/** Demo workspace login — disabled in production unless ENABLE_DEMO_LOGINS=1 */
 export async function GET(req: Request) {
+  if (!isDemoLoginEnabled()) {
+    return NextResponse.json(
+      { error: "Demo login is disabled. Use Sign up or Google Workspace." },
+      { status: 403 },
+    );
+  }
+
   const url = new URL(req.url);
   const email = (url.searchParams.get("email") || "admin@rjadam.com").toLowerCase();
   const mode = url.searchParams.get("mode");
+
+  if ((mode === "b2c" || url.searchParams.get("redirect") === "personal") && !isB2cEnabled()) {
+    return NextResponse.json({ error: "Personal cloud is not available." }, { status: 403 });
+  }
+
   const role = email.startsWith("admin@") ? "admin" : "member";
   const saas = await getUserRole(email);
 

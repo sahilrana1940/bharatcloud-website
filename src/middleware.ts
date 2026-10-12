@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { isSuperAdminEmail } from "@/lib/brand";
+
+const B2C_ENABLED = process.env.ENABLE_B2C === "1";
 import type { SaasRole } from "@/lib/workspace/session";
 
 function readRole(req: NextRequest): SaasRole {
@@ -49,6 +51,10 @@ export function middleware(req: NextRequest) {
 
   if (pathname.startsWith("/dashboard/trash") && role === "employee") {
     return NextResponse.redirect(new URL("/dashboard/employee", req.url));
+  }
+
+  if (!B2C_ENABLED && pathname.startsWith("/personal")) {
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
   return NextResponse.next();

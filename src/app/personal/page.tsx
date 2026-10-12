@@ -1,17 +1,11 @@
 import { redirect } from "next/navigation";
 
-import { PersonalGalleryClient } from "@/components/personal/PersonalGalleryClient";
-import { getUploadContext } from "@/lib/personal/access";
-import { getWorkspaceSession } from "@/lib/workspace/session";
+import { isB2cEnabled } from "@/lib/feature-flags";
 
-export default async function PersonalPage() {
-  const session = await getWorkspaceSession();
-  if (!session) redirect("/login");
-
-  const ctx = await getUploadContext();
-  if (ctx?.companyDomain && !ctx.isB2C && session.companyId !== "demo-company-workspace") {
-    redirect("/dashboard/employee");
+/** B2C personal product — gated off for B2B-only launch. */
+export default function PersonalPage() {
+  if (!isB2cEnabled()) {
+    redirect("/login");
   }
-
-  return <PersonalGalleryClient />;
+  redirect("/dashboard/drive");
 }
