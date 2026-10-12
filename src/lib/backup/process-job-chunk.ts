@@ -5,6 +5,7 @@ import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { fetchDriveFilesListPage } from "@/lib/google/drive-api";
 import { driveClient } from "@/lib/google/client";
 import { archiveObjectKey, uploadToArchive } from "@/lib/s3/archive";
+import { sha256Buffer } from "@/lib/workspace/company-directory";
 
 const FILES_PER_TICK = 8;
 
@@ -103,9 +104,28 @@ export async function processBackupJobChunk(
       );
       const raw = Buffer.from(media.data as ArrayBuffer);
       const compressed = await compressForArchive(raw, f.mimeType, f.name);
-      const key = archiveObjectKey(companyId, compressed.outName);
-      const up = await uploadToArchive(key, compressed.body, compressed.contentType);
-      if (!up.ok) throw new Error(up.error);
+      const fileHash = sha256Buffer(compressed.body);
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+      const { data: dup } = await supabase
+        .from("company_archive_files")
+        .select("id, archive_key, compressed_size")
+        .eq("company_id", companyId)
+        .eq("file_hash", fileHash)
+        .eq("status", "archived")
+        .gte("created_at", since)
+        .limit(1)
+        .maybeSingle();
+
+      let archiveKey = dup?.archive_key as string | undefined;
+      let compressedSize = Number(dup?.compressed_size || compressed.body.length);
+
+      if (!archiveKey) {
+        archiveKey = archiveObjectKey(companyId, compressed.outName);
+        const up = await uploadToArchive(archiveKey, compressed.body, compressed.contentType);
+        if (!up.ok) throw new Error(up.error);
+        compressedSize = compressed.body.length;
+      }
 
       await supabase.from("company_archive_files").insert({
         company_id: companyId,
@@ -114,13 +134,15 @@ export async function processBackupJobChunk(
         file_name: compressed.outName,
         mime_type: compressed.contentType,
         original_size: originalSize || raw.length,
-        compressed_size: compressed.body.length,
-        archive_key: key,
+        compressed_size: compressedSize,
+        archive_key: archiveKey,
+        file_hash: fileHash,
+        source_owner_email: ownerEmail,
         status: "archived",
       });
 
       bytesOriginal += originalSize || raw.length;
-      bytesCompressed += compressed.body.length;
+      bytesCompressed += compressedSize;
       filesDone += 1;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Archive failed";

@@ -22,24 +22,14 @@ export async function GET() {
   }
 
   const email = session.email.toLowerCase();
-  const { data: myJobs } = await supabase
-    .from("company_backup_jobs")
-    .select("id")
-    .eq("company_id", session.companyId)
-    .eq("owner_email", email);
-  const myJobIds = (myJobs || []).map((j) => j.id as string);
 
-  const filesQuery = supabase
+  const { data: files, error: filesErr } = await supabase
     .from("company_archive_files")
-    .select("original_size, compressed_size, job_id")
+    .select("original_size, compressed_size")
     .eq("company_id", session.companyId)
     .eq("status", "archived");
 
-  const { data: files, error: filesErr } = await filesQuery;
-  const scopedFiles =
-    myJobIds.length > 0
-      ? (files || []).filter((f) => f.job_id && myJobIds.includes(f.job_id as string))
-      : [];
+  const scopedFiles = files || [];
 
   if (filesErr?.message.includes("company_archive_files")) {
     return NextResponse.json({

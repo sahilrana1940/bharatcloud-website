@@ -88,7 +88,8 @@ export function EmployeeBackupVault({ userEmail }: { userEmail: string }) {
       <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-slate-600">
         <HardDrive className="h-4 w-4 text-cyan-600" />
         <span>
-          Google Drive archive + CCTV uploads for <strong className="text-slate-800">{userEmail}</strong>
+          Central company vault (same files for all team) — Drive archive + CCTV uploads · signed in as{" "}
+          <strong className="text-slate-800">{userEmail}</strong>
         </span>
         {summary?.jobStatus && (
           <span className="rounded-full bg-cyan-50 px-2 py-0.5 text-xs text-cyan-800">

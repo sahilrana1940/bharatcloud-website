@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { presignedArchiveGetUrl } from "@/lib/s3/archive";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
-import { isWorkspaceOwner } from "@/lib/workspace/nav";
 
 export async function GET(
   _req: Request,
@@ -31,23 +30,6 @@ export async function GET(
 
   if (row.company_id !== session.companyId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const ownerView = isWorkspaceOwner({
-    role: session.role,
-    saasRole: session.saasRole,
-    isCompanyOwner: session.isCompanyOwner,
-  });
-
-  if (!ownerView && row.job_id) {
-    const { data: job } = await supabase
-      .from("company_backup_jobs")
-      .select("owner_email")
-      .eq("id", row.job_id)
-      .maybeSingle();
-    if (job?.owner_email?.toLowerCase() !== session.email.toLowerCase()) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
   }
 
   const signedUrl = await presignedArchiveGetUrl(row.archive_key as string);

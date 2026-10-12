@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
-import { isWorkspaceOwner } from "@/lib/workspace/nav";
 
 const PAGE = 40;
 
+/** Central company vault — all archived files for this company_id (any team member). */
 export async function GET(req: Request) {
   const auth = await requireWorkspace();
   if (auth instanceof NextResponse) return auth;
@@ -20,41 +20,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ items: [], page, hasMore: false });
   }
 
-  const ownerView = isWorkspaceOwner({
-    role: session.role,
-    saasRole: session.saasRole,
-    isCompanyOwner: session.isCompanyOwner,
-  });
-
-  const email = session.email.toLowerCase();
-
-  let jobIds: string[] | null = null;
-  if (!ownerView) {
-    const { data: jobs } = await supabase
-      .from("company_backup_jobs")
-      .select("id")
-      .eq("company_id", session.companyId)
-      .eq("owner_email", email);
-    jobIds = (jobs || []).map((j) => j.id as string);
-    if (!jobIds.length) {
-      return NextResponse.json({ items: [], page, hasMore: false, driveBackupCount: 0 });
-    }
-  }
-
-  let query = supabase
+  const { data, count, error } = await supabase
     .from("company_archive_files")
-    .select("id, file_name, mime_type, compressed_size, archive_key, created_at, status, job_id", {
-      count: "exact",
-    })
+    .select(
+      "id, file_name, mime_type, compressed_size, archive_key, created_at, status, source_owner_email",
+      { count: "exact" },
+    )
     .eq("company_id", session.companyId)
     .eq("status", "archived")
-    .not("archive_key", "is", null);
-
-  if (jobIds) {
-    query = query.in("job_id", jobIds);
-  }
-
-  const { data, count, error } = await query
+    .not("archive_key", "is", null)
     .order("created_at", { ascending: false })
     .range(offset, offset + PAGE - 1);
 
@@ -76,6 +50,7 @@ export async function GET(req: Request) {
     mime_type: (row.mime_type as string) || null,
     size: Number(row.compressed_size || 0),
     created_at: row.created_at as string,
+    source_owner_email: (row.source_owner_email as string) || null,
     source: "drive_backup" as const,
   }));
 
@@ -85,5 +60,6 @@ export async function GET(req: Request) {
     page,
     hasMore: total > offset + PAGE,
     driveBackupCount: total,
+    centralVault: true,
   });
 }

@@ -46,12 +46,29 @@ export function TeamPageClient({
   useEffect(() => {
     load();
     loadBilling();
+    if (canManageTeam) {
+      fetch("/api/domain/sync-team", { method: "POST" })
+        .then(() => load())
+        .catch(() => undefined);
+    }
     const id = setInterval(() => {
       load();
       loadBilling();
     }, 4000);
     return () => clearInterval(id);
-  }, [load, loadBilling]);
+  }, [load, loadBilling, canManageTeam]);
+
+  async function enableBackup(email: string) {
+    notify(`Starting backup for ${email}…`);
+    const res = await fetch("/api/backup/enable", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const j = await res.json();
+    notify(res.ok ? `Backup job started (${j.filesDone ?? 0} files tick)` : j.error || "Failed");
+    load();
+  }
 
   async function upgradeToPro() {
     setUpgradeLoading(true);
@@ -213,13 +230,22 @@ export function TeamPageClient({
                         </button>
                       )}
                       {canManageTeam && (
-                        <button
-                          type="button"
-                          onClick={() => syncGmail(m.email)}
-                          className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-300"
-                        >
-                          Sync Gmail Now
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => enableBackup(m.email)}
+                            className="rounded-lg bg-cyan-600/80 px-3 py-1.5 text-xs font-semibold text-white"
+                          >
+                            Enable backup
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => syncGmail(m.email)}
+                            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-300"
+                          >
+                            Sync Gmail Now
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>
