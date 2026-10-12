@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getTenantProfile } from "@/lib/tenant-profile";
+import { getTenantHandoffStaff, getTenantProfile } from "@/lib/tenant-profile";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
@@ -36,5 +36,6 @@ export async function GET() {
     domain,
     adminEmail: company.admin_email as string,
     profile: getTenantProfile(domain),
+    handoffStaffEmails: getTenantHandoffStaff(domain),
   });
 }

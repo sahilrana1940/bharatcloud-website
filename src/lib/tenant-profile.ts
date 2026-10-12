@@ -6,6 +6,8 @@ export type TenantProfile = {
   phone?: string;
   publicEmail?: string;
   website?: string;
+  /** Handoff checklist: up to 3 staff emails (invite on Team if not in DB yet). */
+  handoffStaffEmails?: string[];
 };
 
 const PROFILES: Record<string, TenantProfile> = {
@@ -16,8 +18,16 @@ const PROFILES: Record<string, TenantProfile> = {
     phone: "+91 99888 64626",
     publicEmail: "info@gorjrmcourier.com",
     website: "https://www.gorjrmcourier.com",
+    handoffStaffEmails: [
+      "sunderbanihub@gorjrmcourier.com",
+    ],
   },
 };
+
+export function getTenantHandoffStaff(domain: string | null | undefined): string[] {
+  const profile = getTenantProfile(domain);
+  return profile?.handoffStaffEmails?.slice(0, 3) ?? [];
+}
 
 export function getTenantProfile(domain: string | null | undefined): TenantProfile | null {
   if (!domain) return null;

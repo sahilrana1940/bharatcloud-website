@@ -32,9 +32,9 @@ Har row ke liye **teen steps** same hain:
 | Role | Email (prod DB se confirm) | Login | Drive | Backup/upload |
 |------|----------------------------|:-----:|:-----:|:-------------:|
 | **Owner / admin** | `info@gorjrmcourier.com` | ☐ | ☐ | ☐ |
-| **Employee 1** | _Team page se invite — email yahan likho_ | ☐ | ☐ | ☐ |
-| **Employee 2** | _…_ | ☐ | ☐ | ☐ |
-| **Employee 3** | _…_ | ☐ | ☐ | ☐ |
+| **Employee 1 (Sunderbani hub)** | `sunderbanihub@gorjrmcourier.com` | ☐ | ☐ | ☐ |
+| **Employee 2** | _pending — email bhejein_ | ☐ | ☐ | ☐ |
+| **Employee 3** | _pending — email bhejein_ | ☐ | ☐ | ☐ |
 
 **UI:** Owner login → `/dashboard/company-admin` — address card + live staff list + checklist.
 
