@@ -40,8 +40,9 @@ Har row ke liye **teen steps** same hain:
 
 ### Backup scope (GOR JRM)
 
-**Sirf 2 cheezein:** (1) **Google Drive archive** → central vault, (2) **CCTV / Upload video** → employee vault.  
-**Email / Gmail backup nahi** (`ENABLE_EMAIL_BACKUP` off).
+1. **Google Drive archive** → central vault  
+2. **CCTV / Upload video** → employee vault  
+3. **Gmail archive** (`ENABLE_EMAIL_BACKUP=1`): staff **My mail archive** — apni backup mail; forward **sirf company mail** (`info@`) se, personal Gmail restore nahi.
 
 ### Auto-link (ek hi company ID)
 

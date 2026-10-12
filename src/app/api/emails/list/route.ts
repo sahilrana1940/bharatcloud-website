@@ -15,25 +15,18 @@ export async function GET(req: Request) {
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
 
-  if (
-    !isWorkspaceOwner({
-      role: session.role,
-      saasRole: session.saasRole,
-      isCompanyOwner: session.isCompanyOwner,
-    })
-  ) {
-    return NextResponse.json(
-      {
-        error:
-          "Company mail archive is managed by the owner. Staff use Drive backup and vault only.",
-      },
-      { status: 403 },
-    );
-  }
+  const adminView = isWorkspaceOwner({
+    role: session.role,
+    saasRole: session.saasRole,
+    isCompanyOwner: session.isCompanyOwner,
+  });
 
   const url = new URL(req.url);
   const q = url.searchParams.get("q") || "";
-  const owner = url.searchParams.get("owner") || "";
+  let owner = url.searchParams.get("owner") || "";
+  if (!adminView) {
+    owner = session.email.toLowerCase();
+  }
   const hasAttachment = url.searchParams.get("attachment") === "1";
   const range = url.searchParams.get("range") || "";
   const page = Math.max(1, Number(url.searchParams.get("page") || 1));
