@@ -23,6 +23,12 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const returnTo = url.searchParams.get("returnTo") || "/settings?drive=connected";
+  const includeGmail = url.searchParams.get("gmail") === "1";
+
+  const scopes = GOOGLE_DRIVE_OAUTH_SCOPES.split(" ");
+  if (includeGmail) {
+    scopes.push("https://www.googleapis.com/auth/gmail.readonly");
+  }
 
   const state = signGoogleOAuthState({
     companyId: session.companyId,
@@ -33,7 +39,7 @@ export async function GET(req: Request) {
   const authUrl = oauth2.generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
-    scope: GOOGLE_DRIVE_OAUTH_SCOPES.split(" "),
+    scope: scopes,
     state,
     login_hint: session.email,
   });

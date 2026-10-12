@@ -1,67 +1,120 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Mail, Send } from "lucide-react";
+import { CloudUpload, Mail, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type MailRow = {
+type ArchiveRow = {
   id: string;
-  owner_email: string;
-  subject: string;
-  from_email: string;
-  date: string;
-  body_text?: string;
-  has_attachment?: boolean;
+  file_name: string;
+  subject?: string;
+  from_email?: string;
+  message_date?: string;
+  owner_email?: string;
+  size?: number;
+};
+
+type Status = {
+  googleConnected?: boolean;
+  status?: string;
+  progress?: string;
+  archivedCount?: number;
+  companyEmailArchiveCount?: number;
 };
 
 export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) {
-  const [q, setQ] = useState("");
-  const [emails, setEmails] = useState<MailRow[]>([]);
+  const [status, setStatus] = useState<Status>({});
+  const [items, setItems] = useState<ArchiveRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
   const [forwardId, setForwardId] = useState<string | null>(null);
   const [forwardTo, setForwardTo] = useState("");
   const [forwardMsg, setForwardMsg] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    const params = new URLSearchParams();
-    if (q) params.set("q", q);
-    const res = await fetch(`/api/emails/list?${params}`);
+  const loadStatus = useCallback(async () => {
+    const res = await fetch("/api/archive/email");
     const j = await res.json();
     if (!res.ok) {
-      setError(j.error || "Could not load mail archive");
-      setEmails([]);
-    } else {
-      setEmails(j.emails || []);
+      setError(j.error || `Error ${res.status}`);
+      return;
     }
+    setStatus(j);
+    setError("");
+  }, []);
+
+  const loadList = useCallback(async () => {
+    const res = await fetch("/api/dashboard/employee/mail");
+    const j = await res.json();
+    if (res.ok) setItems(j.items || []);
+    else if (res.status === 403) setError("Forbidden — refresh session or ask admin to link your company.");
+    else setError(j.error || "Could not load archive");
+  }, []);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    await Promise.all([loadStatus(), loadList()]);
     setLoading(false);
-  }, [q]);
+  }, [loadStatus, loadList]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    refresh();
+  }, [refresh]);
+
+  async function connectGmail() {
+    const res = await fetch(
+      `/api/auth/google/drive/url?gmail=1&returnTo=${encodeURIComponent("/dashboard/employee/mail")}`,
+    );
+    const j = await res.json();
+    if (j.url) window.location.href = j.url;
+    else setError(j.error || "Google OAuth not configured");
+  }
+
+  async function startEmailBackup() {
+    setSyncing(true);
+    setError("");
+    const res = await fetch("/api/archive/email", { method: "POST" });
+    const j = await res.json();
+    if (!res.ok) {
+      setError(j.error || "Backup failed");
+      setSyncing(false);
+      return;
+    }
+    await refresh();
+    setSyncing(false);
+  }
 
   async function submitForward() {
     if (!forwardId || !forwardTo.trim()) return;
-    setForwardMsg("");
     const res = await fetch("/api/emails/forward", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ emailId: forwardId, to: forwardTo.trim() }),
     });
     const j = await res.json();
+    setForwardMsg(res.ok ? j.message || "Sent" : j.error || "Forward failed");
     if (res.ok) {
-      setForwardMsg(j.message || "Sent from company mail.");
       setForwardId(null);
       setForwardTo("");
-    } else {
-      setForwardMsg(j.error || "Forward failed");
     }
   }
+
+  const connected = status.googleConnected === true;
+  const progressPct =
+    status.progress && status.progress.includes("/")
+      ? Math.min(
+          100,
+          Math.round(
+            (Number(status.progress.split("/")[0]) /
+              Math.max(1, Number(status.progress.split("/")[1]))) *
+              100,
+          ),
+        )
+      : status.status === "completed"
+        ? 100
+        : 0;
 
   return (
     <div className="min-h-screen overflow-y-auto px-4 pb-24 pt-6 sm:px-8">
@@ -70,65 +123,89 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
         <h1 className="text-2xl font-bold text-slate-900">My mail archive</h1>
       </div>
       <p className="mt-2 max-w-2xl text-sm text-slate-600">
-        Gmail se delete ho chuki mail yahan backup se dikhti hai — live Gmail yahan open nahi hota.
-        Kisi ko bhejne ke liye <strong>company mail se forward</strong> karein (reply company inbox par
-        aayega).
+        Signed in as <strong>{userEmail}</strong> — archived mail goes to the{" "}
+        <strong>central company vault</strong> (same tenant as Drive backups and CCTV uploads).
       </p>
-      <p className="mt-1 text-xs text-slate-500">Mailbox: {userEmail}</p>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Input
-          placeholder="Search subject, sender…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          className="max-w-sm"
-        />
-        <Button type="button" size="sm" onClick={load}>Search</Button>
-      </div>
 
       {error && (
         <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {error}
-          {error.includes("disabled") && (
-            <span> Admin: set ENABLE_EMAIL_BACKUP=1 and run Gmail sync.</span>
-          )}
         </p>
       )}
+
+      {!connected ? (
+        <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="font-medium text-slate-900">Connect Gmail to start email backup</p>
+          <p className="mt-1 text-sm text-slate-600">
+            Use your work account ({userEmail}). Gmail read-only access is required.
+          </p>
+          <Button type="button" className="mt-4" onClick={connectGmail}>
+            Connect Gmail
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <Button
+            type="button"
+            disabled={syncing}
+            className="gap-2"
+            onClick={startEmailBackup}
+          >
+            <CloudUpload className="h-4 w-4" />
+            {syncing ? "Archiving…" : "Start my email backup"}
+          </Button>
+          {(syncing || status.status === "syncing") && (
+            <div className="mt-4">
+              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full bg-cyan-500 transition-all"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                {status.progress || "Syncing…"}
+              </p>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-slate-500">
+            Archived: {status.archivedCount ?? 0} (you) · Company total:{" "}
+            {status.companyEmailArchiveCount ?? 0}
+          </p>
+        </div>
+      )}
+
       {forwardMsg && (
         <p className="mt-4 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-900">
           {forwardMsg}
         </p>
       )}
 
+      <h2 className="mt-10 text-lg font-semibold text-slate-900">Archived messages</h2>
       {loading ? (
-        <p className="mt-8 text-slate-500">Loading archive…</p>
+        <p className="mt-4 text-slate-500">Loading…</p>
       ) : (
-        <ul className="mt-6 space-y-3">
-          {emails.map((e) => (
+        <ul className="mt-4 space-y-3">
+          {items.map((e) => (
             <li
               key={e.id}
               className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
             >
-              <p className="font-medium text-slate-900">{e.subject || "(no subject)"}</p>
-              <p className="text-xs text-slate-500">
-                {e.from_email} · {new Date(e.date).toLocaleString()}
-                {e.has_attachment ? " · attachment" : ""}
+              <p className="font-medium text-slate-900">
+                {e.subject || e.file_name || "(no subject)"}
               </p>
-              {e.body_text && (
-                <p className="mt-2 line-clamp-3 text-sm text-slate-600">{e.body_text}</p>
-              )}
+              <p className="text-xs text-slate-500">
+                {e.from_email} ·{" "}
+                {e.message_date ? new Date(e.message_date).toLocaleString() : "—"}
+              </p>
               {forwardId === e.id ? (
                 <div className="mt-3 flex flex-wrap items-end gap-2">
-                  <div>
-                    <label className="text-xs text-slate-500">Forward to (email)</label>
-                    <Input
-                      type="email"
-                      value={forwardTo}
-                      onChange={(ev) => setForwardTo(ev.target.value)}
-                      placeholder="customer@example.com"
-                      className="mt-1 max-w-xs"
-                    />
-                  </div>
+                  <Input
+                    type="email"
+                    value={forwardTo}
+                    onChange={(ev) => setForwardTo(ev.target.value)}
+                    placeholder="Forward to…"
+                    className="max-w-xs"
+                  />
                   <Button type="button" size="sm" onClick={submitForward}>
                     Send via company mail
                   </Button>
@@ -150,7 +227,6 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
                   onClick={() => {
                     setForwardId(e.id);
                     setForwardTo("");
-                    setForwardMsg("");
                   }}
                 >
                   <Send className="h-3.5 w-3.5" /> Forward from company mail
@@ -158,9 +234,9 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
               )}
             </li>
           ))}
-          {!emails.length && !error && (
+          {!items.length && (
             <li className="text-sm text-slate-500">
-              Abhi koi archived mail nahi. Settings → Google connect, phir backup/sync chalao.
+              No archived mail yet. Connect Gmail and tap Start my email backup.
             </li>
           )}
         </ul>
