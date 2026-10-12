@@ -29,7 +29,7 @@ export function LoginForm() {
       setError(j.error || "Login failed");
       return;
     }
-    router.push("/dashboard/drive");
+    router.push(typeof j.redirectTo === "string" ? j.redirectTo : "/dashboard");
   }
 
   function googleLogin() {

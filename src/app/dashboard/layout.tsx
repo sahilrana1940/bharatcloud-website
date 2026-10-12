@@ -17,6 +17,8 @@ export default async function DashboardLayout({
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <WorkspaceShell
         role={session.role}
+        saasRole={session.saasRole}
+        isCompanyOwner={session.isCompanyOwner}
         userEmail={session.email}
         companyId={session.companyId}
       >

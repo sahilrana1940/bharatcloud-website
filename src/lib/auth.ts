@@ -158,14 +158,21 @@ export function canAccessPath(role: SaasRole, pathname: string): boolean {
     return pathname.startsWith("/dashboard");
   }
   if (pathname.startsWith("/admin")) return false;
-  if (pathname.startsWith("/dashboard/owner")) return false;
-  if (pathname.startsWith("/dashboard/billing")) return false;
-  if (pathname.startsWith("/dashboard/trash")) return false;
-  const employeePaths = [
-    "/dashboard/employee",
+  if (pathname.startsWith("/settings")) return true;
+  const blocked = [
+    "/dashboard/owner",
+    "/dashboard/company-admin",
+    "/dashboard/billing",
+    "/dashboard/trash",
+    "/dashboard/team",
+    "/dashboard/emails",
+    "/dashboard/shared",
+    "/dashboard/recent",
     "/dashboard/vault",
-    "/dashboard/drive",
+    "/dashboard/my-vault",
   ];
+  if (blocked.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return false;
+  const employeePaths = ["/dashboard/employee", "/dashboard/drive"];
   return employeePaths.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 

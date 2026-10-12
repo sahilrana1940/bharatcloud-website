@@ -11,7 +11,7 @@ import {
   WS_EMAIL_COOKIE,
   WS_ROLE_COOKIE,
 } from "@/lib/workspace/session";
-import { attachSaasRoleCookies, getUserRole } from "@/lib/auth";
+import { attachSaasRoleCookies, defaultDashboardForRole, getUserRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { resolveCompanyIdForEmail } from "@/lib/workspace/resolve-company";
 
@@ -37,19 +37,53 @@ export async function POST(req: Request) {
     }
     orgId = org.id;
   } else {
-    const { data, error } = await supabase
+    const { data: asOwner } = await supabase
       .from("organizations")
       .select("id, status")
       .eq("owner_email", ownerEmail)
       .maybeSingle();
 
-    if (error || !data) {
-      return NextResponse.json({ error: "Account not found" }, { status: 404 });
+    if (asOwner) {
+      if (asOwner.status === "blocked") {
+        return NextResponse.json({ error: "Company blocked" }, { status: 403 });
+      }
+      orgId = asOwner.id;
+    } else {
+      const { data: member } = await supabase
+        .from("company_users")
+        .select("company_id")
+        .eq("email", ownerEmail)
+        .maybeSingle();
+
+      if (!member?.company_id) {
+        return NextResponse.json({ error: "Account not found" }, { status: 404 });
+      }
+
+      const { data: company } = await supabase
+        .from("companies")
+        .select("admin_email")
+        .eq("id", member.company_id)
+        .maybeSingle();
+
+      const orgOwner = company?.admin_email?.toLowerCase();
+      if (!orgOwner) {
+        return NextResponse.json({ error: "Account not found" }, { status: 404 });
+      }
+
+      const { data: orgForCompany, error } = await supabase
+        .from("organizations")
+        .select("id, status")
+        .eq("owner_email", orgOwner)
+        .maybeSingle();
+
+      if (error || !orgForCompany) {
+        return NextResponse.json({ error: "Account not found" }, { status: 404 });
+      }
+      if (orgForCompany.status === "blocked") {
+        return NextResponse.json({ error: "Company blocked" }, { status: 403 });
+      }
+      orgId = orgForCompany.id;
     }
-    if (data.status === "blocked") {
-      return NextResponse.json({ error: "Company blocked" }, { status: 403 });
-    }
-    orgId = data.id;
   }
 
   const workspaceCompanyId = await resolveCompanyIdForEmail(ownerEmail);
@@ -59,6 +93,8 @@ export async function POST(req: Request) {
     ok: true,
     orgId,
     companyId: workspaceCompanyId,
+    redirectTo: defaultDashboardForRole(saas),
+    saasRole: saas.role,
   });
   res.cookies.set(B2B_SESSION_COOKIE, orgId!, {
     httpOnly: true,

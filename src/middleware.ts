@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { canAccessPath } from "@/lib/auth";
 import { isSuperAdminEmail } from "@/lib/brand";
 
 const B2C_ENABLED = process.env.ENABLE_B2C === "1";
@@ -37,20 +38,16 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  if (pathname.startsWith("/dashboard/owner")) {
-    if (role !== "company_owner" && role !== "super_admin") {
-      return NextResponse.redirect(new URL("/dashboard/employee", req.url));
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/settings")) {
+    if (!canAccessPath(role, pathname)) {
+      const dest =
+        role === "super_admin"
+          ? "/admin"
+          : role === "company_owner"
+            ? "/dashboard/owner"
+            : "/dashboard/employee";
+      return NextResponse.redirect(new URL(dest, req.url));
     }
-  }
-
-  if (pathname.startsWith("/dashboard/billing")) {
-    if (role === "employee") {
-      return NextResponse.redirect(new URL("/dashboard/employee", req.url));
-    }
-  }
-
-  if (pathname.startsWith("/dashboard/trash") && role === "employee") {
-    return NextResponse.redirect(new URL("/dashboard/employee", req.url));
   }
 
   if (!B2C_ENABLED && pathname.startsWith("/personal")) {

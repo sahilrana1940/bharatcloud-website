@@ -112,7 +112,13 @@ export async function requireTenant(
     return NextResponse.json({ error: "Company not found" }, { status: 404 });
   }
 
-  if (adminOnly && session.role !== "admin" && !session.isCompanyOwner) {
+  if (
+    adminOnly &&
+    session.role !== "admin" &&
+    !session.isCompanyOwner &&
+    session.saasRole !== "company_owner" &&
+    session.saasRole !== "super_admin"
+  ) {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
 
