@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createOAuth2Client } from "@/lib/google/client";
-import { GOOGLE_SCOPES } from "@/lib/google/config";
+import { resolveGoogleOAuthScopeList } from "@/lib/google/config";
 import { signGoogleOAuthState } from "@/lib/google/oauth-state";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 
@@ -35,7 +35,7 @@ export async function GET(req: Request) {
     access_type: "offline",
     prompt: "consent",
     include_granted_scopes: true,
-    scope: GOOGLE_SCOPES.split(" "),
+    scope: resolveGoogleOAuthScopeList({ includeGmail: true }),
     state,
     login_hint: session.email,
   });
