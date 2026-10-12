@@ -1,26 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Circle } from "lucide-react";
 
 import { GlassPanel } from "@/components/ui/pro/primitives";
 
 type UserRow = { email: string; role: string; name?: string };
 
-const STEPS = [
-  "Login at bharatcloud.store/login",
-  "Settings → Google Drive connected",
-  "Employee home → Start my backup (or upload/vault)",
-] as const;
+type CheckRow = {
+  email: string;
+  login: boolean;
+  drive: boolean;
+  backup: boolean;
+};
+
+const STEPS: { key: keyof Pick<CheckRow, "login" | "drive" | "backup">; label: string }[] = [
+  { key: "login", label: "Login at bharatcloud.store/login" },
+  { key: "drive", label: "Settings → Google Drive connected" },
+  { key: "backup", label: "Drive backup or vault upload completed" },
+];
+
+const PENDING_HINT =
+  "Team page par invite bhejein, phir is account se login test karein.";
 
 export function GoLiveRoleChecks({
+  companyId,
   adminEmail,
   plannedStaffEmails = [],
 }: {
+  companyId: string;
   adminEmail: string;
   plannedStaffEmails?: string[];
 }) {
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [checks, setChecks] = useState<CheckRow[]>([]);
 
   useEffect(() => {
     fetch("/api/team/users")
@@ -28,6 +41,20 @@ export function GoLiveRoleChecks({
       .then((j) => setUsers(j.users || []))
       .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (!companyId) return;
+    fetch(`/api/go-live-checks?company_id=${encodeURIComponent(companyId)}`)
+      .then((r) => r.json())
+      .then((j) => setChecks(j.checks || []))
+      .catch(() => setChecks([]));
+  }, [companyId]);
+
+  const checkByEmail = useMemo(() => {
+    const m = new Map<string, CheckRow>();
+    for (const c of checks) m.set(c.email.toLowerCase(), c);
+    return m;
+  }, [checks]);
 
   const owner = users.find((u) => u.email.toLowerCase() === adminEmail.toLowerCase()) ?? {
     email: adminEmail,
@@ -63,6 +90,8 @@ export function GoLiveRoleChecks({
   function RoleBlock({ title, u }: { title: string; u: UserRow }) {
     const placeholder = u.email.startsWith("Staff slot");
     const plannedOnly = u.name === "Planned — invite on Team if missing";
+    const c = checkByEmail.get(u.email.toLowerCase());
+
     return (
       <li className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">{title}</p>
@@ -73,16 +102,28 @@ export function GoLiveRoleChecks({
         >
           {u.email}
         </p>
-        {plannedOnly && (
-          <p className="mt-1 text-xs text-amber-700">Team page par invite bhejein, phir is account se login test karein.</p>
+        {(plannedOnly || placeholder) && (
+          <p className="mt-1 text-xs text-amber-700">{PENDING_HINT}</p>
         )}
         <ul className="mt-3 space-y-1.5 text-sm text-slate-600">
-          {STEPS.map((step) => (
-            <li key={step} className="flex items-start gap-2">
-              <Circle className="mt-0.5 h-4 w-4 shrink-0 text-slate-300" />
-              {step}
-            </li>
-          ))}
+          {STEPS.map((step) => {
+            const ok = c?.[step.key] === true;
+            return (
+              <li key={step.key} className="flex items-start gap-2">
+                {ok ? (
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                ) : (
+                  <Circle className="mt-0.5 h-4 w-4 shrink-0 text-slate-300" />
+                )}
+                <span className={ok ? "text-slate-800" : "text-slate-500"}>
+                  {step.label}
+                  {!ok && !placeholder && (
+                    <span className="mt-0.5 block text-xs text-amber-700">{PENDING_HINT}</span>
+                  )}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       </li>
     );
@@ -92,7 +133,7 @@ export function GoLiveRoleChecks({
     <GlassPanel className="mt-8 p-6">
       <h2 className="text-lg font-semibold text-slate-900">Go-live checks (owner + 3 employees)</h2>
       <p className="mt-1 text-sm text-slate-600">
-        Demo se pehle har account par ye teen steps verify karein. Team page se staff invite karein.
+        Har account par login, Drive connect, aur backup/vault — green tick jab complete ho.
       </p>
       <ul className="mt-6 space-y-4">
         <RoleBlock title="Owner / admin" u={owner} />
@@ -100,10 +141,6 @@ export function GoLiveRoleChecks({
           <RoleBlock key={`emp-${i}`} title={`Employee ${i + 1}`} u={u} />
         ))}
       </ul>
-      <p className="mt-4 flex items-center gap-2 text-xs text-slate-500">
-        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-        Print-friendly copy: <code className="rounded bg-white px-1">docs/clients/GORJRM_HANDOFF.md</code>
-      </p>
     </GlassPanel>
   );
 }

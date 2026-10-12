@@ -3,6 +3,8 @@ import { createHash } from "crypto";
 import { emailDomain } from "@/lib/google/client";
 import { getTenantHandoffStaff } from "@/lib/tenant-profile";
 
+import { upsertProfileInvite } from "@/lib/workspace/workspace-profiles";
+
 import { getSupabaseOrNull } from "./db";
 
 export function normalizeDomain(domain: string) {
@@ -44,6 +46,7 @@ export async function syncCompanyDirectory(companyId: string, domain: string) {
       },
       { onConflict: "company_id,email" },
     );
+    await upsertProfileInvite(supabase, { companyId, email });
     synced += 1;
   }
 
@@ -66,6 +69,7 @@ export async function syncCompanyDirectory(companyId: string, domain: string) {
       },
       { onConflict: "company_id,email" },
     );
+    await upsertProfileInvite(supabase, { companyId, email });
     synced += 1;
   }
 

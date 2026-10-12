@@ -5,6 +5,7 @@ import { adminClient } from "@/lib/google/client";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { DEMO_USERS } from "@/lib/workspace/demo-data";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
+import { upsertProfileInvite } from "@/lib/workspace/workspace-profiles";
 
 export async function POST() {
   const auth = await requireWorkspace(true);
@@ -59,6 +60,11 @@ export async function POST() {
       },
       { onConflict: "company_id,email" },
     );
+    await upsertProfileInvite(supabase, {
+      companyId: session.companyId,
+      email,
+      invitedBy: session.email,
+    });
     synced += 1;
   }
 

@@ -6,6 +6,7 @@ import { listDiscoveredEmails, normalizeDomain } from "@/lib/workspace/company-d
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { isWorkspaceOwner } from "@/lib/workspace/nav";
 import { loadTenantCompany } from "@/lib/tenant";
+import { upsertProfileInvite } from "@/lib/workspace/workspace-profiles";
 
 export async function GET() {
   const auth = await requireWorkspace(true);
@@ -96,6 +97,22 @@ export async function POST(req: Request) {
         email: addEmail,
         source: "manual",
         backup_enabled: true,
+      },
+      { onConflict: "company_id,email" },
+    );
+    await upsertProfileInvite(supabase, {
+      companyId: session.companyId,
+      email: addEmail,
+      invitedBy: session.email,
+    });
+    await supabase.from("company_users").upsert(
+      {
+        company_id: session.companyId,
+        email: addEmail,
+        role: "member",
+        saas_role: "employee",
+        is_company_owner: false,
+        is_backup_enabled: true,
       },
       { onConflict: "company_id,email" },
     );

@@ -26,6 +26,7 @@ export default async function CompanyAdminDashboardPage() {
   if (!supabase) {
     return (
       <Shell
+        companyId={companyId}
         domain="demo"
         adminEmail={session.email}
         profile={null}
@@ -79,6 +80,7 @@ export default async function CompanyAdminDashboardPage() {
 
   return (
     <Shell
+      companyId={companyId}
       domain={domain}
       adminEmail={adminEmail}
       profile={profile}
@@ -92,6 +94,7 @@ export default async function CompanyAdminDashboardPage() {
 }
 
 function Shell({
+  companyId,
   domain,
   adminEmail,
   profile,
@@ -101,6 +104,7 @@ function Shell({
   members,
   jobs,
 }: {
+  companyId: string;
   domain: string;
   adminEmail: string;
   profile: ReturnType<typeof getTenantProfile>;
@@ -179,7 +183,11 @@ function Shell({
           </table>
       </ProTableWrap>
 
-      <GoLiveRoleChecks adminEmail={adminEmail} plannedStaffEmails={plannedStaffEmails} />
+      <GoLiveRoleChecks
+        companyId={companyId}
+        adminEmail={adminEmail}
+        plannedStaffEmails={plannedStaffEmails}
+      />
     </div>
   );
 }

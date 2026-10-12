@@ -14,6 +14,7 @@ import {
 import { attachSaasRoleCookies, defaultDashboardForRole, getUserRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { resolveCompanyIdForEmail } from "@/lib/workspace/resolve-company";
+import { touchProfileLogin } from "@/lib/workspace/workspace-profiles";
 
 export async function POST(req: Request) {
   const { email, password } = await req.json();
@@ -87,6 +88,9 @@ export async function POST(req: Request) {
   }
 
   const workspaceCompanyId = await resolveCompanyIdForEmail(ownerEmail);
+  if (supabase) {
+    await touchProfileLogin(supabase, ownerEmail, workspaceCompanyId);
+  }
   const saas = await getUserRole(ownerEmail);
 
   const res = NextResponse.json({

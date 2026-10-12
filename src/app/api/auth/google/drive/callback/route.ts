@@ -5,6 +5,7 @@ import { createGoogleDriveOAuth2Client } from "@/lib/google/drive-oauth";
 import { verifyGoogleOAuthState } from "@/lib/google/oauth-state";
 import { saveGoogleOAuthTokens } from "@/lib/google/save-tokens";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
+import { touchProfileLogin } from "@/lib/workspace/workspace-profiles";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -66,6 +67,7 @@ export async function GET(req: Request) {
     googleEmail,
     tokens,
   });
+  await touchProfileLogin(supabase, linkState.email, linkState.companyId);
 
   const redirectTo = linkState.returnTo.startsWith("/")
     ? linkState.returnTo

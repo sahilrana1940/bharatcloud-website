@@ -15,6 +15,7 @@ import {
   isCompanyOwnerEmail,
 } from "@/lib/workspace/company-membership";
 import { resolveCompanyIdForEmail } from "@/lib/workspace/resolve-company";
+import { touchProfileLogin } from "@/lib/workspace/workspace-profiles";
 import {
   workspaceCookieOptions,
   WS_COMPANY_COOKIE,
@@ -76,6 +77,7 @@ export async function POST(req: Request) {
       }
 
       const workspaceCompanyId = await resolveCompanyIdForEmail(ownerEmail);
+      await touchProfileLogin(supabase, ownerEmail, workspaceCompanyId);
       const saas = await getUserRole(ownerEmail);
       const workspaceAdmin =
         saas.is_company_owner ||
@@ -165,6 +167,9 @@ export async function POST(req: Request) {
   }
 
   const workspaceCompanyId = await resolveCompanyIdForEmail(ownerEmail);
+  if (supabase) {
+    await touchProfileLogin(supabase, ownerEmail, workspaceCompanyId);
+  }
   const saas = await getUserRole(ownerEmail);
   const workspaceAdmin =
     saas.is_company_owner ||
