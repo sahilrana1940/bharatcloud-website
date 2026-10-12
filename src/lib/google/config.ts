@@ -27,6 +27,7 @@ const DRIVE_SCOPES = [
 
 const EMAIL_SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/gmail.metadata",
   "https://www.googleapis.com/auth/contacts.readonly",
 ];
 
