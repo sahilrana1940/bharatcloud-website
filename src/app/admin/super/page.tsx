@@ -7,11 +7,11 @@ import {
   Building2,
   CloudUpload,
   CreditCard,
+  RefreshCw,
   Users,
-  Search,
-  Bell,
-  Settings,
 } from "lucide-react";
+
+import Link from "next/link";
 
 type StatsPayload = {
   data: {
@@ -27,23 +27,43 @@ type StatsPayload = {
 
 type LogFilter = "all" | 402 | 401 | 200;
 
+type LoadState = "loading" | "ready" | "error";
+
 export default function SuperAdminUltraProPage() {
   const router = useRouter();
   const [stats, setStats] = useState<StatsPayload | null>(null);
+  const [loadState, setLoadState] = useState<LoadState>("loading");
+  const [errorMsg, setErrorMsg] = useState("");
   const [bypass, setBypass] = useState(false);
   const [logFilter, setLogFilter] = useState<LogFilter>("all");
   const [toggling, setToggling] = useState(false);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/admin/super/stats", { credentials: "include" });
-    if (res.status === 401) {
-      router.replace("/login");
-      return;
+    setLoadState("loading");
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/admin/super/stats", { credentials: "include" });
+      if (res.status === 401) {
+        router.replace("/login");
+        return;
+      }
+      if (res.status === 403) {
+        router.replace("/dashboard");
+        return;
+      }
+      if (!res.ok) {
+        setLoadState("error");
+        setErrorMsg("Could not load super admin stats.");
+        return;
+      }
+      const json = (await res.json()) as StatsPayload;
+      setStats(json);
+      setBypass(json.bypass === 1);
+      setLoadState("ready");
+    } catch {
+      setLoadState("error");
+      setErrorMsg("Network error. Try again.");
     }
-    if (!res.ok) return;
-    const json = (await res.json()) as StatsPayload;
-    setStats(json);
-    setBypass(json.bypass === 1);
   }, [router]);
 
   useEffect(() => {
@@ -80,144 +100,182 @@ export default function SuperAdminUltraProPage() {
     return stats.logs.filter((l) => l.code === logFilter);
   }, [stats, logFilter]);
 
-  if (!stats) {
+  if (loadState === "loading") {
     return (
-      <div className="min-h-screen text-slate-500 flex items-center justify-center">
-        Loading Nexus Admin…
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-slate-500">
+        <RefreshCw className="h-8 w-8 animate-spin text-cyan-500" />
+        <p>Loading super console…</p>
+      </div>
+    );
+  }
+
+  if (loadState === "error" || !stats) {
+    return (
+      <div className="pro-glass rounded-2xl p-8 text-center">
+        <p className="text-slate-700">{errorMsg || "Something went wrong."}</p>
+        <button
+          type="button"
+          onClick={load}
+          className="mt-4 rounded-xl bg-gradient-to-r from-cyan-500 to-sky-500 px-5 py-2 text-sm font-bold text-white"
+        >
+          Retry
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen text-slate-900 p-4 sm:p-6">
-      <header
-        className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between pro-glass rounded-2xl p-4 mb-6"
-      >
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-sky-500" />
-          <span className="text-xl font-bold tracking-tight text-slate-900">Nexus Admin</span>
-          <span className="text-xs px-2 py-1 rounded-full border border-cyan-200 bg-cyan-50 text-cyan-700">
-            SUPER ADMIN
-          </span>
+    <div>
+      <div className="mb-2 text-xs font-medium text-slate-500">
+        <Link href="/admin" className="hover:text-cyan-600">Admin</Link>
+        <span className="mx-2">/</span>
+        <span className="text-slate-800">Super console</span>
+      </div>
+
+      <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between pro-glass rounded-2xl p-5">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-sky-600 text-xs font-black text-white">
+              BC
+            </span>
+            <h1 className="text-2xl font-bold text-slate-900">BharatCloud Super Admin</h1>
+            <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-700">
+              Live
+            </span>
+          </div>
+          <p className="mt-2 max-w-xl text-sm text-slate-600">
+            Platform metrics, payment test bypass, and backup API logs (401 / 402 / 200).
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4">
-          <div
-            className="flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200"
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={load}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-cyan-200"
           >
-            <span className="text-xs font-bold tracking-wide text-slate-700">PAYMENT_BYPASS</span>
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+          <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <span className="text-xs font-bold text-slate-700">PAYMENT_BYPASS</span>
             <button
               type="button"
               disabled={toggling}
               onClick={toggleBypass}
-              className={`relative w-12 h-7 rounded-full transition ${bypass ? "bg-cyan-500" : "bg-slate-300"}`}
+              className={`relative h-7 w-12 rounded-full transition ${bypass ? "bg-cyan-500" : "bg-slate-300"}`}
               aria-pressed={bypass}
+              aria-label="Toggle payment bypass"
             >
               <span
-                className={`absolute top-1 left-0 w-5 h-5 bg-white rounded-full shadow transition-transform ${bypass ? "translate-x-6" : "translate-x-1"}`}
+                className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${bypass ? "translate-x-6" : "translate-x-1"}`}
               />
             </button>
-            <span className="text-xs text-slate-500">
-              {bypass ? "ON (1) Test" : "OFF (0) Prod"}
-            </span>
+            <span className="text-xs text-slate-500">{bypass ? "Test (1)" : "Prod (0)"}</span>
           </div>
-
-          <div className="relative hidden md:block">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-            <input
-              placeholder="Search companies, users, logs..."
-              className="bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 w-[280px] text-sm outline-none focus:border-cyan-400"
-            />
-          </div>
-          <Bell className="w-5 h-5 text-slate-500" />
-          <Settings className="w-5 h-5 text-slate-500" />
         </div>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           title="Companies"
-          icon={<Building2 className="w-4 h-4 text-cyan-600" />}
+          icon={<Building2 className="h-4 w-4 text-cyan-600" />}
           value={stats.data.companies.toLocaleString()}
-          sub="Registered tenants"
+          sub="Tenants on Supabase"
         />
         <MetricCard
           title="Billing"
-          icon={<CreditCard className="w-4 h-4 text-cyan-600" />}
+          icon={<CreditCard className="h-4 w-4 text-cyan-600" />}
           value={`₹${stats.data.billing.toLocaleString()}`}
           sub="Approved payments"
         />
         <MetricCard
           title="Backups"
-          icon={<CloudUpload className="w-4 h-4 text-cyan-600" />}
+          icon={<CloudUpload className="h-4 w-4 text-cyan-600" />}
           value={stats.data.backups.toLocaleString()}
-          sub="Backup job records"
+          sub="Backup jobs"
         />
         <MetricCard
-          title="User Access"
-          icon={<Users className="w-4 h-4 text-cyan-600" />}
+          title="Users"
+          icon={<Users className="h-4 w-4 text-cyan-600" />}
           value={stats.data.users.toLocaleString()}
           sub="Workspace members"
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section className="pro-glass rounded-2xl p-5">
-          <h3 className="font-bold mb-4 text-cyan-700">Recent Companies</h3>
-          <div className="space-y-0">
-            {stats.recentCompanies.map((c) => (
-              <div
-                key={c.name}
-                className="flex justify-between items-center gap-2 py-3 border-b border-slate-100 text-sm"
-              >
-                <span className="truncate flex-1 text-slate-800">{c.name}</span>
-                <span className="text-xs px-2 py-1 bg-slate-100 rounded shrink-0 text-slate-600">{c.plan}</span>
-                <span
-                  className={`text-xs px-2 py-1 rounded shrink-0 ${
-                    c.status === "Suspended"
-                      ? "bg-red-50 text-red-600"
-                      : "bg-emerald-50 text-emerald-700"
-                  }`}
+          <h2 className="mb-4 font-bold text-slate-900">Recent companies</h2>
+          {stats.recentCompanies.length === 0 ? (
+            <p className="text-sm text-slate-500">No companies yet.</p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {stats.recentCompanies.map((c) => (
+                <li
+                  key={c.name}
+                  className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm"
                 >
-                  {c.status}
-                </span>
-              </div>
-            ))}
-          </div>
+                  <span className="min-w-0 flex-1 truncate font-medium text-slate-800">{c.name}</span>
+                  <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{c.plan}</span>
+                  <span
+                    className={`rounded px-2 py-0.5 text-xs ${
+                      c.status === "Suspended"
+                        ? "bg-red-50 text-red-600"
+                        : "bg-emerald-50 text-emerald-700"
+                    }`}
+                  >
+                    {c.status}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <section className="pro-glass rounded-2xl p-5">
-          <h3 className="font-bold mb-4 text-cyan-700">System Logs</h3>
-          <div className="flex flex-wrap gap-2 mb-3 text-xs">
+          <h2 className="mb-4 font-bold text-slate-900">System logs</h2>
+          <div className="mb-3 flex flex-wrap gap-2 text-xs">
             {(
               [
-                ["all", "All", "bg-cyan-50 text-cyan-700"],
-                [402, "402", "bg-red-50 text-red-600"],
-                [401, "401", "bg-amber-50 text-amber-700"],
-                [200, "200", "bg-emerald-50 text-emerald-700"],
+                ["all", "All"],
+                [402, "402"],
+                [401, "401"],
+                [200, "200"],
               ] as const
-            ).map(([key, label, cls]) => (
+            ).map(([key, label]) => (
               <button
                 key={String(key)}
                 type="button"
                 onClick={() => setLogFilter(key as LogFilter)}
-                className={`px-2 py-1 rounded transition ${cls} ${logFilter === key ? "ring-1 ring-cyan-300" : "opacity-80"}`}
+                className={`rounded-lg px-3 py-1 font-medium transition ${
+                  logFilter === key
+                    ? "bg-cyan-600 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
               >
                 {label}
               </button>
             ))}
           </div>
-          <div className="text-xs space-y-2 font-mono text-slate-600 max-h-64 overflow-y-auto">
+          <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50/80 p-3 font-mono text-xs text-slate-600">
             {filteredLogs.map((log, i) => (
-              <p key={i}>
+              <p key={i} className="leading-relaxed">
                 <LogCode code={log.code} />
-                {" • "}
+                <span className="text-slate-400"> · </span>
                 {log.message}
               </p>
             ))}
-            {!filteredLogs.length && <p className="text-slate-400">No logs for this filter.</p>}
+            {!filteredLogs.length && (
+              <p className="text-slate-400">No logs for this filter.</p>
+            )}
           </div>
         </section>
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-3 text-sm">
+        <Link href="/admin" className="text-cyan-700 hover:underline">Platform overview</Link>
+        <Link href="/admin/payments" className="text-cyan-700 hover:underline">Approve payments</Link>
+        <Link href="/dashboard/drive" className="text-slate-500 hover:text-cyan-700">Workspace</Link>
       </div>
     </div>
   );
@@ -235,22 +293,19 @@ function MetricCard({
   sub: string;
 }) {
   return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      className="pro-glass rounded-2xl p-5"
-    >
-      <div className="flex gap-2 items-center text-slate-500 text-sm mb-2">
+    <motion.div whileHover={{ y: -2 }} className="pro-glass rounded-2xl p-5">
+      <div className="mb-2 flex items-center gap-2 text-sm text-slate-500">
         {icon}
         {title}
       </div>
-      <div className="text-3xl font-bold text-slate-900">{value}</div>
-      <div className="text-xs text-slate-500 mt-1">{sub}</div>
+      <p className="text-3xl font-bold text-slate-900">{value}</p>
+      <p className="mt-1 text-xs text-slate-500">{sub}</p>
     </motion.div>
   );
 }
 
 function LogCode({ code }: { code: number }) {
-  if (code === 402) return <span className="text-red-600">402 PAYMENT_REQUIRED</span>;
-  if (code === 401) return <span className="text-amber-600">401 UNAUTHORIZED</span>;
-  return <span className="text-emerald-600">200 OK</span>;
+  if (code === 402) return <span className="font-semibold text-red-600">402</span>;
+  if (code === 401) return <span className="font-semibold text-amber-600">401</span>;
+  return <span className="font-semibold text-emerald-600">200</span>;
 }
