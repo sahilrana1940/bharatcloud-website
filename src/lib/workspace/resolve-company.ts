@@ -1,4 +1,11 @@
 import { emailDomain } from "@/lib/google/client";
+
+import {
+  canAutoJoinCompany,
+  findCompanyByDomain,
+  isCompanyOwnerEmail,
+  provisionLinkedStaff,
+} from "@/lib/workspace/company-membership";
 import { DEMO_COMPANY_ID } from "@/lib/workspace/demo-data";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
@@ -24,8 +31,8 @@ async function upsertCompanyUser(
 }
 
 /**
- * Ensures every B2B login has a `companies` + `company_users` row (multi-tenant).
- * Returns real `companies.id` for workspace cookies.
+ * Ensures every login maps to one `companies.id` (single tenant per domain).
+ * Staff on the same domain / handoff list auto-link — no second company row.
  */
 export async function resolveCompanyIdForEmail(email: string): Promise<string> {
   const normalized = email.trim().toLowerCase();
@@ -50,20 +57,28 @@ export async function resolveCompanyIdForEmail(email: string): Promise<string> {
 
   const isOrgOwner = org?.owner_email === normalized;
 
+  const existingCo = await findCompanyByDomain(domain);
+
+  if (existingCo && canAutoJoinCompany(normalized, existingCo)) {
+    const isOwner = isCompanyOwnerEmail(normalized, existingCo.admin_email) || isOrgOwner;
+    await upsertCompanyUser(supabase, {
+      companyId: existingCo.id,
+      email: normalized,
+      isOwner,
+    });
+    if (isOwner) {
+      await provisionLinkedStaff(existingCo.id, existingCo.domain);
+    }
+    return existingCo.id;
+  }
+
   const { data: byAdmin } = await supabase
     .from("companies")
-    .select("id, admin_email")
+    .select("id, admin_email, domain")
     .eq("admin_email", normalized)
     .maybeSingle();
 
-  const { data: byDomain } = await supabase
-    .from("companies")
-    .select("id, admin_email")
-    .eq("domain", domain)
-    .maybeSingle();
-
-  let companyId: string | null =
-    (byAdmin?.id as string) || (byDomain?.id as string) || null;
+  let companyId: string | null = (byAdmin?.id as string) || null;
 
   if (!companyId && isOrgOwner) {
     const { data: created, error } = await supabase
@@ -79,24 +94,29 @@ export async function resolveCompanyIdForEmail(email: string): Promise<string> {
     if (error || !created) {
       return DEMO_COMPANY_ID;
     }
-    companyId = created.id;
+    companyId = created.id as string;
     await supabase.from("company_settings").insert({ company_id: companyId });
+    await provisionLinkedStaff(companyId, domain);
   }
 
   if (!companyId) {
     return DEMO_COMPANY_ID;
   }
 
-  const isOwner =
-    isOrgOwner ||
-    byAdmin?.id === companyId ||
-    byDomain?.admin_email === normalized;
+  const adminEmail =
+    (byAdmin?.admin_email as string) || existingCo?.admin_email || normalized;
+  const isOwner = isOrgOwner || isCompanyOwnerEmail(normalized, adminEmail);
 
   await upsertCompanyUser(supabase, {
     companyId,
     email: normalized,
     isOwner,
   });
+
+  if (isOwner) {
+    const coDomain = (byAdmin?.domain as string) || domain;
+    await provisionLinkedStaff(companyId, coDomain);
+  }
 
   return companyId;
 }

@@ -38,6 +38,13 @@ Har row ke liye **teen steps** same hain:
 
 **UI:** Owner login → `/dashboard/company-admin` — address card + live staff list + checklist.
 
+### Auto-link (ek hi company ID)
+
+- **Ek tenant:** `gorjrmcourier.com` → sab linked emails **same `companyId`** (cookie `bc_workspace_company`).
+- **Owner** pehli baar signup (`info@…`) → company create.
+- **Staff** (`sunderbanihub@`, `nowsheraodh@`, `rajouriodh@`) → **naya company nahi** — **Log in** ya **Create account** (password 6+) → automatically usi company me `employee` role.
+- Owner login ke baad Team list me teen staff rows **pre-link** ho jati hain (pehle login se pehle bhi dikhen).
+
 ---
 
 ## Prod se employee emails nikalna (Supabase SQL)

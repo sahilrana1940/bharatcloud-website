@@ -6,8 +6,14 @@ import {
   B2B_EMAIL_COOKIE,
   B2B_SESSION_COOKIE,
 } from "@/lib/b2b/session";
-import { attachSaasRoleCookies, getUserRole } from "@/lib/auth";
+import { attachSaasRoleCookies, defaultDashboardForRole, getUserRole } from "@/lib/auth";
+import { emailDomain } from "@/lib/google/client";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
+import {
+  canAutoJoinCompany,
+  findCompanyByDomain,
+  isCompanyOwnerEmail,
+} from "@/lib/workspace/company-membership";
 import { resolveCompanyIdForEmail } from "@/lib/workspace/resolve-company";
 import {
   workspaceCookieOptions,
@@ -38,6 +44,71 @@ export async function POST(req: Request) {
 
   const supabase = getSupabaseAdmin();
   let orgId: string;
+  const domain = emailDomain(ownerEmail);
+
+  if (supabase && domain) {
+    const existingCo = await findCompanyByDomain(domain);
+    if (existingCo && !isCompanyOwnerEmail(ownerEmail, existingCo.admin_email)) {
+      if (!canAutoJoinCompany(ownerEmail, existingCo)) {
+        return NextResponse.json(
+          {
+            error:
+              "This company already exists. Use Log in with your approved work email, or ask the owner to add you on Team.",
+          },
+          { status: 403 },
+        );
+      }
+
+      const { data: ownerOrg } = await supabase
+        .from("organizations")
+        .select("id, status")
+        .eq("owner_email", existingCo.admin_email)
+        .maybeSingle();
+
+      if (!ownerOrg) {
+        return NextResponse.json(
+          { error: "Company owner must complete signup first (info@ account)." },
+          { status: 400 },
+        );
+      }
+      if (ownerOrg.status === "blocked") {
+        return NextResponse.json({ error: "Company blocked" }, { status: 403 });
+      }
+
+      const workspaceCompanyId = await resolveCompanyIdForEmail(ownerEmail);
+      const saas = await getUserRole(ownerEmail);
+      const workspaceAdmin =
+        saas.is_company_owner ||
+        saas.role === "company_owner" ||
+        ownerEmail.startsWith("admin@");
+
+      const res = NextResponse.json({
+        ok: true,
+        joined: true,
+        orgId: ownerOrg.id,
+        companyId: workspaceCompanyId,
+        redirectTo: defaultDashboardForRole(saas),
+      });
+      res.cookies.set(B2B_SESSION_COOKIE, ownerOrg.id, {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30,
+      });
+      res.cookies.set(B2B_EMAIL_COOKIE, ownerEmail, {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30,
+      });
+      const wsOpts = workspaceCookieOptions();
+      res.cookies.set(WS_COMPANY_COOKIE, workspaceCompanyId, wsOpts);
+      res.cookies.set(WS_EMAIL_COOKIE, ownerEmail, wsOpts);
+      res.cookies.set(WS_ROLE_COOKIE, workspaceAdmin ? "admin" : "member", wsOpts);
+      attachSaasRoleCookies(res, saas);
+      return res;
+    }
+  }
 
   if (!supabase) {
     if (demoOrganizations.some((o) => o.owner_email === ownerEmail)) {
@@ -100,7 +171,12 @@ export async function POST(req: Request) {
     saas.role === "company_owner" ||
     ownerEmail.startsWith("admin@");
 
-  const res = NextResponse.json({ ok: true, orgId, companyId: workspaceCompanyId });
+  const res = NextResponse.json({
+    ok: true,
+    orgId,
+    companyId: workspaceCompanyId,
+    redirectTo: defaultDashboardForRole(saas),
+  });
   res.cookies.set(B2B_SESSION_COOKIE, orgId, {
     httpOnly: true,
     sameSite: "lax",

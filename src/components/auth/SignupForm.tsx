@@ -32,7 +32,7 @@ export function SignupForm() {
       setError(j.error || "Signup failed");
       return;
     }
-    router.push("/dashboard");
+    router.push(typeof j.redirectTo === "string" ? j.redirectTo : "/dashboard");
   }
 
   return (
