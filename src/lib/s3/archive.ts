@@ -1,4 +1,5 @@
-import { PutObjectCommand, type StorageClass } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, type StorageClass } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { getS3Client } from "@/lib/s3/client";
 import { getArchiveBucket, isS3Configured } from "@/lib/s3/config";
@@ -36,4 +37,15 @@ export async function uploadToArchive(
     const msg = e instanceof Error ? e.message : "Upload failed";
     return { ok: false, error: msg };
   }
+}
+
+export async function presignedArchiveGetUrl(
+  key: string,
+  expiresInSeconds = 3600,
+): Promise<string | null> {
+  if (!key || !isS3Configured()) return null;
+  const client = getS3Client();
+  if (!client) return null;
+  const cmd = new GetObjectCommand({ Bucket: getArchiveBucket(), Key: key });
+  return getSignedUrl(client, cmd, { expiresIn: expiresInSeconds });
 }
