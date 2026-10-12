@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { CompanyTenantCard } from "@/components/dashboard/CompanyTenantCard";
 import { GoLiveRoleChecks } from "@/components/dashboard/GoLiveRoleChecks";
 import { ProPageHeader, ProStatCard, ProTableWrap } from "@/components/ui/pro/primitives";
-import { getTenantProfile } from "@/lib/tenant-profile";
+import { getTenantHandoffStaff, getTenantProfile } from "@/lib/tenant-profile";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { getWorkspaceSession, WS_COMPANY_COOKIE } from "@/lib/workspace/session";
 import { Building2, CloudUpload, Users } from "lucide-react";
@@ -23,6 +23,7 @@ export default async function CompanyAdminDashboardPage() {
         domain="demo"
         adminEmail={session.email}
         profile={null}
+        plannedStaffEmails={[]}
         storageLabel="0 GB"
         activeBackups={0}
         members={0}
@@ -68,12 +69,14 @@ export default async function CompanyAdminDashboardPage() {
   const domain = company.domain as string;
   const adminEmail = (company.admin_email as string) || session.email;
   const profile = getTenantProfile(domain);
+  const plannedStaff = getTenantHandoffStaff(domain);
 
   return (
     <Shell
       domain={domain}
       adminEmail={adminEmail}
       profile={profile}
+      plannedStaffEmails={plannedStaff}
       storageLabel={`${storageGb.toFixed(1)} / ${limitGb} GB`}
       activeBackups={activeBackups || 0}
       members={members || 0}
@@ -86,6 +89,7 @@ function Shell({
   domain,
   adminEmail,
   profile,
+  plannedStaffEmails,
   storageLabel,
   activeBackups,
   members,
@@ -94,6 +98,7 @@ function Shell({
   domain: string;
   adminEmail: string;
   profile: ReturnType<typeof getTenantProfile>;
+  plannedStaffEmails: string[];
   storageLabel: string;
   activeBackups: number;
   members: number;
@@ -168,7 +173,7 @@ function Shell({
           </table>
       </ProTableWrap>
 
-      <GoLiveRoleChecks adminEmail={adminEmail} />
+      <GoLiveRoleChecks adminEmail={adminEmail} plannedStaffEmails={plannedStaffEmails} />
     </div>
   );
 }

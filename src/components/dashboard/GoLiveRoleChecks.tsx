@@ -13,7 +13,13 @@ const STEPS = [
   "Employee home → Start my backup (or upload/vault)",
 ] as const;
 
-export function GoLiveRoleChecks({ adminEmail }: { adminEmail: string }) {
+export function GoLiveRoleChecks({
+  adminEmail,
+  plannedStaffEmails = [],
+}: {
+  adminEmail: string;
+  plannedStaffEmails?: string[];
+}) {
   const [users, setUsers] = useState<UserRow[]>([]);
 
   useEffect(() => {
@@ -33,23 +39,43 @@ export function GoLiveRoleChecks({ adminEmail }: { adminEmail: string }) {
   );
   const employees: UserRow[] = [];
   for (let i = 0; i < 3; i++) {
-    employees.push(
-      realEmployees[i] ?? {
-        email: `Staff slot ${i + 1} — invite on Team`,
+    const fromDb = realEmployees[i];
+    if (fromDb) {
+      employees.push(fromDb);
+      continue;
+    }
+    const planned = plannedStaffEmails[i]?.trim();
+    if (planned) {
+      employees.push({
+        email: planned,
         role: "member",
-        name: "Pending invite",
-      },
-    );
+        name: "Planned — invite on Team if missing",
+      });
+      continue;
+    }
+    employees.push({
+      email: `Staff slot ${i + 1} — invite on Team`,
+      role: "member",
+      name: "Pending invite",
+    });
   }
 
   function RoleBlock({ title, u }: { title: string; u: UserRow }) {
     const placeholder = u.email.startsWith("Staff slot");
+    const plannedOnly = u.name === "Planned — invite on Team if missing";
     return (
       <li className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">{title}</p>
-        <p className={`mt-1 font-medium ${placeholder ? "text-slate-400" : "text-slate-900"}`}>
+        <p
+          className={`mt-1 font-medium ${
+            placeholder ? "text-slate-400" : plannedOnly ? "text-slate-800" : "text-slate-900"
+          }`}
+        >
           {u.email}
         </p>
+        {plannedOnly && (
+          <p className="mt-1 text-xs text-amber-700">Team page par invite bhejein, phir is account se login test karein.</p>
+        )}
         <ul className="mt-3 space-y-1.5 text-sm text-slate-600">
           {STEPS.map((step) => (
             <li key={step} className="flex items-start gap-2">
