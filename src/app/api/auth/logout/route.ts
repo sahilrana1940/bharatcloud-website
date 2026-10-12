@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { PAYMENT_BYPASS_COOKIE } from "@/lib/billing/payment-bypass";
 import {
   B2B_EMAIL_COOKIE,
   B2B_SESSION_COOKIE,
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
     B2B_SESSION_COOKIE,
     B2B_EMAIL_COOKIE,
     SUPER_ADMIN_COOKIE,
+    PAYMENT_BYPASS_COOKIE,
     "bc_vault_unlocked",
   ]) {
     res.cookies.set(name, "", CLEAR);

@@ -15,6 +15,8 @@ import {
 
 import Link from "next/link";
 
+import { SuperAdminCostsPanel } from "@/components/admin/SuperAdminCostsPanel";
+
 type StatsPayload = {
   data: {
     companies: number;
@@ -297,6 +299,8 @@ export default function SuperAdminUltraProPage() {
           </div>
         </section>
       </div>
+
+      <SuperAdminCostsPanel />
 
       <div className="mt-6 flex flex-wrap gap-3 text-sm">
         <Link href="/admin" className="text-cyan-700 hover:underline">Platform overview</Link>

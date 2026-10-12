@@ -6,8 +6,8 @@ Demo login buttons were removed from `/login`. Use one of the paths below.
 
 These emails are **super admin** in code (`src/lib/brand.ts`):
 
-- `admin@bharatcloud.store`
-- `sahilrana1940@gmail.com`
+- `admin@bharatcloud.store` (primary in code)
+- `sahilrana1940@gmail.com` (your ID — use this after **Create account** signup)
 
 ### Recommended: create your account once
 
