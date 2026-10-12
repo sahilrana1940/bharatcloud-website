@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { CompanyTenantCard } from "@/components/dashboard/CompanyTenantCard";
 import { GoLiveRoleChecks } from "@/components/dashboard/GoLiveRoleChecks";
 import { ProPageHeader, ProStatCard, ProTableWrap } from "@/components/ui/pro/primitives";
+import { loadCompanyAdminStats } from "@/lib/company-admin/stats";
 import { getTenantHandoffStaff, getTenantProfile } from "@/lib/tenant-profile";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { getWorkspaceSession, WS_COMPANY_COOKIE } from "@/lib/workspace/session";
@@ -39,56 +40,23 @@ export default async function CompanyAdminDashboardPage() {
     );
   }
 
-  const { data: company } = await supabase
-    .from("companies")
-    .select("domain, admin_email, storage_limit_gb")
-    .eq("id", companyId)
-    .maybeSingle();
+  const stats = await loadCompanyAdminStats(supabase, companyId, session.email);
+  if (!stats) redirect("/dashboard");
 
-  if (!company) redirect("/dashboard");
-
-  const { data: users } = await supabase
-    .from("company_users")
-    .select("drive_used_gb")
-    .eq("company_id", companyId);
-
-  const storageGb = (users || []).reduce((s, u) => s + Number(u.drive_used_gb || 0), 0);
-  const limitGb = Number(company.storage_limit_gb || 100);
-
-  const { count: members } = await supabase
-    .from("company_users")
-    .select("*", { count: "exact", head: true })
-    .eq("company_id", companyId);
-
-  const { count: activeBackups } = await supabase
-    .from("company_backup_jobs")
-    .select("*", { count: "exact", head: true })
-    .eq("company_id", companyId)
-    .in("status", ["queued", "running"]);
-
-  const { data: jobs } = await supabase
-    .from("company_backup_jobs")
-    .select("owner_email, status, files_done, files_total, updated_at")
-    .eq("company_id", companyId)
-    .order("updated_at", { ascending: false })
-    .limit(8);
-
-  const domain = company.domain as string;
-  const adminEmail = (company.admin_email as string) || session.email;
-  const profile = getTenantProfile(domain);
-  const plannedStaff = getTenantHandoffStaff(domain);
+  const profile = getTenantProfile(stats.domain);
+  const plannedStaff = getTenantHandoffStaff(stats.domain);
 
   return (
     <Shell
-      companyId={companyId}
-      domain={domain}
-      adminEmail={adminEmail}
+      companyId={stats.companyId}
+      domain={stats.domain}
+      adminEmail={stats.adminEmail}
       profile={profile}
       plannedStaffEmails={plannedStaff}
-      storageLabel={`${storageGb.toFixed(1)} / ${limitGb} GB`}
-      activeBackups={activeBackups || 0}
-      members={members || 0}
-      jobs={jobs || []}
+      storageLabel={`${stats.storageGb.toFixed(1)} / ${stats.limitGb} GB`}
+      activeBackups={stats.activeBackups}
+      members={stats.members}
+      jobs={stats.jobs}
     />
   );
 }
