@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 
 import { isSuperAdminEmail } from "@/lib/brand";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
+import { isTenantOwnerEmail, ownerRoleInfo } from "@/lib/workspace/owner-role";
 import {
   WS_EMAIL_COOKIE,
   WS_IS_OWNER_COOKIE,
@@ -66,10 +67,14 @@ export async function getUserRole(email: string): Promise<UserRoleInfo> {
     .maybeSingle();
 
   if (data?.role) {
+    const domain = (data.company_domain as string) || null;
+    if (await isTenantOwnerEmail(supabase, normalized)) {
+      return ownerRoleInfo(normalized, domain);
+    }
     return {
       role: data.role as SaasRole,
       is_company_owner: Boolean(data.is_company_owner),
-      company_domain: data.company_domain as string,
+      company_domain: domain,
       email: normalized,
     };
   }
@@ -85,10 +90,16 @@ export async function getUserRole(email: string): Promise<UserRoleInfo> {
     if (cu.company_id) {
       const { data: co } = await supabase
         .from("companies")
-        .select("domain")
+        .select("domain, admin_email")
         .eq("id", cu.company_id)
         .maybeSingle();
       domain = co?.domain ?? null;
+      if (co?.admin_email?.toLowerCase() === normalized) {
+        return ownerRoleInfo(normalized, domain);
+      }
+    }
+    if (await isTenantOwnerEmail(supabase, normalized, cu.company_id as string)) {
+      return ownerRoleInfo(normalized, domain);
     }
     return {
       role: (cu.saas_role as SaasRole) || "employee",
@@ -96,6 +107,15 @@ export async function getUserRole(email: string): Promise<UserRoleInfo> {
       company_domain: domain,
       email: normalized,
     };
+  }
+
+  if (await isTenantOwnerEmail(supabase, normalized)) {
+    const { data: co } = await supabase
+      .from("companies")
+      .select("domain")
+      .eq("admin_email", normalized)
+      .maybeSingle();
+    return ownerRoleInfo(normalized, (co?.domain as string) ?? null);
   }
 
   return roleFromEmailDemo(normalized);
