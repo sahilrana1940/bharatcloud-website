@@ -9,18 +9,26 @@ export const GOOGLE_DRIVE_OAUTH_SCOPE =
 export const GMAIL_READONLY_OAUTH_SCOPE =
   "https://www.googleapis.com/auth/gmail.readonly";
 
+export const GMAIL_METADATA_OAUTH_SCOPE =
+  "https://www.googleapis.com/auth/gmail.metadata";
+
+export const GMAIL_WORKSPACE_OAUTH_SCOPES = [
+  GMAIL_READONLY_OAUTH_SCOPE,
+  GMAIL_METADATA_OAUTH_SCOPE,
+];
+
 export const GOOGLE_DRIVE_OAUTH_SCOPES = [
   "openid",
   "email",
   "profile",
   GOOGLE_DRIVE_OAUTH_SCOPE,
-  GMAIL_READONLY_OAUTH_SCOPE,
+  ...GMAIL_WORKSPACE_OAUTH_SCOPES,
 ].join(" ");
 
 export function googleDriveOAuthScopeList(includeGmail = true): string[] {
   const base = GOOGLE_DRIVE_OAUTH_SCOPES.split(" ").filter(Boolean);
   if (includeGmail) return base;
-  return base.filter((s) => s !== GMAIL_READONLY_OAUTH_SCOPE);
+  return base.filter((s) => !GMAIL_WORKSPACE_OAUTH_SCOPES.includes(s));
 }
 
 function appOrigin() {
