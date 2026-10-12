@@ -3,9 +3,10 @@ import { NextResponse } from "next/server";
 import { isPaymentBypassEnabled } from "@/lib/billing/payment-bypass";
 import { companyHasPaidBackup } from "@/lib/billing/subscription";
 import {
+  attachWorkspaceCompanyCookie,
   backupUnauthorized,
   canAccessCompany,
-  readWorkspaceCookieAuth,
+  readWorkspaceAuthRepaired,
 } from "@/lib/billing/workspace-cookies";
 import {
   fetchGoogleTokenRow,
@@ -18,10 +19,11 @@ import { getSupabaseOrNull } from "@/lib/workspace/db";
 export const maxDuration = 300;
 
 export async function POST() {
-  const ws = await readWorkspaceCookieAuth();
-  if (!ws) {
+  const repairedAuth = await readWorkspaceAuthRepaired();
+  if (!repairedAuth) {
     return backupUnauthorized();
   }
+  const { auth: ws, repaired } = repairedAuth;
 
   const supabase = await getSupabaseOrNull();
   if (!supabase) {
@@ -95,11 +97,14 @@ export async function POST() {
 
   const first = await processBackupJobChunk(supabase, jobId as string);
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     ok: true,
     jobId,
     done: first.done,
     filesDone: first.filesDone,
     error: first.error,
+    cookieRepaired: repaired,
   });
+  if (repaired) attachWorkspaceCompanyCookie(res, ws.companyId);
+  return res;
 }

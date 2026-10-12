@@ -9,19 +9,21 @@ import { companyHasPaidBackup } from "@/lib/billing/subscription";
 import { isSuperAdminEmail } from "@/lib/brand";
 import { getSessionRole } from "@/lib/auth";
 import {
+  attachWorkspaceCompanyCookie,
   billingStatusUnauthorized,
   canAccessCompany,
-  readWorkspaceCookieAuth,
+  readWorkspaceAuthRepaired,
 } from "@/lib/billing/workspace-cookies";
 import { loadTenantCompany } from "@/lib/tenant";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { workspaceCookieOptions } from "@/lib/workspace/session";
 
 export async function GET() {
-  const ws = await readWorkspaceCookieAuth();
-  if (!ws) {
+  const repairedAuth = await readWorkspaceAuthRepaired();
+  if (!repairedAuth) {
     return billingStatusUnauthorized();
   }
+  const { auth: ws, repaired } = repairedAuth;
 
   const supabase = await getSupabaseOrNull();
   const company = await loadTenantCompany(ws.companyId);
@@ -58,7 +60,7 @@ export async function GET() {
 
   const bypassFlag = await readPaymentBypassFlag();
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     active,
     bypass: bypassFlag,
     paymentBypass: bypass,
@@ -68,7 +70,10 @@ export async function GET() {
     subscriptionStatus: company.subscription_status || "trial",
     storageLimitGb: company.storage_limit_gb,
     email: ws.email,
+    cookieRepaired: repaired,
   });
+  if (repaired) attachWorkspaceCompanyCookie(res, ws.companyId);
+  return res;
 }
 
 export async function POST(req: Request) {
