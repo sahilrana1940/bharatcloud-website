@@ -5,12 +5,23 @@ import { getGoogleOAuthConfig } from "@/lib/google/config";
 export const GOOGLE_DRIVE_OAUTH_SCOPE =
   "https://www.googleapis.com/auth/drive.readonly";
 
+/** Gmail archive (employee My mail) — requested with Drive on workspace connect. */
+export const GMAIL_READONLY_OAUTH_SCOPE =
+  "https://www.googleapis.com/auth/gmail.readonly";
+
 export const GOOGLE_DRIVE_OAUTH_SCOPES = [
   "openid",
   "email",
   "profile",
   GOOGLE_DRIVE_OAUTH_SCOPE,
+  GMAIL_READONLY_OAUTH_SCOPE,
 ].join(" ");
+
+export function googleDriveOAuthScopeList(includeGmail = true): string[] {
+  const base = GOOGLE_DRIVE_OAUTH_SCOPES.split(" ").filter(Boolean);
+  if (includeGmail) return base;
+  return base.filter((s) => s !== GMAIL_READONLY_OAUTH_SCOPE);
+}
 
 function appOrigin() {
   return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "http://localhost:3000";

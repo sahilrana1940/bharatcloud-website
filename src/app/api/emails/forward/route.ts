@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { isEmailBackupEnabled } from "@/lib/feature-flags";
-import { assertEmailBackupEnabled } from "@/lib/backup/email-backup-guard";
 import { sendArchivedMailForward } from "@/lib/email/company-forward";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
@@ -9,11 +7,6 @@ import { isWorkspaceOwner } from "@/lib/workspace/nav";
 
 /** Staff may only forward their own archived mail; sent from company admin_email. */
 export async function POST(req: Request) {
-  if (isEmailBackupEnabled()) {
-    const disabled = assertEmailBackupEnabled();
-    if (disabled) return disabled;
-  }
-
   const auth = await requireWorkspace();
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
