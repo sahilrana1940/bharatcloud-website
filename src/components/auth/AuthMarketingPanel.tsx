@@ -2,7 +2,7 @@ import { BRAND_PARENT, BRAND_PRODUCT } from "@/lib/brand";
 
 export function AuthMarketingPanel() {
   return (
-    <div className="relative hidden min-h-screen flex-1 flex-col justify-between overflow-hidden bg-gradient-to-br from-cyan-50 via-sky-50 to-indigo-50 p-10 lg:flex">
+    <div className="relative hidden min-h-screen w-full max-w-xl flex-1 flex-col justify-between overflow-hidden bg-gradient-to-br from-cyan-50 via-sky-50 to-indigo-50 p-10 lg:flex lg:max-w-none">
       <div className="pointer-events-none absolute inset-0 pro-mesh opacity-90" aria-hidden />
       <div className="relative">
         <p className="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-600">

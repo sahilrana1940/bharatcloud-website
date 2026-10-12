@@ -37,7 +37,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <div className="flex min-h-screen flex-col">
-          <div className="flex-1">{children}</div>
+          <main className="flex-1">{children}</main>
           <ConditionalFooter />
         </div>
       </body>
