@@ -42,7 +42,12 @@ export async function GET() {
   const allowed = await canAccessCompany(ws.email, ws.companyId);
   if (!allowed) {
     return NextResponse.json(
-      { active: false, error: "Forbidden", companyId: ws.companyId },
+      {
+        active: false,
+        error: "Forbidden",
+        companyId: ws.companyId,
+        hint: "POST /api/auth/refresh-workspace then logout/login. Ensure company_users row exists for your email.",
+      },
       { status: 403 },
     );
   }
