@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { emailDomain } from "@/lib/google/client";
 import { isCompanyOwnerEmail } from "@/lib/workspace/company-membership";
 import { normalizeDomain, syncCompanyDirectory } from "@/lib/workspace/company-directory";
+import { WORKSPACE_PROFILES_TABLE } from "@/lib/workspace/workspace-profiles";
 
 export type CompanyAdminStats = {
   companyId: string;
@@ -60,22 +61,22 @@ export async function repairProfilesForCompany(
     const e = email.trim().toLowerCase();
     if (!e.includes("@")) return;
     const { data: row } = await supabase
-      .from("profiles")
+      .from(WORKSPACE_PROFILES_TABLE)
       .select("email, company_id")
       .eq("email", e)
       .maybeSingle();
 
     if (!row) {
-      await supabase.from("profiles").upsert(
+      await supabase.from(WORKSPACE_PROFILES_TABLE).upsert(
         { email: e, company_id: companyId },
         { onConflict: "email" },
       );
       repaired += 1;
     } else if (!row.company_id) {
-      await supabase.from("profiles").update({ company_id: companyId }).eq("email", e);
+      await supabase.from(WORKSPACE_PROFILES_TABLE).update({ company_id: companyId }).eq("email", e);
       repaired += 1;
     } else if (row.company_id !== companyId && emailDomain(e) === domain) {
-      await supabase.from("profiles").update({ company_id: companyId }).eq("email", e);
+      await supabase.from(WORKSPACE_PROFILES_TABLE).update({ company_id: companyId }).eq("email", e);
       repaired += 1;
     }
   };
@@ -83,7 +84,7 @@ export async function repairProfilesForCompany(
   await ensureProfile(adminEmail);
 
   const { data: orphanProfiles } = await supabase
-    .from("profiles")
+    .from(WORKSPACE_PROFILES_TABLE)
     .select("email, company_id")
     .is("company_id", null);
 
@@ -95,7 +96,7 @@ export async function repairProfilesForCompany(
   }
 
   const { data: domainProfiles } = await supabase
-    .from("profiles")
+    .from(WORKSPACE_PROFILES_TABLE)
     .select("email")
     .ilike("email", `%@${domain}`);
 
@@ -150,7 +151,7 @@ export async function loadCompanyAdminStats(
   const limitGb = Number(company.storage_limit_gb || 100);
 
   const { count: membersFromProfiles } = await supabase
-    .from("profiles")
+    .from(WORKSPACE_PROFILES_TABLE)
     .select("*", { count: "exact", head: true })
     .eq("company_id", resolvedId);
 

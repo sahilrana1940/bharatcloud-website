@@ -1,4 +1,4 @@
--- Workspace profiles + invites for go-live checks
+-- Deprecated: conflicts with Supabase Auth public.profiles. Use 018_workspace_profiles.sql.
 
 create table if not exists profiles (
   email text primary key,

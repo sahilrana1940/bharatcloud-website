@@ -4,6 +4,7 @@ import {
   fetchGoogleTokenRow,
   isGoogleTokenRowConnected,
 } from "@/lib/google/token-row";
+import { WORKSPACE_PROFILES_TABLE } from "@/lib/workspace/workspace-profiles";
 
 export type GoLiveCheckRow = {
   email: string;
@@ -74,7 +75,7 @@ export async function evaluateGoLiveChecks(
 
   for (const email of unique) {
     const { data: profile } = await supabase
-      .from("profiles")
+      .from(WORKSPACE_PROFILES_TABLE)
       .select("last_login_at")
       .eq("email", email)
       .maybeSingle();
@@ -91,7 +92,7 @@ export async function evaluateGoLiveChecks(
       const tokenRow = await fetchGoogleTokenRow(supabase, companyId, email);
       if (cu && isGoogleTokenRowConnected(tokenRow)) {
         login = true;
-        await supabase.from("profiles").upsert(
+        await supabase.from(WORKSPACE_PROFILES_TABLE).upsert(
           {
             email,
             company_id: companyId,
