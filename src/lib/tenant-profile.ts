@@ -21,6 +21,7 @@ const PROFILES: Record<string, TenantProfile> = {
     handoffStaffEmails: [
       "sunderbanihub@gorjrmcourier.com",
       "nowsheraodh@gorjrmcourier.com",
+      "rajouriodh@gorjrmcourier.com",
     ],
   },
 };
