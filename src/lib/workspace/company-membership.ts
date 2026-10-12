@@ -1,5 +1,6 @@
 import { emailDomain } from "@/lib/google/client";
-import { getTenantHandoffStaff } from "@/lib/tenant-profile";
+
+import { emailMatchesDomain, syncCompanyDirectory } from "@/lib/workspace/company-directory";
 
 import { getSupabaseOrNull } from "./db";
 
@@ -18,15 +19,7 @@ export function canAutoJoinCompany(email: string, company: CompanyRow): boolean 
   const normalized = email.trim().toLowerCase();
   if (isCompanyOwnerEmail(normalized, company.admin_email)) return true;
 
-  const domain = emailDomain(normalized);
-  if (domain !== company.domain.toLowerCase()) return false;
-
-  const linked = getTenantHandoffStaff(company.domain).map((e) => e.toLowerCase());
-  if (linked.length > 0) {
-    return linked.includes(normalized);
-  }
-
-  return true;
+  return emailMatchesDomain(normalized, company.domain);
 }
 
 export async function findCompanyByDomain(domain: string): Promise<CompanyRow | null> {
@@ -47,24 +40,7 @@ export async function findCompanyByDomain(domain: string): Promise<CompanyRow | 
   };
 }
 
-/** Pre-create `company_users` for configured handoff emails (owner team list). */
+/** Sync directory + @domain team rows (generic; optional handoff profile per domain). */
 export async function provisionLinkedStaff(companyId: string, domain: string): Promise<void> {
-  const supabase = await getSupabaseOrNull();
-  const emails = getTenantHandoffStaff(domain);
-  if (!supabase || !emails.length) return;
-
-  for (const email of emails) {
-    const normalized = email.trim().toLowerCase();
-    await supabase.from("company_users").upsert(
-      {
-        company_id: companyId,
-        email: normalized,
-        role: "member",
-        saas_role: "employee",
-        is_company_owner: false,
-        is_backup_enabled: true,
-      },
-      { onConflict: "company_id,email" },
-    );
-  }
+  await syncCompanyDirectory(companyId, domain);
 }

@@ -1,3 +1,4 @@
+import { SettingsConnectDomain } from "@/components/settings/SettingsConnectDomain";
 import { SettingsIntegrations } from "@/components/settings/SettingsIntegrations";
 
 export default function SettingsPage() {
@@ -7,6 +8,7 @@ export default function SettingsPage() {
       <p className="mt-2 text-slate-500">Account integrations and backup connections</p>
       <div className="mt-8 max-w-3xl">
         <SettingsIntegrations />
+        <SettingsConnectDomain />
       </div>
     </div>
   );
