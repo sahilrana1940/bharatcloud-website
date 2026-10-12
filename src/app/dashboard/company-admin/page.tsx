@@ -1,7 +1,10 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { CompanyTenantCard } from "@/components/dashboard/CompanyTenantCard";
+import { GoLiveRoleChecks } from "@/components/dashboard/GoLiveRoleChecks";
 import { ProPageHeader, ProStatCard, ProTableWrap } from "@/components/ui/pro/primitives";
+import { getTenantProfile } from "@/lib/tenant-profile";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { getWorkspaceSession, WS_COMPANY_COOKIE } from "@/lib/workspace/session";
 import { Building2, CloudUpload, Users } from "lucide-react";
@@ -18,6 +21,8 @@ export default async function CompanyAdminDashboardPage() {
     return (
       <Shell
         domain="demo"
+        adminEmail={session.email}
+        profile={null}
         storageLabel="0 GB"
         activeBackups={0}
         members={0}
@@ -28,7 +33,7 @@ export default async function CompanyAdminDashboardPage() {
 
   const { data: company } = await supabase
     .from("companies")
-    .select("domain, storage_limit_gb")
+    .select("domain, admin_email, storage_limit_gb")
     .eq("id", companyId)
     .maybeSingle();
 
@@ -60,9 +65,15 @@ export default async function CompanyAdminDashboardPage() {
     .order("updated_at", { ascending: false })
     .limit(8);
 
+  const domain = company.domain as string;
+  const adminEmail = (company.admin_email as string) || session.email;
+  const profile = getTenantProfile(domain);
+
   return (
     <Shell
-      domain={company.domain as string}
+      domain={domain}
+      adminEmail={adminEmail}
+      profile={profile}
       storageLabel={`${storageGb.toFixed(1)} / ${limitGb} GB`}
       activeBackups={activeBackups || 0}
       members={members || 0}
@@ -73,12 +84,16 @@ export default async function CompanyAdminDashboardPage() {
 
 function Shell({
   domain,
+  adminEmail,
+  profile,
   storageLabel,
   activeBackups,
   members,
   jobs,
 }: {
   domain: string;
+  adminEmail: string;
+  profile: ReturnType<typeof getTenantProfile>;
   storageLabel: string;
   activeBackups: number;
   members: number;
@@ -94,9 +109,11 @@ function Shell({
     <div className="px-4 py-8 sm:px-8">
       <ProPageHeader
         eyebrow="Company admin"
-        title={domain}
+        title={profile?.legalName ?? domain}
         description="Storage, backups, and team activity for your tenant."
       />
+
+      <CompanyTenantCard domain={domain} adminEmail={adminEmail} profile={profile} />
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <ProStatCard
@@ -150,6 +167,8 @@ function Shell({
             </tbody>
           </table>
       </ProTableWrap>
+
+      <GoLiveRoleChecks adminEmail={adminEmail} />
     </div>
   );
 }

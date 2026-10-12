@@ -6,6 +6,8 @@ import { useMemo, useState } from "react";
 import { CloudUpload, Search, Upload } from "lucide-react";
 import { motion } from "framer-motion";
 
+import { EmployeeWorkspaceBanner } from "@/components/dashboard/EmployeeWorkspaceBanner";
+
 export default function EmployeeDashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -46,6 +48,7 @@ export default function EmployeeDashboardPage() {
   return (
     <div className="px-4 py-10 sm:px-8">
       <div className="mx-auto max-w-3xl">
+        <EmployeeWorkspaceBanner />
         <p className="text-sm font-semibold uppercase tracking-widest text-cyan-600">{greeting}</p>
         <h1 className="mt-2 text-4xl font-bold tracking-tight text-slate-900">Your workspace</h1>
         <p className="mt-3 text-slate-600">
