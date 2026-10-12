@@ -1,3 +1,5 @@
+import { isEmailBackupEnabled } from "@/lib/feature-flags";
+
 function appOrigin() {
   return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "http://localhost:3000";
 }
@@ -16,21 +18,42 @@ export function getGoogleOAuthConfig() {
   return { clientId, clientSecret, redirectUri };
 }
 
-import { isEmailBackupEnabled } from "@/lib/feature-flags";
+const GMAIL_SCOPE_URLS = [
+  "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/gmail.metadata",
+];
 
-const DRIVE_SCOPES = [
+const DEFAULT_DRIVE_SCOPES = [
   "openid",
-  "email",
   "profile",
+  "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/drive.readonly",
 ];
 
-const EMAIL_SCOPES = [
-  "https://www.googleapis.com/auth/gmail.readonly",
-  "https://www.googleapis.com/auth/gmail.metadata",
-  "https://www.googleapis.com/auth/contacts.readonly",
-];
+/**
+ * OAuth scopes — override in Vercel with space-separated GOOGLE_SCOPES.
+ * Example:
+ * GOOGLE_SCOPES=https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/gmail.readonly ...
+ */
+export function resolveGoogleOAuthScopeList(opts?: {
+  includeGmail?: boolean;
+}): string[] {
+  const fromEnv = process.env.GOOGLE_SCOPES?.trim();
+  if (fromEnv) {
+    return fromEnv.split(/\s+/).filter(Boolean);
+  }
 
-export const GOOGLE_SCOPES = [...DRIVE_SCOPES, ...(isEmailBackupEnabled() ? EMAIL_SCOPES : [])].join(
-  " ",
-);
+  const includeGmail = opts?.includeGmail ?? true;
+  const scopes = [...DEFAULT_DRIVE_SCOPES];
+  if (includeGmail) scopes.push(...GMAIL_SCOPE_URLS);
+  return scopes;
+}
+
+export function getGoogleOAuthScopesString(opts?: { includeGmail?: boolean }): string {
+  return resolveGoogleOAuthScopeList(opts).join(" ");
+}
+
+/** @deprecated Prefer resolveGoogleOAuthScopeList() at request time (reads GOOGLE_SCOPES env). */
+export const GOOGLE_SCOPES = getGoogleOAuthScopesString({
+  includeGmail: isEmailBackupEnabled(),
+});
