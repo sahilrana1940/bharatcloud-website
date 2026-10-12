@@ -115,7 +115,7 @@ export function TeamPageClient({
     <div className="min-h-screen overflow-y-auto bg-transparent px-4 pb-[140px] pt-6 sm:px-8 lg:pb-10">
       <div className="flex flex-col gap-4 border-b border-white/5 pb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Team &amp; backup</h1>
+          <h1 className="text-3xl font-bold text-slate-900">Team &amp; backup</h1>
           <p className="text-slate-500">
             Automatic Google archive for every company on Bharat Tijori
           </p>

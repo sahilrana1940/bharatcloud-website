@@ -34,7 +34,16 @@ body {
   }
 
   .pro-gradient-text {
-    @apply bg-gradient-to-r from-cyan-600 via-sky-500 to-indigo-500 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-orange-600 via-cyan-600 to-emerald-600 bg-clip-text text-transparent;
+  }
+
+  .hero-glow {
+    background: radial-gradient(
+      ellipse 70% 60% at 50% 0%,
+      rgba(251, 146, 60, 0.15),
+      rgba(34, 211, 238, 0.12),
+      transparent 70%
+    );
   }
 
   .pro-ring-accent {

@@ -101,7 +101,7 @@ export function ProPrimaryButton({
   disabled?: boolean;
 }) {
   const cls = cn(
-    "inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-sky-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-cyan-500/25 transition hover:from-cyan-400 hover:to-sky-400 disabled:opacity-50",
+    "inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 via-cyan-500 to-emerald-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-cyan-500/20 transition hover:brightness-105 disabled:opacity-50",
     className,
   );
   if (href) {

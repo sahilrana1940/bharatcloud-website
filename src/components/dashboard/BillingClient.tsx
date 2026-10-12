@@ -74,7 +74,7 @@ export function BillingClient() {
   if (active) {
     return (
       <div className="min-h-screen overflow-y-auto bg-transparent px-4 pb-[140px] pt-6 sm:px-8 lg:pb-10">
-        <h1 className="text-3xl font-bold text-white">Billing</h1>
+        <h1 className="text-3xl font-bold text-slate-900">Billing</h1>
         <div className="mt-8 max-w-lg rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6">
           <p className="font-semibold text-emerald-100">BharatCloud subscription is active</p>
           <p className="mt-2 text-sm text-emerald-200/90">
@@ -93,7 +93,7 @@ export function BillingClient() {
 
   return (
     <div className="min-h-screen overflow-y-auto bg-transparent px-4 pb-[140px] pt-6 sm:px-8 lg:pb-10">
-      <h1 className="text-3xl font-bold text-white">Billing</h1>
+      <h1 className="text-3xl font-bold text-slate-900">Billing</h1>
       <p className="mt-1 text-slate-500">Choose a plan — pay via UPI (monthly)</p>
 
       <div className="mt-8 grid max-w-4xl gap-4 sm:grid-cols-3">
