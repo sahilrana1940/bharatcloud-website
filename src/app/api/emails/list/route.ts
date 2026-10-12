@@ -4,11 +4,28 @@ import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { resolveCompanyDomain } from "@/lib/workspace/company";
 import { DEMO_EMAILS } from "@/lib/workspace/demo-data";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
+import { isWorkspaceOwner } from "@/lib/workspace/nav";
 
 export async function GET(req: Request) {
   const auth = await requireWorkspace();
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
+
+  if (
+    !isWorkspaceOwner({
+      role: session.role,
+      saasRole: session.saasRole,
+      isCompanyOwner: session.isCompanyOwner,
+    })
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Company mail archive is managed by the owner. Staff use Drive backup and vault only.",
+      },
+      { status: 403 },
+    );
+  }
 
   const url = new URL(req.url);
   const q = url.searchParams.get("q") || "";
@@ -28,11 +45,8 @@ export async function GET(req: Request) {
       .select("*", { count: "exact" })
       .eq("company_id", session.companyId);
     if (domain) query = query.eq("company_domain", domain);
-    const companyWide =
-      session.saasRole === "company_owner" || session.saasRole === "employee";
-    if (!companyWide && session.role === "member") {
-      query = query.eq("owner_email", session.email);
-    } else if (owner) {
+    // Single company inbox: all staff Gmail backups in one list (optional ?owner= filter).
+    if (owner) {
       query = query.eq("owner_email", owner);
     }
     if (hasAttachment) query = query.eq("has_attachment", true);
@@ -53,11 +67,7 @@ export async function GET(req: Request) {
     rows = rows.filter(
       (e) => (e as { company_domain?: string }).company_domain === domain || !domain,
     );
-    const companyWide =
-      session.saasRole === "company_owner" || session.saasRole === "employee";
-    if (!companyWide && session.role === "member") {
-      rows = rows.filter((e) => e.owner_email === session.email);
-    } else if (owner) {
+    if (owner) {
       rows = rows.filter((e) => e.owner_email === owner);
     }
     if (q) {

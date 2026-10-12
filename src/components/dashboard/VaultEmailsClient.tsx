@@ -62,8 +62,15 @@ export function VaultEmailsClient({
   return (
     <div>
       <h1 className="text-2xl font-semibold">
-        {mode === "vault" ? "My Vault" : "Email backups"}
+        {mode === "vault" ? "My Vault" : "Company mail archive"}
       </h1>
+      {mode === "emails" && (
+        <p className="mt-1 max-w-2xl text-sm text-slate-600">
+          Ek hi company inbox — admin + staff ki Gmail backup yahan mix hoti hai. Alag-alag
+          mailbox nahi; default <strong>All users</strong>. Filter se kisi ek staff ki mail
+          dekh sakte ho.
+        </p>
+      )}
       <div className="mt-4 flex flex-wrap gap-2">
         <Input
           placeholder='Search e.g. "challan"'
