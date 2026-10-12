@@ -8,6 +8,8 @@ import {
   CloudUpload,
   CreditCard,
   RefreshCw,
+  Search,
+  Settings,
   Users,
 } from "lucide-react";
 
@@ -37,6 +39,7 @@ export default function SuperAdminUltraProPage() {
   const [bypass, setBypass] = useState(false);
   const [logFilter, setLogFilter] = useState<LogFilter>("all");
   const [toggling, setToggling] = useState(false);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     setLoadState("loading");
@@ -96,9 +99,26 @@ export default function SuperAdminUltraProPage() {
 
   const filteredLogs = useMemo(() => {
     if (!stats) return [];
-    if (logFilter === "all") return stats.logs;
-    return stats.logs.filter((l) => l.code === logFilter);
-  }, [stats, logFilter]);
+    let rows = logFilter === "all" ? stats.logs : stats.logs.filter((l) => l.code === logFilter);
+    const q = search.trim().toLowerCase();
+    if (q) rows = rows.filter((l) => l.message.toLowerCase().includes(q));
+    return rows;
+  }, [stats, logFilter, search]);
+
+  const filteredCompanies = useMemo(() => {
+    if (!stats) return [];
+    const q = search.trim().toLowerCase();
+    if (!q) return stats.recentCompanies;
+    return stats.recentCompanies.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.plan.toLowerCase().includes(q) ||
+        c.status.toLowerCase().includes(q),
+    );
+  }, [stats, search]);
+
+  const billingNeedsAttention =
+    stats != null && stats.data.companies > 0 && stats.data.billing === 0;
 
   if (loadState === "loading") {
     return (
@@ -132,32 +152,17 @@ export default function SuperAdminUltraProPage() {
         <span className="text-slate-800">Super console</span>
       </div>
 
-      <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between pro-glass rounded-2xl p-5">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-sky-600 text-xs font-black text-white">
-              BC
-            </span>
-            <h1 className="text-2xl font-bold text-slate-900">BharatCloud Super Admin</h1>
-            <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-700">
-              Live
-            </span>
-          </div>
-          <p className="mt-2 max-w-xl text-sm text-slate-600">
-            Platform metrics, payment test bypass, and backup API logs (401 / 402 / 200).
-          </p>
+      <header className="mb-6 flex flex-col gap-4 pro-glass rounded-2xl p-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-sky-600" />
+          <h1 className="text-xl font-bold text-slate-900">Nexus Admin</h1>
+          <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-700">
+            Super admin
+          </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={load}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-cyan-200"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
-          <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
             <span className="text-xs font-bold text-slate-700">PAYMENT_BYPASS</span>
             <button
               type="button"
@@ -171,8 +176,28 @@ export default function SuperAdminUltraProPage() {
                 className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${bypass ? "translate-x-6" : "translate-x-1"}`}
               />
             </button>
-            <span className="text-xs text-slate-500">{bypass ? "Test (1)" : "Prod (0)"}</span>
+            <span className="text-xs text-slate-500">{bypass ? "ON (1) Test" : "OFF (0) Prod"}</span>
           </div>
+          <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search companies, users, logs..."
+              className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm outline-none focus:border-cyan-400"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={load}
+            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+            aria-label="Refresh"
+          >
+            <RefreshCw className="h-5 w-5" />
+          </button>
+          <Link href="/admin" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Admin settings">
+            <Settings className="h-5 w-5" />
+          </Link>
         </div>
       </header>
 
@@ -188,6 +213,7 @@ export default function SuperAdminUltraProPage() {
           icon={<CreditCard className="h-4 w-4 text-cyan-600" />}
           value={`₹${stats.data.billing.toLocaleString()}`}
           sub="Approved payments"
+          alert={billingNeedsAttention ? "No approved payments yet" : undefined}
         />
         <MetricCard
           title="Backups"
@@ -196,7 +222,7 @@ export default function SuperAdminUltraProPage() {
           sub="Backup jobs"
         />
         <MetricCard
-          title="Users"
+          title="User access"
           icon={<Users className="h-4 w-4 text-cyan-600" />}
           value={stats.data.users.toLocaleString()}
           sub="Workspace members"
@@ -205,18 +231,18 @@ export default function SuperAdminUltraProPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section className="pro-glass rounded-2xl p-5">
-          <h2 className="mb-4 font-bold text-slate-900">Recent companies</h2>
-          {stats.recentCompanies.length === 0 ? (
-            <p className="text-sm text-slate-500">No companies yet.</p>
+          <h2 className="mb-4 font-bold text-cyan-800">Recent companies</h2>
+          {filteredCompanies.length === 0 ? (
+            <p className="text-sm text-slate-500">No companies match your search.</p>
           ) : (
             <ul className="divide-y divide-slate-100">
-              {stats.recentCompanies.map((c) => (
+              {filteredCompanies.map((c) => (
                 <li
                   key={c.name}
                   className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm"
                 >
                   <span className="min-w-0 flex-1 truncate font-medium text-slate-800">{c.name}</span>
-                  <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{c.plan}</span>
+                  <span className="rounded bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">{c.plan}</span>
                   <span
                     className={`rounded px-2 py-0.5 text-xs ${
                       c.status === "Suspended"
@@ -233,7 +259,7 @@ export default function SuperAdminUltraProPage() {
         </section>
 
         <section className="pro-glass rounded-2xl p-5">
-          <h2 className="mb-4 font-bold text-slate-900">System logs</h2>
+          <h2 className="mb-4 font-bold text-cyan-800">System logs</h2>
           <div className="mb-3 flex flex-wrap gap-2 text-xs">
             {(
               [
@@ -286,14 +312,22 @@ function MetricCard({
   icon,
   value,
   sub,
+  alert,
 }: {
   title: string;
   icon: React.ReactNode;
   value: string;
   sub: string;
+  alert?: string;
 }) {
   return (
-    <motion.div whileHover={{ y: -2 }} className="pro-glass rounded-2xl p-5">
+    <motion.div whileHover={{ y: -2 }} className="relative pro-glass rounded-2xl p-5">
+      {alert && (
+        <span
+          className="absolute right-4 top-4 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-red-100"
+          title={alert}
+        />
+      )}
       <div className="mb-2 flex items-center gap-2 text-sm text-slate-500">
         {icon}
         {title}

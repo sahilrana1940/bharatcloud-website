@@ -75,6 +75,24 @@ export async function GET() {
 
   const bypass = await readPaymentBypassFlag();
 
+  if (!logs.length) {
+    const companyCount = companies || 0;
+    logs.push({
+      code: 200,
+      message: `Platform OK — ${companyCount} companies · bypass=${bypass}`,
+    });
+    if (companyCount > 0 && billing === 0) {
+      logs.push({
+        code: 402,
+        message: "No approved payments yet — expect 402 on /api/backup/start-auto when bypass is off",
+      });
+    }
+    logs.push({
+      code: 401,
+      message: "Missing bc_workspace cookies → /api/billing/status returns 401",
+    });
+  }
+
   return NextResponse.json({
     data: {
       companies: companies || 0,
@@ -83,16 +101,20 @@ export async function GET() {
       billing,
     },
     bypass,
-    recentCompanies: (recentCompanies || []).map((c) => ({
-      name: c.domain as string,
-      plan: c.subscription_status === "active" ? "Paid" : "Free",
-      status:
-        c.subscription_status === "blocked"
-          ? "Suspended"
-          : c.subscription_status === "active"
-            ? "Active"
-            : "Trial",
-    })),
+    recentCompanies: (recentCompanies || []).map((c) => {
+      const sub = (c.subscription_status as string) || "trial";
+      const planName = ((c.plan_name as string) || "starter").replace(/_/g, " ");
+      return {
+        name: c.domain as string,
+        plan: planName.charAt(0).toUpperCase() + planName.slice(1),
+        status:
+          sub === "blocked"
+            ? "Suspended"
+            : sub === "active"
+              ? "Active"
+              : "Trial",
+      };
+    }),
     logs,
   });
 }
