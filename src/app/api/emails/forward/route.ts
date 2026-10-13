@@ -94,9 +94,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: result.error || "Send failed" }, { status: 502 });
   }
 
-  const message = result.sent
-    ? `Forwarded from ${companyFrom}. Check ${to} inbox (and spam).`
-    : `Forward recorded (demo). Add RESEND_API_KEY on Vercel to send real email to ${to}.`;
+  let message = result.sent
+    ? `Forwarded successfully. Check ${to} inbox (and spam).`
+    : `Forward saved in BharatCloud — recipient: ${to}.`;
+
+  if (result.demoQueued && result.error?.includes("domain is not verified")) {
+    message =
+      `Forward logged (inbox not sent yet). Resend par gorjrmcourier.com domain verify karo, ` +
+      `ya Vercel par COMPANY_MAIL_FROM=onboarding@resend.dev (test). Neeche "Recent forwards" me dikhega.`;
+  } else if (result.demoQueued) {
+    message =
+      `Forward logged for ${to}. Real email ke liye Resend domain verify karo ya COMPANY_MAIL_FROM set karo.`;
+  }
 
   return NextResponse.json({
     ok: true,

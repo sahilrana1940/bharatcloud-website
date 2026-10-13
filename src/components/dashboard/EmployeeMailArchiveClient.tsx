@@ -231,7 +231,16 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
       setForwardTo("");
       await loadForwards();
     } else {
-      setForwardMsg(j.error || "Forward failed");
+      let err = j.error || "Forward failed";
+      if (typeof err === "string" && err.startsWith("{")) {
+        try {
+          const parsed = JSON.parse(err) as { message?: string };
+          err = parsed.message || err;
+        } catch {
+          /* keep */
+        }
+      }
+      setForwardMsg(err);
       setForwardErr(true);
     }
   }
