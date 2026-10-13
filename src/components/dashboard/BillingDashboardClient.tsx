@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { IndianRupee, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -26,6 +27,8 @@ type UsagePayload = {
   usedInr: number;
   capInr: number;
   percent: number;
+  b3StorageGb?: number;
+  b3StorageInr?: number;
   rows: UsageRow[];
 };
 
@@ -78,7 +81,7 @@ export function BillingDashboardClient() {
       <ProPageHeader
         eyebrow="Workspace"
         title="Billing"
-        description="Current month metered usage (VPS, b3 object storage, Mail). All amounts in INR — GST 18% included."
+        description="Monthly bill includes Bharat Big Bucket (b3) storage from your B3 files — same meter as the B3 Storage page."
         action={
           <ProPrimaryButton type="button" onClick={() => setPayOpen(true)}>
             Pay now
@@ -98,6 +101,15 @@ export function BillingDashboardClient() {
               </span>
             </p>
             <p className="mt-1 text-xs text-slate-500">GST inclusive · {percent}% of monthly cap</p>
+            {typeof usage?.b3StorageGb === "number" ? (
+              <p className="mt-2 text-sm text-slate-600">
+                <Link href="/dashboard/storage" className="font-semibold text-cyan-700 underline">
+                  B3 bucket
+                </Link>
+                : {usage.b3StorageGb.toFixed(1)} GB → ₹
+                {(usage.b3StorageInr ?? 0).toLocaleString("en-IN")} this month
+              </p>
+            ) : null}
           </div>
           <div className="w-full sm:max-w-xs">
             <div className="h-3 overflow-hidden rounded-full bg-slate-200">

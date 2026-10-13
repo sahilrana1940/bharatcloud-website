@@ -19,6 +19,8 @@ export async function GET() {
   const usedInr = sumUsageInr(rows);
   const percent = capInr > 0 ? Math.min(100, Math.round((usedInr / capInr) * 100)) : 0;
 
+  const b3Row = rows.find((r) => r.service === "b3");
+
   return NextResponse.json({
     month,
     usedInr,
@@ -26,6 +28,8 @@ export async function GET() {
     percent,
     currency: "INR",
     gstIncluded: true,
+    b3StorageGb: b3Row?.units ?? 0,
+    b3StorageInr: b3Row?.amount ?? 0,
     rows: rows.map((r) => ({
       id: r.id,
       date: r.usageDate,

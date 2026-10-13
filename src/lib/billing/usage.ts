@@ -1,7 +1,6 @@
 import {
-  B3_DEMO_GB,
   b3AmountInr,
-  companyB3StorageGb,
+  companyB3StorageGbForBilling,
 } from "@/lib/billing/b3-usage";
 import { getBillingPlan } from "@/lib/billing/plans";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -20,7 +19,7 @@ export type BillingUsageRow = {
 
 const DEMO_USAGE: Omit<BillingUsageRow, "id" | "companyId">[] = [
   { service: "VPS", units: 1, amount: 499, month: "", usageDate: "" },
-  { service: "b3", units: B3_DEMO_GB, amount: b3AmountInr(B3_DEMO_GB), month: "", usageDate: "" },
+  { service: "b3", units: 0, amount: 0, month: "", usageDate: "" },
   { service: "Mail", units: 850, amount: 100, month: "", usageDate: "" },
 ];
 
@@ -103,12 +102,12 @@ export async function loadBillingUsage(
   const month = monthStart();
   const capInr = monthlyCapInr(planId);
 
+  const b3Gb = await companyB3StorageGbForBilling(supabase, companyId);
+
   if (!supabase) {
-    const rows = demoRows(companyId);
+    const rows = mergeB3MeteredRow(demoRows(companyId), companyId, month, b3Gb);
     return { rows, capInr, month };
   }
-
-  const b3Gb = await companyB3StorageGb(supabase, companyId);
 
   const { data, error } = await supabase
     .from("billing_usage")
@@ -118,12 +117,12 @@ export async function loadBillingUsage(
     .order("usage_date", { ascending: false });
 
   if (error?.message?.includes("billing_usage") || !data?.length) {
-    const seeded = mergeB3MeteredRow(demoRows(companyId), companyId, month, b3Gb || B3_DEMO_GB);
+    const seeded = mergeB3MeteredRow(demoRows(companyId), companyId, month, b3Gb);
     return { rows: seeded, capInr, month };
   }
 
   const mapped = data.map((r) => mapDbRow(r as Record<string, unknown>));
-  const rows = mergeB3MeteredRow(mapped, companyId, month, b3Gb || B3_DEMO_GB);
+  const rows = mergeB3MeteredRow(mapped, companyId, month, b3Gb);
 
   return {
     rows,
