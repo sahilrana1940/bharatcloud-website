@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { ensureCompanyUserForArchive } from "@/lib/archive/resolve-archive-company";
+import { upsertArchiveEmailFileRow } from "@/lib/archive/save-archive-file-row";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { gmailClient } from "@/lib/google/client";
 
@@ -17,7 +18,7 @@ function headerValue(
 }
 
 export type EmailArchiveResult =
-  | { success: true; count: number; status: string; progress: string }
+  | { success: true; count: number; status: string; progress: string; warning?: string }
   | { success: false; error: string; status?: string };
 
 export async function runEmailArchiveForUser(
@@ -61,6 +62,7 @@ export async function runEmailArchiveForUser(
   }
 
   let imported = 0;
+  let archiveIndexWarning = "";
   try {
     const list = await gmail.users.messages.list({
       userId: "me",
@@ -102,48 +104,6 @@ export async function runEmailArchiveForUser(
         );
       }
 
-      const row = {
-        company_id: opts.companyId,
-        uploaded_by: email,
-        owner_email: email,
-        type: "email" as const,
-        file_name: `${subject.slice(0, 120)}.json`,
-        size: buf.length,
-        storage_path: storagePath,
-        is_central: true,
-        gmail_id: msg.id,
-        subject,
-        from_email: from,
-        message_date: dateStr ? new Date(dateStr).toISOString() : null,
-        metadata: { to, threadId: payload.threadId },
-      };
-
-      const { data: existing } = await supabase
-        .from("archive_files")
-        .select("id")
-        .eq("company_id", opts.companyId)
-        .eq("gmail_id", msg.id)
-        .maybeSingle();
-
-      if (existing?.id) {
-        const { error: upErr } = await supabase
-          .from("archive_files")
-          .update(row)
-          .eq("id", existing.id);
-        if (upErr) {
-          throw new Error(
-            `Could not update archive_files (${upErr.message}). Run Supabase migration 019.`,
-          );
-        }
-      } else {
-        const { error: insErr } = await supabase.from("archive_files").insert(row);
-        if (insErr) {
-          throw new Error(
-            `Could not save to archive_files (${insErr.message}). Run Supabase migration 019.`,
-          );
-        }
-      }
-
       const { error: ebErr } = await supabase.from("email_backups").upsert(
         {
           company_id: opts.companyId,
@@ -166,6 +126,32 @@ export async function runEmailArchiveForUser(
         throw new Error(`Could not save email_backups (${ebErr.message}).`);
       }
 
+      const archiveRow = {
+        company_id: opts.companyId,
+        uploaded_by: email,
+        owner_email: email,
+        type: "email" as const,
+        file_name: `${subject.slice(0, 120)}.json`,
+        size: buf.length,
+        storage_path: storagePath,
+        is_central: true,
+        gmail_id: msg.id,
+        subject,
+        from_email: from,
+        message_date: dateStr ? new Date(dateStr).toISOString() : null,
+        metadata: { to, threadId: payload.threadId },
+      };
+
+      const indexResult = await upsertArchiveEmailFileRow(
+        supabase,
+        opts.companyId,
+        msg.id,
+        archiveRow,
+      );
+      if (!indexResult.ok && indexResult.warning && !archiveIndexWarning) {
+        archiveIndexWarning = indexResult.warning;
+      }
+
       imported += 1;
       await supabase
         .from("company_users")
@@ -184,7 +170,13 @@ export async function runEmailArchiveForUser(
       .eq("company_id", opts.companyId)
       .eq("email", email);
 
-    return { success: true, count: imported, status: "completed", progress };
+    return {
+      success: true,
+      count: imported,
+      status: "completed",
+      progress,
+      warning: archiveIndexWarning || undefined,
+    };
   } catch (e) {
     let msg = e instanceof Error ? e.message : "Gmail sync failed";
     if (/insufficient.*scope|403|Forbidden/i.test(msg)) {

@@ -118,7 +118,13 @@ export async function POST() {
 
   const res = NextResponse.json(
     result.success
-      ? { success: true, count: result.count, status: result.status, progress: result.progress }
+      ? {
+          success: true,
+          count: result.count,
+          status: result.status,
+          progress: result.progress,
+          warning: result.warning,
+        }
       : { success: false, error: result.error, status: result.status },
     { status: result.success ? 200 : 400 },
   );

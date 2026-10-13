@@ -148,11 +148,13 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
         return;
       }
       const n = Number(j.count ?? 0);
+      const warn = typeof j.warning === "string" ? j.warning : "";
       setSuccessMsg(
         n > 0
-          ? `Done — archived ${n} message${n === 1 ? "" : "s"} to the company vault. Refreshing list…`
+          ? `Done — archived ${n} message${n === 1 ? "" : "s"} to the company vault.${warn ? ` (${warn})` : ""}`
           : "Backup finished — no messages found in this Gmail inbox (or they were already archived).",
       );
+      if (warn) setError("");
       await refresh();
       if (n > 0) {
         setStatus((prev) => ({
