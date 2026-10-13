@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { ensureCompanyUserForArchive } from "@/lib/archive/resolve-archive-company";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { gmailClient } from "@/lib/google/client";
 
@@ -30,6 +31,8 @@ export async function runEmailArchiveForUser(
 ): Promise<EmailArchiveResult> {
   const email = opts.email.toLowerCase();
   const maxMessages = opts.maxMessages ?? DEFAULT_MAX;
+
+  await ensureCompanyUserForArchive(supabase, opts.companyId, email);
 
   await supabase
     .from("company_users")
@@ -123,12 +126,25 @@ export async function runEmailArchiveForUser(
         .maybeSingle();
 
       if (existing?.id) {
-        await supabase.from("archive_files").update(row).eq("id", existing.id);
+        const { error: upErr } = await supabase
+          .from("archive_files")
+          .update(row)
+          .eq("id", existing.id);
+        if (upErr) {
+          throw new Error(
+            `Could not update archive_files (${upErr.message}). Run Supabase migration 019.`,
+          );
+        }
       } else {
-        await supabase.from("archive_files").insert(row);
+        const { error: insErr } = await supabase.from("archive_files").insert(row);
+        if (insErr) {
+          throw new Error(
+            `Could not save to archive_files (${insErr.message}). Run Supabase migration 019.`,
+          );
+        }
       }
 
-      await supabase.from("email_backups").upsert(
+      const { error: ebErr } = await supabase.from("email_backups").upsert(
         {
           company_id: opts.companyId,
           company_domain: opts.domain,
@@ -144,8 +160,11 @@ export async function runEmailArchiveForUser(
           folder: "INBOX",
           s3_path: storagePath,
         },
-        { onConflict: "company_id,gmail_id" },
+        { onConflict: "gmail_id" },
       );
+      if (ebErr) {
+        throw new Error(`Could not save email_backups (${ebErr.message}).`);
+      }
 
       imported += 1;
       await supabase
@@ -195,35 +214,32 @@ export async function getEmailArchiveStatus(
     .eq("email", normalized)
     .maybeSingle();
 
-  const { count: mineAf, error: mineErr } = await supabase
+  const { count: mineAf } = await supabase
     .from("archive_files")
     .select("id", { count: "exact", head: true })
     .eq("company_id", companyId)
     .eq("type", "email")
     .eq("owner_email", normalized);
 
-  const { count: companyAf, error: coErr } = await supabase
+  const { count: companyAf } = await supabase
     .from("archive_files")
     .select("id", { count: "exact", head: true })
     .eq("company_id", companyId)
     .eq("type", "email");
 
-  let archivedCount = mineAf || 0;
-  let companyEmailArchiveCount = companyAf || 0;
+  const { count: mineEb } = await supabase
+    .from("email_backups")
+    .select("id", { count: "exact", head: true })
+    .eq("company_id", companyId)
+    .eq("owner_email", normalized);
 
-  if (mineErr || coErr) {
-    const { count: mineEb } = await supabase
-      .from("email_backups")
-      .select("id", { count: "exact", head: true })
-      .eq("company_id", companyId)
-      .eq("owner_email", normalized);
-    const { count: coEb } = await supabase
-      .from("email_backups")
-      .select("id", { count: "exact", head: true })
-      .eq("company_id", companyId);
-    archivedCount = mineEb || 0;
-    companyEmailArchiveCount = coEb || 0;
-  }
+  const { count: coEb } = await supabase
+    .from("email_backups")
+    .select("id", { count: "exact", head: true })
+    .eq("company_id", companyId);
+
+  const archivedCount = Math.max(mineAf || 0, mineEb || 0);
+  const companyEmailArchiveCount = Math.max(companyAf || 0, coEb || 0);
 
   const syncStatus = (cu?.email_sync_status as string) || "idle";
   const progress = (cu?.email_sync_progress as string) || "";

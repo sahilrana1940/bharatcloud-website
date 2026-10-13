@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { readWorkspaceAuthRepaired } from "@/lib/billing/workspace-cookies";
 import { attachWorkspaceCompanyCookie } from "@/lib/billing/workspace-cookies";
+import { resolveArchiveCompanyId } from "@/lib/archive/resolve-archive-company";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
@@ -21,6 +22,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ items: [], demo: true });
   }
 
+  const companyId = await resolveArchiveCompanyId(
+    supabase,
+    session.companyId,
+    session.email,
+  );
+
   const url = new URL(req.url);
   const scope = url.searchParams.get("scope") || "mine";
   const page = Math.max(1, Number(url.searchParams.get("page") || 1));
@@ -33,7 +40,7 @@ export async function GET(req: Request) {
       "id, file_name, size, storage_path, subject, from_email, message_date, owner_email, gmail_id, created_at",
       { count: "exact" },
     )
-    .eq("company_id", session.companyId)
+    .eq("company_id", companyId)
     .eq("type", "email")
     .order("message_date", { ascending: false, nullsFirst: false });
 
@@ -43,43 +50,74 @@ export async function GET(req: Request) {
 
   const { data, count, error } = await query.range(offset, offset + limit - 1);
 
+  const mapEb = (rows: Record<string, unknown>[]) =>
+    rows.map((r) => ({
+      id: r.id as string,
+      file_name: (r.subject as string) || "email",
+      subject: r.subject as string,
+      from_email: r.from_email as string,
+      message_date: r.date as string,
+      owner_email: r.owner_email as string,
+      size: 0,
+    }));
+
+  if (error?.message.includes("archive_files")) {
+    const fallback = await supabase
+      .from("email_backups")
+      .select("*", { count: "exact" })
+      .eq("company_id", companyId)
+      .eq("owner_email", session.email.toLowerCase())
+      .order("date", { ascending: false })
+      .range(offset, offset + limit - 1);
+    const res = NextResponse.json({
+      items: mapEb(fallback.data || []),
+      page,
+      total: fallback.count || 0,
+      migrationRequired: true,
+    });
+    if (companyId !== session.companyId || cookieRepaired) {
+      attachWorkspaceCompanyCookie(res, companyId);
+    }
+    return res;
+  }
+
   if (error) {
-    if (error.message.includes("archive_files")) {
-      const fallback = await supabase
-        .from("email_backups")
-        .select("*", { count: "exact" })
-        .eq("company_id", session.companyId)
-        .eq("owner_email", session.email.toLowerCase())
-        .order("date", { ascending: false })
-        .range(offset, offset + limit - 1);
-      const items = (fallback.data || []).map((r) => ({
-        id: r.id,
-        file_name: r.subject || "email",
-        subject: r.subject,
-        from_email: r.from_email,
-        message_date: r.date,
-        owner_email: r.owner_email,
-        size: 0,
-      }));
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (!data?.length && (count === 0 || count === null)) {
+    const fallback = await supabase
+      .from("email_backups")
+      .select("*", { count: "exact" })
+      .eq("company_id", companyId)
+      .eq("owner_email", session.email.toLowerCase())
+      .order("date", { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (fallback.data?.length) {
       const res = NextResponse.json({
-        items,
+        items: mapEb(fallback.data),
         page,
         total: fallback.count || 0,
-        migrationRequired: true,
+        companyId,
+        email: session.email,
+        source: "email_backups",
       });
-      if (cookieRepaired) attachWorkspaceCompanyCookie(res, session.companyId);
+      if (companyId !== session.companyId || cookieRepaired) {
+        attachWorkspaceCompanyCookie(res, companyId);
+      }
       return res;
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   const res = NextResponse.json({
     items: data || [],
     page,
     total: count || 0,
-    companyId: session.companyId,
+    companyId,
     email: session.email,
   });
-  if (cookieRepaired) attachWorkspaceCompanyCookie(res, session.companyId);
+  if (companyId !== session.companyId || cookieRepaired) {
+    attachWorkspaceCompanyCookie(res, companyId);
+  }
   return res;
 }

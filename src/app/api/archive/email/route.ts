@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { resolveArchiveCompanyId } from "@/lib/archive/resolve-archive-company";
 import {
   getEmailArchiveStatus,
   runEmailArchiveForUser,
@@ -44,16 +45,21 @@ export async function GET() {
   if (ctx instanceof NextResponse) return ctx;
 
   const { supabase, session, cookieRepaired } = ctx;
-  const tokenRow = await fetchGoogleTokenRowForWorkspace(
+  const archiveCompanyId = await resolveArchiveCompanyId(
     supabase,
     session.companyId,
+    session.email,
+  );
+  const tokenRow = await fetchGoogleTokenRowForWorkspace(
+    supabase,
+    archiveCompanyId,
     session.email,
   );
   const googleConnected = isGoogleTokenRowConnected(tokenRow);
 
   const status = await getEmailArchiveStatus(
     supabase,
-    session.companyId,
+    archiveCompanyId,
     session.email,
   );
 
@@ -64,7 +70,7 @@ export async function GET() {
   const res = NextResponse.json({
     ...status,
     googleConnected,
-    companyId: session.companyId,
+    companyId: archiveCompanyId,
     email: session.email,
     verification: {
       /** Step 1: OAuth tokens in DB */
@@ -86,7 +92,8 @@ export async function GET() {
               : "Run backup again or check Supabase bucket company-vault.",
     },
   });
-  if (cookieRepaired) attachWorkspaceCompanyCookie(res, session.companyId);
+  const repairCompany = archiveCompanyId !== session.companyId || cookieRepaired;
+  if (repairCompany) attachWorkspaceCompanyCookie(res, archiveCompanyId);
   return res;
 }
 
@@ -97,8 +104,14 @@ export async function POST() {
 
   const { supabase, session, domain, cookieRepaired } = ctx;
 
+  const archiveCompanyId = await resolveArchiveCompanyId(
+    supabase,
+    session.companyId,
+    session.email,
+  );
+
   const result = await runEmailArchiveForUser(supabase, {
-    companyId: session.companyId,
+    companyId: archiveCompanyId,
     email: session.email,
     domain,
   });
@@ -109,6 +122,8 @@ export async function POST() {
       : { success: false, error: result.error, status: result.status },
     { status: result.success ? 200 : 400 },
   );
-  if (cookieRepaired) attachWorkspaceCompanyCookie(res, session.companyId);
+  if (archiveCompanyId !== session.companyId || cookieRepaired) {
+    attachWorkspaceCompanyCookie(res, archiveCompanyId);
+  }
   return res;
 }

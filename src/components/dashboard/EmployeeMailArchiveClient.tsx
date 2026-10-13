@@ -150,10 +150,17 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
       const n = Number(j.count ?? 0);
       setSuccessMsg(
         n > 0
-          ? `Done — archived ${n} message${n === 1 ? "" : "s"} to the company vault.`
+          ? `Done — archived ${n} message${n === 1 ? "" : "s"} to the company vault. Refreshing list…`
           : "Backup finished — no messages found in this Gmail inbox (or they were already archived).",
       );
       await refresh();
+      if (n > 0) {
+        setStatus((prev) => ({
+          ...prev,
+          status: "completed",
+          archivedCount: Math.max(prev.archivedCount ?? 0, n),
+        }));
+      }
     } catch {
       setError("Network error — try again or check your connection.");
     } finally {
