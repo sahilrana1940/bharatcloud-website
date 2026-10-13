@@ -134,7 +134,9 @@ export function SettingsIntegrations() {
       {!oauthConfigured && (
         <p className="mt-4 text-sm text-amber-300">
           Set <code>GOOGLE_CLIENT_ID</code>, <code>GOOGLE_CLIENT_SECRET</code>, and{" "}
-          <code>GOOGLE_REDIRECT_URI</code> (…/api/auth/google/drive/callback) on Vercel.
+          <code>GOOGLE_REDIRECT_URI</code> must match Google Console — usually
+          <code>/api/auth/google/drive/callback</code> or legacy{" "}
+          <code>/api/auth/callback/google</code>.
         </p>
       )}
       {message && <p className="mt-4 text-sm text-slate-300">{message}</p>}

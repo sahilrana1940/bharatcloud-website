@@ -82,7 +82,7 @@ Copy from [`.env.example`](./.env.example). Minimum for B2B backup:
 | `CRON_SECRET` | Yes | Random string; Vercel Cron auth |
 | `GOOGLE_CLIENT_ID` | For Drive backup | Google Cloud OAuth |
 | `GOOGLE_CLIENT_SECRET` | For Drive backup | |
-| `GOOGLE_REDIRECT_URI` | For Drive backup | `{APP_URL}/api/auth/google/callback` |
+| `GOOGLE_REDIRECT_URI` | For Drive backup | `{APP_URL}/api/auth/google/drive/callback` |
 | `WASABI_*` or `E2E_S3_*` | For archive | S3-compatible |
 | `ARCHIVE_S3_BUCKET` | For archive | e.g. `bharatcloud-archiver` |
 | `NEXT_PUBLIC_UPI_ID` | Billing | UPI VPA |
@@ -95,8 +95,10 @@ Copy from [`.env.example`](./.env.example). Minimum for B2B backup:
 
 In Google Cloud Console → OAuth client → **Authorized redirect URIs**:
 
-- `https://<your-domain>/api/auth/google/callback`
-- Each Vercel preview URL if you test previews: `https://<project>-xxx.vercel.app/api/auth/google/callback`
+- `https://<your-domain>/api/auth/google/drive/callback` (settings + employee Gmail connect)
+- `https://<your-domain>/api/auth/google/callback` (team / workspace login link)
+- Legacy (optional): `https://<your-domain>/api/auth/callback/google`
+- Each Vercel preview URL if you test previews (same paths on `*.vercel.app`)
 
 Enable APIs: **Google Drive**, **Gmail** (if using mail backup).
 
