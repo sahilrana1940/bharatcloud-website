@@ -20,6 +20,7 @@
 | `GOOGLE_OAUTH_REDIRECT_URI` | optional: `…/api/auth/google/callback` for legacy team login |
 | `ENCRYPTION_KEY` | long random string (encrypts refresh tokens in DB) |
 | `NEXT_PUBLIC_APP_URL` | `https://YOUR-DOMAIN` |
+| `GOOGLE_SCOPES` | **Leave unset** unless you know the full URLs. Never use `…/auth/drive` or `…/auth/gmail` alone (Google returns `invalid_scope`). |
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role (Drive DB + storage) |
 
 Enable for **Production** and **Preview**. Redeploy.

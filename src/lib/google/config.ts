@@ -30,6 +30,26 @@ const DEFAULT_DRIVE_SCOPES = [
   "https://www.googleapis.com/auth/drive.readonly",
 ];
 
+/** Google rejects bare `/auth/drive` and `/auth/gmail` — map common misconfigurations. */
+const GOOGLE_SCOPE_ALIASES: Record<string, string> = {
+  "https://www.googleapis.com/auth/drive": "https://www.googleapis.com/auth/drive.readonly",
+  "https://www.googleapis.com/auth/gmail": "https://www.googleapis.com/auth/gmail.readonly",
+  drive: "https://www.googleapis.com/auth/drive.readonly",
+  gmail: "https://www.googleapis.com/auth/gmail.readonly",
+};
+
+function parseGoogleScopesEnv(raw: string): string[] {
+  const parts = raw.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
+  const out: string[] = [];
+  for (const part of parts) {
+    const mapped = GOOGLE_SCOPE_ALIASES[part] || part;
+    if (mapped.startsWith("https://www.googleapis.com/auth/") || mapped === "openid" || mapped === "profile") {
+      out.push(mapped);
+    }
+  }
+  return [...new Set(out)];
+}
+
 /**
  * OAuth scopes — override in Vercel with space-separated GOOGLE_SCOPES.
  * Example:
@@ -40,7 +60,8 @@ export function resolveGoogleOAuthScopeList(opts?: {
 }): string[] {
   const fromEnv = process.env.GOOGLE_SCOPES?.trim();
   if (fromEnv) {
-    return fromEnv.split(/\s+/).filter(Boolean);
+    const parsed = parseGoogleScopesEnv(fromEnv);
+    if (parsed.length) return parsed;
   }
 
   const includeGmail = opts?.includeGmail ?? true;
