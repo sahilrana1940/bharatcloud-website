@@ -48,13 +48,12 @@ export function BillingDashboardClient() {
     ]);
     setUsage(usageRes);
     setSubscriptionActive(Boolean(statusRes.active));
-    const total = invoiceRes?.invoice?.totalInr ?? usageRes.usedInr ?? 0;
     const cap = usageRes.capInr ?? 1999;
-    setDueInr(Math.max(0, cap - (usageRes.usedInr ?? 0)));
+    const used = usageRes.usedInr ?? invoiceRes?.invoice?.totalInr ?? 0;
+    setDueInr(Math.max(0, cap - used));
     if (!usageRes.rows?.length && usageRes.error) {
       setToast(usageRes.error);
     }
-    void total;
   }, []);
 
   useEffect(() => {
