@@ -2,14 +2,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { encryptSecret } from "@/lib/crypto/encryption";
 import { createOAuth2Client } from "@/lib/google/client";
-import { fetchGoogleTokenRow } from "@/lib/google/token-row";
+import { fetchGoogleTokenRowForWorkspace } from "@/lib/google/token-row";
 
 export async function getValidGoogleAccessToken(
   supabase: SupabaseClient,
   companyId: string,
   email: string,
 ): Promise<string | null> {
-  const data = await fetchGoogleTokenRow(supabase, companyId, email);
+  const data = await fetchGoogleTokenRowForWorkspace(supabase, companyId, email);
 
   if (!data?.access_token && !data?.refresh_token) return null;
 
@@ -27,6 +27,7 @@ export async function getValidGoogleAccessToken(
   const access = credentials.access_token;
   if (!access) return null;
 
+  const tokenCompanyId = data.company_id || companyId;
   await supabase
     .from("google_oauth_tokens")
     .update({
@@ -35,7 +36,7 @@ export async function getValidGoogleAccessToken(
         ? new Date(credentials.expiry_date).toISOString()
         : null,
     })
-    .eq("company_id", companyId)
+    .eq("company_id", tokenCompanyId)
     .eq("email", email.toLowerCase());
 
   return access;

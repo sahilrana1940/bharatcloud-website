@@ -12,7 +12,7 @@ import { resolveCompanyDomain } from "@/lib/workspace/company";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 import {
-  fetchGoogleTokenRow,
+  fetchGoogleTokenRowForWorkspace,
   isGoogleTokenRowConnected,
 } from "@/lib/google/token-row";
 
@@ -44,7 +44,7 @@ export async function GET() {
   if (ctx instanceof NextResponse) return ctx;
 
   const { supabase, session, cookieRepaired } = ctx;
-  const tokenRow = await fetchGoogleTokenRow(
+  const tokenRow = await fetchGoogleTokenRowForWorkspace(
     supabase,
     session.companyId,
     session.email,

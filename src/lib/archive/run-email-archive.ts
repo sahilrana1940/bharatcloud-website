@@ -87,10 +87,17 @@ export async function runEmailArchiveForUser(
       const buf = Buffer.from(jsonBody, "utf8");
       const storagePath = `${opts.companyId}/email/${msg.id}.json`;
 
-      await supabase.storage.from(EMAIL_ARCHIVE_BUCKET).upload(storagePath, buf, {
-        upsert: true,
-        contentType: "application/json",
-      });
+      const { error: uploadErr } = await supabase.storage
+        .from(EMAIL_ARCHIVE_BUCKET)
+        .upload(storagePath, buf, {
+          upsert: true,
+          contentType: "application/json",
+        });
+      if (uploadErr) {
+        throw new Error(
+          `Vault bucket "${EMAIL_ARCHIVE_BUCKET}" upload failed: ${uploadErr.message}. Create the bucket in Supabase Storage (private).`,
+        );
+      }
 
       const row = {
         company_id: opts.companyId,
@@ -160,7 +167,11 @@ export async function runEmailArchiveForUser(
 
     return { success: true, count: imported, status: "completed", progress };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Gmail sync failed";
+    let msg = e instanceof Error ? e.message : "Gmail sync failed";
+    if (/insufficient.*scope|403|Forbidden/i.test(msg)) {
+      msg =
+        "Gmail permission missing — open My mail archive → Connect Gmail again and allow Gmail on the Google screen.";
+    }
     await supabase
       .from("company_users")
       .update({ email_sync_status: "error", email_sync_progress: msg.slice(0, 200) })
@@ -184,23 +195,44 @@ export async function getEmailArchiveStatus(
     .eq("email", normalized)
     .maybeSingle();
 
-  const { count: mine } = await supabase
+  const { count: mineAf, error: mineErr } = await supabase
     .from("archive_files")
     .select("id", { count: "exact", head: true })
     .eq("company_id", companyId)
     .eq("type", "email")
     .eq("owner_email", normalized);
 
-  const { count: companyTotal } = await supabase
+  const { count: companyAf, error: coErr } = await supabase
     .from("archive_files")
     .select("id", { count: "exact", head: true })
     .eq("company_id", companyId)
     .eq("type", "email");
 
+  let archivedCount = mineAf || 0;
+  let companyEmailArchiveCount = companyAf || 0;
+
+  if (mineErr || coErr) {
+    const { count: mineEb } = await supabase
+      .from("email_backups")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", companyId)
+      .eq("owner_email", normalized);
+    const { count: coEb } = await supabase
+      .from("email_backups")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", companyId);
+    archivedCount = mineEb || 0;
+    companyEmailArchiveCount = coEb || 0;
+  }
+
+  const syncStatus = (cu?.email_sync_status as string) || "idle";
+  const progress = (cu?.email_sync_progress as string) || "";
+
   return {
-    status: (cu?.email_sync_status as string) || "idle",
-    progress: (cu?.email_sync_progress as string) || "",
-    archivedCount: mine || 0,
-    companyEmailArchiveCount: companyTotal || 0,
+    status: syncStatus,
+    progress,
+    lastError: syncStatus === "error" ? progress : "",
+    archivedCount,
+    companyEmailArchiveCount,
   };
 }

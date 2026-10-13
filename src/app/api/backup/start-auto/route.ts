@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { isDemoBillingDomain } from "@/lib/billing/demo-domain";
 import { isPaymentBypassEnabled } from "@/lib/billing/payment-bypass";
 import { companyHasPaidBackup } from "@/lib/billing/subscription";
 import {
@@ -9,7 +10,7 @@ import {
   readWorkspaceAuthRepaired,
 } from "@/lib/billing/workspace-cookies";
 import {
-  fetchGoogleTokenRow,
+  fetchGoogleTokenRowForWorkspace,
   isGoogleTokenRowConnected,
 } from "@/lib/google/token-row";
 import { processBackupJobChunk } from "@/lib/backup/process-job-chunk";
@@ -46,6 +47,8 @@ export async function POST() {
   if (!paid) {
     if (company.subscription_status === "active") {
       paid = true;
+    } else if (isDemoBillingDomain(company.domain)) {
+      paid = true;
     } else {
       paid = await companyHasPaidBackup(supabase, ws.companyId, company.domain);
     }
@@ -58,7 +61,7 @@ export async function POST() {
     );
   }
 
-  const tok = await fetchGoogleTokenRow(supabase, ws.companyId, ws.email);
+  const tok = await fetchGoogleTokenRowForWorkspace(supabase, ws.companyId, ws.email);
 
   if (!isGoogleTokenRowConnected(tok)) {
     return NextResponse.json(

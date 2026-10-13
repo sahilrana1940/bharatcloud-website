@@ -8,10 +8,13 @@ export type TenantProfile = {
   website?: string;
   /** Handoff checklist: up to 3 staff emails (invite on Team if not in DB yet). */
   handoffStaffEmails?: string[];
+  /** Client demo: skip 402 payment gate for this domain (also set PAYMENT_BYPASS=1 on Vercel for all tenants). */
+  demoBillingUnlocked?: boolean;
 };
 
 const PROFILES: Record<string, TenantProfile> = {
   "gorjrmcourier.com": {
+    demoBillingUnlocked: true,
     legalName: "GOR JRM Courier (RJRM Logistics)",
     addressLines: ["Bus Stand, near Honda Agency"],
     cityStatePin: "Sunderbani, Jammu & Kashmir 185153, India",

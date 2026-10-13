@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { isDemoBillingDomain } from "@/lib/billing/demo-domain";
 import { isPaymentBypassEnabled } from "@/lib/billing/payment-bypass";
 
 /** Paid backup gate — uses `companies` + `payments` only (not `organizations`). */
@@ -9,6 +10,7 @@ export async function companyHasPaidBackup(
   companyDomain?: string,
 ): Promise<boolean> {
   if (await isPaymentBypassEnabled()) return true;
+  if (isDemoBillingDomain(companyDomain)) return true;
 
   const { data: co } = await supabase
     .from("companies")

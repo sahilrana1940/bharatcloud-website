@@ -31,7 +31,9 @@ export default function EmployeeDashboardPage() {
         return;
       }
       if (res.status === 402) {
-        window.alert("Payment required — ask your admin to complete billing.");
+        window.alert(
+          "Payment required for Drive backup. For GOR JRM demo, deploy latest app (demo billing) or set PAYMENT_BYPASS=1 on Vercel / run migration 020 in Supabase.",
+        );
         return;
       }
       if (res.ok) {

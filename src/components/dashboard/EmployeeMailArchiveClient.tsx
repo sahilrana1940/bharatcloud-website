@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { CloudUpload, Mail, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -20,12 +21,17 @@ type Status = {
   googleConnected?: boolean;
   status?: string;
   progress?: string;
+  lastError?: string;
   archivedCount?: number;
   companyEmailArchiveCount?: number;
 };
 
+const fetchOpts: RequestInit = { credentials: "include" };
+
 export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) {
+  const searchParams = useSearchParams();
   const [status, setStatus] = useState<Status>({});
+  const [googleConnected, setGoogleConnected] = useState(false);
   const [items, setItems] = useState<ArchiveRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -33,24 +39,49 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
   const [forwardId, setForwardId] = useState<string | null>(null);
   const [forwardTo, setForwardTo] = useState("");
   const [forwardMsg, setForwardMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   const loadStatus = useCallback(async () => {
-    const res = await fetch("/api/archive/email");
-    const j = await res.json();
-    if (!res.ok) {
-      setError(j.error || `Error ${res.status}`);
-      return;
+    try {
+      const [archRes, gsRes] = await Promise.all([
+        fetch("/api/archive/email", fetchOpts),
+        fetch("/api/team/google-status", fetchOpts),
+      ]);
+      const arch = await archRes.json().catch(() => ({}));
+      const gs = await gsRes.json().catch(() => ({}));
+
+      if (!archRes.ok) {
+        setError(arch.error || `Archive status error ${archRes.status}`);
+      } else {
+        setStatus(arch);
+        setError("");
+      }
+
+      const connected =
+        Boolean(arch.googleConnected) || Boolean(gs.connected);
+      setGoogleConnected(connected);
+
+      if (arch.lastError || (arch.status === "error" && arch.progress)) {
+        setError(String(arch.lastError || arch.progress));
+      }
+    } catch {
+      setError("Network error loading Gmail status");
     }
-    setStatus(j);
-    setError("");
   }, []);
 
   const loadList = useCallback(async () => {
-    const res = await fetch("/api/dashboard/employee/mail");
-    const j = await res.json();
-    if (res.ok) setItems(j.items || []);
-    else if (res.status === 403) setError("Forbidden — refresh session or ask admin to link your company.");
-    else setError(j.error || "Could not load archive");
+    try {
+      const res = await fetch("/api/dashboard/employee/mail", fetchOpts);
+      const j = await res.json().catch(() => ({}));
+      if (res.ok) setItems(j.items || []);
+      else if (res.status === 403) {
+        setError(
+          "Forbidden — run: fetch('/api/auth/refresh-workspace',{method:'POST'}).then(()=>location.reload())",
+        );
+      } else if (!error) setError(j.error || "Could not load archive");
+    } catch {
+      setError("Network error loading messages");
+    }
   }, []);
 
   const refresh = useCallback(async () => {
@@ -60,30 +91,54 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
   }, [loadStatus, loadList]);
 
   useEffect(() => {
+    const drive = searchParams.get("drive");
+    const reason = searchParams.get("reason");
+    if (drive === "error" && reason) {
+      setError(decodeURIComponent(reason));
+    }
+    if (drive === "connected") {
+      setGoogleConnected(true);
+    }
     refresh();
-  }, [refresh]);
+  }, [searchParams, refresh]);
 
   async function connectGmail() {
+    setError("");
     const res = await fetch(
       `/api/auth/google/drive/url?gmail=1&returnTo=${encodeURIComponent("/dashboard/employee/mail")}`,
+      fetchOpts,
     );
-    const j = await res.json();
-    if (j.url) window.location.href = j.url;
-    else setError(j.error || "Google OAuth not configured");
+    const j = await res.json().catch(() => ({}));
+    if (j.url) {
+      window.location.href = j.url;
+      return;
+    }
+    setError(j.error || "Google OAuth not configured on server");
   }
 
   async function startEmailBackup() {
     setSyncing(true);
     setError("");
-    const res = await fetch("/api/archive/email", { method: "POST" });
-    const j = await res.json();
-    if (!res.ok) {
-      setError(j.error || "Backup failed");
+    setSuccessMsg("");
+    try {
+      const res = await fetch("/api/archive/email", { method: "POST", ...fetchOpts });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(j.error || "Backup failed — reconnect Gmail with all scopes");
+        return;
+      }
+      const n = Number(j.count ?? 0);
+      setSuccessMsg(
+        n > 0
+          ? `Done — archived ${n} message${n === 1 ? "" : "s"} to the company vault.`
+          : "Backup finished — no messages found in this Gmail inbox (or they were already archived).",
+      );
+      await refresh();
+    } catch {
+      setError("Network error — try again or check your connection.");
+    } finally {
       setSyncing(false);
-      return;
     }
-    await refresh();
-    setSyncing(false);
   }
 
   async function submitForward() {
@@ -91,6 +146,7 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
     const res = await fetch("/api/emails/forward", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      ...fetchOpts,
       body: JSON.stringify({ emailId: forwardId, to: forwardTo.trim() }),
     });
     const j = await res.json();
@@ -101,7 +157,6 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
     }
   }
 
-  const connected = status.googleConnected === true;
   const progressPct =
     status.progress && status.progress.includes("/")
       ? Math.min(
@@ -127,17 +182,24 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
         <strong>central company vault</strong> (same tenant as Drive backups and CCTV uploads).
       </p>
 
+      {successMsg && (
+        <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          {successMsg}
+        </p>
+      )}
+
       {error && (
         <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {error}
         </p>
       )}
 
-      {!connected ? (
+      {!googleConnected ? (
         <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="font-medium text-slate-900">Connect Gmail to start email backup</p>
           <p className="mt-1 text-sm text-slate-600">
-            Use your work account ({userEmail}). Gmail read-only access is required.
+            Use your work account ({userEmail}). Allow <strong>Drive + Gmail</strong> on the Google
+            screen.
           </p>
           <Button type="button" className="mt-4" onClick={connectGmail}>
             Connect Gmail
@@ -145,10 +207,11 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
         </div>
       ) : (
         <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-sm font-medium text-emerald-700">Google connected</p>
           <Button
             type="button"
             disabled={syncing}
-            className="gap-2"
+            className="mt-3 gap-2"
             onClick={startEmailBackup}
           >
             <CloudUpload className="h-4 w-4" />
@@ -236,7 +299,9 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
           ))}
           {!items.length && (
             <li className="text-sm text-slate-500">
-              No archived mail yet. Connect Gmail and tap Start my email backup.
+              {googleConnected
+                ? "No archived mail yet — tap Start my email backup."
+                : "Connect Gmail first, then run backup."}
             </li>
           )}
         </ul>
