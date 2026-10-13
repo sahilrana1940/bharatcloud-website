@@ -3,6 +3,8 @@
 import { Check, HardDrive, Loader2, Unlink } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+const fetchOpts: RequestInit = { credentials: "include" };
+
 export function SettingsIntegrations() {
   const [connected, setConnected] = useState(false);
   const [googleEmail, setGoogleEmail] = useState<string | null>(null);
@@ -11,7 +13,7 @@ export function SettingsIntegrations() {
   const [message, setMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/auth/google/drive/status");
+    const res = await fetch("/api/auth/google/drive/status", fetchOpts);
     const j = await res.json();
     if (res.ok) {
       setConnected(Boolean(j.connected));
@@ -39,30 +41,21 @@ export function SettingsIntegrations() {
     setBusy(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/auth/google/drive/url?gmail=1");
+      const returnTo = encodeURIComponent("/settings?drive=connected");
+      const res = await fetch(
+        `/api/auth/google/drive/url?gmail=1&returnTo=${returnTo}`,
+        fetchOpts,
+      );
       const j = await res.json();
       if (!res.ok || !j.url) {
         setMessage(j.error || "Could not start Google OAuth");
+        setBusy(false);
         return;
       }
-      const popup = window.open(
-        j.url,
-        "google_drive_oauth",
-        "width=520,height=720,menubar=no,toolbar=no",
-      );
-      const poll = window.setInterval(async () => {
-        if (popup?.closed) window.clearInterval(poll);
-        const st = await fetch("/api/auth/google/drive/status");
-        const data = await st.json();
-        if (data.connected) {
-          window.clearInterval(poll);
-          popup?.close();
-          setConnected(true);
-          setGoogleEmail(data.googleEmail);
-          setMessage("Google Drive connected.");
-        }
-      }, 2000);
-    } finally {
+      // Full-page redirect (more reliable than popup on Windows / COOP).
+      window.location.href = j.url;
+    } catch {
+      setMessage("Network error starting Google sign-in.");
       setBusy(false);
     }
   }
@@ -71,7 +64,10 @@ export function SettingsIntegrations() {
     setBusy(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/auth/google/drive/disconnect", { method: "POST" });
+      const res = await fetch("/api/auth/google/drive/disconnect", {
+        method: "POST",
+        ...fetchOpts,
+      });
       if (res.ok) {
         setConnected(false);
         setGoogleEmail(null);
@@ -86,7 +82,8 @@ export function SettingsIntegrations() {
     <section className="rounded-2xl border border-white/10 bg-[#1E2639] p-6">
       <h2 className="text-lg font-semibold text-white">Integrations</h2>
       <p className="mt-1 text-sm text-slate-400">
-        Connect Google Drive once — no OAuth Playground or manual refresh tokens.
+        Connect Google Drive + Gmail with your <strong>work email</strong> (same as login). No OAuth
+        Playground.
       </p>
 
       <div className="mt-6 flex flex-col gap-4 rounded-xl border border-white/5 bg-[#0F1420] p-5 sm:flex-row sm:items-center sm:justify-between">
