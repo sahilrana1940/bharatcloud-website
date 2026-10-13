@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getBillingPlan } from "@/lib/billing/plans";
+import { shouldAutoApprovePayments } from "@/lib/billing/upi-live";
 import {
   demoPaymentInsert,
   demoPaymentsList,
@@ -69,20 +70,34 @@ export async function POST(req: Request) {
   }
 
   const autoApprove =
-    process.env.PAYMENT_AUTO_APPROVE === "1" ||
-    process.env.NODE_ENV === "development";
+    shouldAutoApprovePayments() ||
+    (process.env.NODE_ENV === "development" && process.env.VERCEL !== "1");
   const status = autoApprove ? "approved" : "pending";
 
-  const { data, error } = await supabase
+  const insertRow: Record<string, unknown> = {
+    company_id: companyId,
+    company_domain: domain,
+    amount,
+    status,
+    plan_name: plan.id,
+  };
+
+  let { data, error } = await supabase
     .from("payments")
-    .insert({
-      company_id: companyId,
-      company_domain: domain,
-      amount,
-      status,
-    })
+    .insert(insertRow)
     .select()
     .single();
+
+  if (error?.message.includes("plan_name")) {
+    const { plan_name: _drop, ...withoutPlan } = insertRow;
+    const retry = await supabase
+      .from("payments")
+      .insert(withoutPlan)
+      .select()
+      .single();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

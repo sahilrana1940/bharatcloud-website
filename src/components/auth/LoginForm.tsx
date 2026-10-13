@@ -101,8 +101,7 @@ export function LoginForm() {
           Create account
         </Link>
       </p>
-      <p className="mt-2 text-center text-sm text-slate-500">
-        Lost phone or PIN?{" "}
+      <p className="mt-4 text-center text-sm text-slate-500">
         <Link href="/recover" className="font-semibold text-cyan-700 hover:underline">
           Account recovery
         </Link>

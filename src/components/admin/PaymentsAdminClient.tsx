@@ -8,6 +8,7 @@ type Payment = {
   id: string;
   company_domain: string;
   amount: number;
+  plan_name?: string;
   status: string;
   created_at: string;
 };
@@ -55,6 +56,7 @@ export function PaymentsAdminClient({ authed }: { authed: boolean }) {
           <thead>
             <tr className="border-b border-white/10 text-slate-400">
               <th className="px-4 py-3">Domain</th>
+              <th className="px-4 py-3">Plan</th>
               <th className="px-4 py-3">Amount</th>
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Action</th>
@@ -63,7 +65,7 @@ export function PaymentsAdminClient({ authed }: { authed: boolean }) {
           <tbody>
             {payments.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-12 text-center text-slate-500">
+                <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
                   No pending payments
                 </td>
               </tr>
@@ -71,6 +73,7 @@ export function PaymentsAdminClient({ authed }: { authed: boolean }) {
               payments.map((p) => (
                 <tr key={p.id} className="border-b border-white/5">
                   <td className="px-4 py-3">{p.company_domain}</td>
+                  <td className="px-4 py-3">{p.plan_name || "—"}</td>
                   <td className="px-4 py-3">₹{p.amount}</td>
                   <td className="px-4 py-3">{new Date(p.created_at).toLocaleString()}</td>
                   <td className="px-4 py-3">
