@@ -24,6 +24,10 @@ export default function RecoverPage() {
     <div className="min-h-screen bg-[#0A0E1A] px-4 py-12 text-slate-100">
       <p className="text-center text-xs text-slate-500">{INDIA_BADGE}</p>
       <h1 className="mt-4 text-center text-2xl font-bold">Account recovery</h1>
+      <p className="mx-auto mt-2 max-w-md text-center text-sm text-slate-400">
+        Phone lost, new phone, or can&apos;t sign in? Submit a request — your company admin
+        verifies and sends a recovery code by email.
+      </p>
       <div className="mx-auto mt-8 max-w-md space-y-4 rounded-2xl border border-white/10 bg-[#1E2639] p-6">
         <input
           className="w-full rounded-lg bg-[#0A0E1A] px-3 py-2 text-sm"
@@ -37,13 +41,14 @@ export default function RecoverPage() {
           value={contact}
           onChange={(e) => setContact(e.target.value)}
         />
+        <label className="block text-xs font-medium text-slate-400">Reason (phone / device)</label>
         <select
           className="w-full rounded-lg bg-[#0A0E1A] px-3 py-2 text-sm"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
         >
-          <option value="phone_lost">Phone lost</option>
-          <option value="new_phone">New phone</option>
+          <option value="phone_lost">Phone lost — lock old device</option>
+          <option value="new_phone">New phone — move account</option>
         </select>
         <button
           type="button"
