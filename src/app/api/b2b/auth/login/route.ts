@@ -12,6 +12,11 @@ import {
   WS_ROLE_COOKIE,
 } from "@/lib/workspace/session";
 import { attachSaasRoleCookies, defaultDashboardForRole, getUserRole } from "@/lib/auth";
+import {
+  assertSuperAdminEmail,
+  verifySuperAdminPassword,
+} from "@/lib/b2b/super-admin-auth";
+import { SUPER_ADMIN_COOKIE } from "@/lib/b2b/session";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { resolveCompanyIdForEmail } from "@/lib/workspace/resolve-company";
 import { touchProfileLogin } from "@/lib/workspace/workspace-profiles";
@@ -27,64 +32,93 @@ export async function POST(req: Request) {
 
   const supabase = getSupabaseAdmin();
   let orgId: string | null = null;
+  const platformSuperAdmin = assertSuperAdminEmail(ownerEmail);
 
-  if (!supabase) {
-    const org = demoOrganizations.find((o) => o.owner_email === ownerEmail);
-    if (!org) {
-      return NextResponse.json({ error: "Account not found" }, { status: 404 });
-    }
-    if (org.status === "blocked") {
-      return NextResponse.json({ error: "Company blocked" }, { status: 403 });
-    }
-    orgId = org.id;
-  } else {
-    const { data: asOwner } = await supabase
+  if (platformSuperAdmin && !verifySuperAdminPassword(pass)) {
+    return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+  }
+
+  if (platformSuperAdmin && supabase) {
+    const { data: anyOrg } = await supabase
       .from("organizations")
       .select("id, status")
-      .eq("owner_email", ownerEmail)
+      .limit(1)
       .maybeSingle();
+    if (anyOrg?.id && anyOrg.status !== "blocked") {
+      orgId = anyOrg.id;
+    }
+  }
 
-    if (asOwner) {
-      if (asOwner.status === "blocked") {
+  if (!orgId && platformSuperAdmin && !supabase) {
+    orgId = "platform-super-admin";
+  }
+
+  if (!orgId && !platformSuperAdmin) {
+    if (!supabase) {
+      const org = demoOrganizations.find((o) => o.owner_email === ownerEmail);
+      if (!org) {
+        return NextResponse.json({ error: "Account not found" }, { status: 404 });
+      }
+      if (org.status === "blocked") {
         return NextResponse.json({ error: "Company blocked" }, { status: 403 });
       }
-      orgId = asOwner.id;
+      orgId = org.id;
     } else {
-      const { data: member } = await supabase
-        .from("company_users")
-        .select("company_id")
-        .eq("email", ownerEmail)
-        .maybeSingle();
-
-      if (!member?.company_id) {
-        return NextResponse.json({ error: "Account not found" }, { status: 404 });
-      }
-
-      const { data: company } = await supabase
-        .from("companies")
-        .select("admin_email")
-        .eq("id", member.company_id)
-        .maybeSingle();
-
-      const orgOwner = company?.admin_email?.toLowerCase();
-      if (!orgOwner) {
-        return NextResponse.json({ error: "Account not found" }, { status: 404 });
-      }
-
-      const { data: orgForCompany, error } = await supabase
+      const { data: asOwner } = await supabase
         .from("organizations")
         .select("id, status")
-        .eq("owner_email", orgOwner)
+        .eq("owner_email", ownerEmail)
         .maybeSingle();
 
-      if (error || !orgForCompany) {
-        return NextResponse.json({ error: "Account not found" }, { status: 404 });
+      if (asOwner) {
+        if (asOwner.status === "blocked") {
+          return NextResponse.json({ error: "Company blocked" }, { status: 403 });
+        }
+        orgId = asOwner.id;
+      } else {
+        const { data: member } = await supabase
+          .from("company_users")
+          .select("company_id")
+          .eq("email", ownerEmail)
+          .maybeSingle();
+
+        if (!member?.company_id) {
+          return NextResponse.json({ error: "Account not found" }, { status: 404 });
+        }
+
+        const { data: company } = await supabase
+          .from("companies")
+          .select("admin_email")
+          .eq("id", member.company_id)
+          .maybeSingle();
+
+        const orgOwner = company?.admin_email?.toLowerCase();
+        if (!orgOwner) {
+          return NextResponse.json({ error: "Account not found" }, { status: 404 });
+        }
+
+        const { data: orgForCompany, error } = await supabase
+          .from("organizations")
+          .select("id, status")
+          .eq("owner_email", orgOwner)
+          .maybeSingle();
+
+        if (error || !orgForCompany) {
+          return NextResponse.json({ error: "Account not found" }, { status: 404 });
+        }
+        if (orgForCompany.status === "blocked") {
+          return NextResponse.json({ error: "Company blocked" }, { status: 403 });
+        }
+        orgId = orgForCompany.id;
       }
-      if (orgForCompany.status === "blocked") {
-        return NextResponse.json({ error: "Company blocked" }, { status: 403 });
-      }
-      orgId = orgForCompany.id;
     }
+  }
+
+  if (!orgId) {
+    return NextResponse.json(
+      { error: platformSuperAdmin ? "No organization in database yet" : "Account not found" },
+      { status: 404 },
+    );
   }
 
   const workspaceCompanyId = await resolveCompanyIdForEmail(ownerEmail);
@@ -116,10 +150,19 @@ export async function POST(req: Request) {
   res.cookies.set(WS_COMPANY_COOKIE, workspaceCompanyId, wsOpts);
   res.cookies.set(WS_EMAIL_COOKIE, ownerEmail, wsOpts);
   const workspaceAdmin =
+    saas.role === "super_admin" ||
     saas.is_company_owner ||
     saas.role === "company_owner" ||
     ownerEmail.startsWith("admin@");
   res.cookies.set(WS_ROLE_COOKIE, workspaceAdmin ? "admin" : "member", wsOpts);
+  if (platformSuperAdmin) {
+    res.cookies.set(SUPER_ADMIN_COOKIE, "1", {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+  }
   attachSaasRoleCookies(res, saas);
   return res;
 }

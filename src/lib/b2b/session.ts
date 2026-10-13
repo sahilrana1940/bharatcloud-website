@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import { SUPER_ADMIN_EMAIL } from "@/lib/b2b/constants";
+import { isSuperAdminEmail } from "@/lib/b2b/constants";
 
 export const B2B_SESSION_COOKIE = "bharatcloud_b2b_admin";
 export const B2B_EMAIL_COOKIE = "bharatcloud_b2b_email";
@@ -20,6 +20,6 @@ export async function isSuperAdminSession(): Promise<boolean> {
   const jar = await cookies();
   const flag = jar.get(SUPER_ADMIN_COOKIE)?.value;
   const email = jar.get(B2B_EMAIL_COOKIE)?.value;
-  return flag === "1" && email === SUPER_ADMIN_EMAIL;
+  return flag === "1" && isSuperAdminEmail(email);
 }
 

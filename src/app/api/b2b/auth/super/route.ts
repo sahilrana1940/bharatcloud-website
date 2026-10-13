@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { SUPER_ADMIN_EMAIL } from "@/lib/b2b/constants";
+import {
+  assertSuperAdminEmail,
+  verifySuperAdminPassword,
+} from "@/lib/b2b/super-admin-auth";
 import {
   B2B_EMAIL_COOKIE,
   SUPER_ADMIN_COOKIE,
@@ -11,10 +14,10 @@ export async function POST(req: Request) {
   const normalized = String(email || "").trim().toLowerCase();
   const pass = String(password || "");
 
-  if (normalized !== SUPER_ADMIN_EMAIL) {
+  if (!assertSuperAdminEmail(normalized)) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
-  if (pass.length < 6) {
+  if (!verifySuperAdminPassword(pass)) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
 
