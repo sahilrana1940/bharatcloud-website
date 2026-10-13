@@ -200,12 +200,14 @@ export async function getEmailArchiveStatus(
 ) {
   const normalized = email.toLowerCase();
 
-  const { data: cu } = await supabase
+  const { data: cu, error: cuErr } = await supabase
     .from("company_users")
     .select("email_sync_status, email_sync_progress")
     .eq("company_id", companyId)
     .eq("email", normalized)
     .maybeSingle();
+
+  const cuMissingCols = cuErr?.message?.includes("email_sync");
 
   const { count: mineAf } = await supabase
     .from("archive_files")
@@ -234,8 +236,10 @@ export async function getEmailArchiveStatus(
   const archivedCount = Math.max(mineAf || 0, mineEb || 0);
   const companyEmailArchiveCount = Math.max(companyAf || 0, coEb || 0);
 
-  const syncStatus = (cu?.email_sync_status as string) || "idle";
-  const progress = (cu?.email_sync_progress as string) || "";
+  const syncStatus = cuMissingCols
+    ? "idle"
+    : (cu?.email_sync_status as string) || "idle";
+  const progress = cuMissingCols ? "" : (cu?.email_sync_progress as string) || "";
 
   return {
     status: syncStatus,
