@@ -5,6 +5,7 @@ import {
   PAYMENT_BYPASS_COOKIE,
   readPaymentBypassFlag,
 } from "@/lib/billing/payment-bypass";
+import { isDemoBillingDomain } from "@/lib/billing/demo-domain";
 import { companyHasPaidBackup } from "@/lib/billing/subscription";
 import { isSuperAdminEmail } from "@/lib/brand";
 import { getSessionRole } from "@/lib/auth";
@@ -55,9 +56,13 @@ export async function GET() {
   const bypass = await isPaymentBypassEnabled();
   let active = false;
 
+  const demoDomain = isDemoBillingDomain(company.domain);
+
   if (bypass) {
     active = true;
   } else if (company.subscription_status === "active") {
+    active = true;
+  } else if (demoDomain) {
     active = true;
   } else {
     active = await companyHasPaidBackup(supabase, ws.companyId, company.domain);
@@ -73,6 +78,7 @@ export async function GET() {
     domain: company.domain,
     plan: company.plan_name || "starter",
     subscriptionStatus: company.subscription_status || "trial",
+    demoBilling: demoDomain,
     storageLimitGb: company.storage_limit_gb,
     email: ws.email,
     cookieRepaired: repaired,

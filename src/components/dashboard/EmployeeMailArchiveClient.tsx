@@ -21,6 +21,7 @@ type Status = {
   googleConnected?: boolean;
   status?: string;
   progress?: string;
+  lastError?: string;
   archivedCount?: number;
   companyEmailArchiveCount?: number;
 };
@@ -38,6 +39,7 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
   const [forwardId, setForwardId] = useState<string | null>(null);
   const [forwardTo, setForwardTo] = useState("");
   const [forwardMsg, setForwardMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   const loadStatus = useCallback(async () => {
     try {
@@ -58,6 +60,10 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
       const connected =
         Boolean(arch.googleConnected) || Boolean(gs.connected);
       setGoogleConnected(connected);
+
+      if (arch.lastError || (arch.status === "error" && arch.progress)) {
+        setError(String(arch.lastError || arch.progress));
+      }
     } catch {
       setError("Network error loading Gmail status");
     }
@@ -113,15 +119,26 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
   async function startEmailBackup() {
     setSyncing(true);
     setError("");
-    const res = await fetch("/api/archive/email", { method: "POST", ...fetchOpts });
-    const j = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(j.error || "Backup failed — reconnect Gmail with all scopes");
+    setSuccessMsg("");
+    try {
+      const res = await fetch("/api/archive/email", { method: "POST", ...fetchOpts });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(j.error || "Backup failed — reconnect Gmail with all scopes");
+        return;
+      }
+      const n = Number(j.count ?? 0);
+      setSuccessMsg(
+        n > 0
+          ? `Done — archived ${n} message${n === 1 ? "" : "s"} to the company vault.`
+          : "Backup finished — no messages found in this Gmail inbox (or they were already archived).",
+      );
+      await refresh();
+    } catch {
+      setError("Network error — try again or check your connection.");
+    } finally {
       setSyncing(false);
-      return;
     }
-    await refresh();
-    setSyncing(false);
   }
 
   async function submitForward() {
@@ -164,6 +181,12 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
         Signed in as <strong>{userEmail}</strong> — archived mail goes to the{" "}
         <strong>central company vault</strong> (same tenant as Drive backups and CCTV uploads).
       </p>
+
+      {successMsg && (
+        <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          {successMsg}
+        </p>
+      )}
 
       {error && (
         <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
