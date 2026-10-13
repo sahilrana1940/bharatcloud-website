@@ -48,6 +48,13 @@ export function middleware(req: NextRequest) {
   }
 
   if (
+    (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) &&
+    (isSuperAdminEmail(email) || role === "super_admin")
+  ) {
+    return NextResponse.redirect(new URL("/admin", req.url));
+  }
+
+  if (
     role === "company_owner" &&
     (pathname === "/dashboard/employee" || pathname.startsWith("/dashboard/employee/"))
   ) {

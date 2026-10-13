@@ -114,7 +114,9 @@ export async function POST(req: Request) {
   const workspaceCompanyId = platformSuperAdmin
     ? PLATFORM_OPERATOR_COMPANY_ID
     : await resolveCompanyIdForEmail(ownerEmail);
-  if (supabase && !platformSuperAdmin) {
+  if (supabase && platformSuperAdmin) {
+    await supabase.from("company_users").delete().eq("email", ownerEmail);
+  } else if (supabase) {
     await touchProfileLogin(supabase, ownerEmail, workspaceCompanyId);
   }
   const saas = await getUserRole(ownerEmail);

@@ -33,7 +33,8 @@ export function isWorkspaceOwner(session: {
   saasRole?: SaasRole;
   isCompanyOwner?: boolean;
 }): boolean {
-  if (session.saasRole === "super_admin" || session.saasRole === "company_owner") return true;
+  if (session.saasRole === "super_admin") return false;
+  if (session.saasRole === "company_owner") return true;
   if (session.isCompanyOwner) return true;
   return session.role === "admin";
 }
