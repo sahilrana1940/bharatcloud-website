@@ -160,6 +160,14 @@ export function PlatformAdminHub() {
       {finance?.costLines?.length ? (
         <section>
           <h2 className="mb-3 text-lg font-bold text-slate-900">Your monthly bills (edit in platform-costs.ts)</h2>
+          <p className="mb-4 text-sm text-slate-600">
+            Platform infra you pay (Vercel, Supabase, Wasabi, Blob). Customer{" "}
+            <strong>B3 + usage billing</strong> is separate — see each company on{" "}
+            <a href="/admin/companies" className="font-semibold text-cyan-700 underline">
+              Companies
+            </a>{" "}
+            and their <code className="text-xs">/dashboard/billing</code> page.
+          </p>
           <ProTableWrap>
             <table className="w-full min-w-[520px] text-left text-sm">
               <thead>
@@ -171,7 +179,7 @@ export function PlatformAdminHub() {
               </thead>
               <tbody>
                 {finance.costLines.map((line: { vendor: string; purpose: string; amountInr: number }) => (
-                  <tr key={line.vendor} className="border-b border-slate-100">
+                  <tr key={`${line.vendor}-${line.purpose}`} className="border-b border-slate-100">
                     <td className="px-4 py-3 font-medium">{line.vendor}</td>
                     <td className="px-4 py-3 text-slate-600">{line.purpose}</td>
                     <td className="px-4 py-3">₹{line.amountInr.toLocaleString("en-IN")}</td>

@@ -23,6 +23,13 @@ export const PLATFORM_COST_LINES: CostLine[] = [
     billingUrl: "https://vercel.com/dashboard",
   },
   {
+    vendor: "Vercel Blob",
+    purpose: "Bharat Big Bucket (B3) — tenant object storage",
+    amountInr: 600,
+    dueDayOfMonth: 1,
+    billingUrl: "https://vercel.com/dashboard/stores",
+  },
+  {
     vendor: "Supabase",
     purpose: "Postgres + auth + API",
     amountInr: 2000,
@@ -31,7 +38,7 @@ export const PLATFORM_COST_LINES: CostLine[] = [
   },
   {
     vendor: "Wasabi",
-    purpose: "S3 archive bucket (drive backups)",
+    purpose: "Legacy S3 vault (Google Drive archive backups)",
     amountInr: 800,
     dueDayOfMonth: 10,
     billingUrl: "https://console.wasabisys.com",
