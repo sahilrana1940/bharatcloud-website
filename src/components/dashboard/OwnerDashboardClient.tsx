@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { HardDrive, Users, Wallet } from "lucide-react";
+import { Database, HardDrive, Users, Wallet } from "lucide-react";
 
 import { INDIA_BADGE } from "@/lib/storage/tiers";
 import {
@@ -26,6 +26,7 @@ export function OwnerDashboardClient() {
   const [members, setMembers] = useState<Member[]>([]);
   const [msg, setMsg] = useState("");
   const [storage, setStorage] = useState({ hot: "0", cold: "0", vault: "0" });
+  const [b3, setB3] = useState({ usedGb: 4.2, limitGb: 50 });
 
   const load = useCallback(async () => {
     const res = await fetch("/api/team/users");
@@ -39,6 +40,14 @@ export function OwnerDashboardClient() {
       .then((r) => r.json())
       .then((j) => {
         if (j.hotGb) setStorage({ hot: j.hotGb, cold: j.coldGb, vault: j.vaultGb });
+      })
+      .catch(() => undefined);
+    fetch("/api/b3/files")
+      .then((r) => r.json())
+      .then((j) => {
+        if (typeof j.usedGb === "number") {
+          setB3({ usedGb: j.usedGb, limitGb: j.limitGb ?? 50 });
+        }
       })
       .catch(() => undefined);
   }, [load]);
@@ -66,17 +75,25 @@ export function OwnerDashboardClient() {
         }
       />
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <ProStatCard
           label="Team members"
           value={String(members.length)}
           icon={<Users className="h-4 w-4 text-cyan-600" />}
         />
         <ProStatCard
-          label="Storage used"
+          label="Drive storage"
           value={`${totalStorage.toFixed(1)} GB`}
           icon={<HardDrive className="h-4 w-4 text-cyan-600" />}
         />
+        <Link href="/dashboard/storage" className="block">
+          <ProStatCard
+            label="B3 Storage"
+            value={`${b3.usedGb.toFixed(1)} GB`}
+            hint={`${b3.limitGb} GB quota · Bharat Big Bucket`}
+            icon={<Database className="h-4 w-4 text-cyan-600" />}
+          />
+        </Link>
         <ProStatCard
           label="Billing"
           value="UPI / Pro"

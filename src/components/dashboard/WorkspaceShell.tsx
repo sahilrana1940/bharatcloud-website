@@ -21,6 +21,7 @@ import {
   Search,
   Building2,
   Mail,
+  Database,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -45,6 +46,7 @@ const ICONS = {
   Search,
   Building: Building2,
   Mail,
+  B3Storage: Database,
 } as const;
 
 export function WorkspaceShell({
