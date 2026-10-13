@@ -57,11 +57,34 @@ export async function GET() {
     session.email,
   );
 
+  const archivedCount = status.archivedCount ?? 0;
+  const mailBackupWorking =
+    googleConnected && status.status === "completed" && archivedCount > 0;
+
   const res = NextResponse.json({
     ...status,
     googleConnected,
     companyId: session.companyId,
     email: session.email,
+    verification: {
+      /** Step 1: OAuth tokens in DB */
+      googleConnected,
+      /** Step 2: user ran POST /api/archive/email at least once successfully */
+      lastJobCompleted: status.status === "completed",
+      /** Step 3: rows in archive_files / email_backups for this user */
+      hasArchivedMessages: archivedCount > 0,
+      /** All three — safe to tell client "mail backup is working" */
+      mailBackupWorking,
+      hint: !googleConnected
+        ? "Connect Gmail first."
+        : status.status === "error"
+          ? status.lastError || status.progress || "Last backup failed — read error above."
+          : archivedCount === 0
+            ? 'Tap "Start my email backup" — connect alone does not import mail.'
+            : mailBackupWorking
+              ? "Mail archive is working."
+              : "Run backup again or check Supabase bucket company-vault.",
+    },
   });
   if (cookieRepaired) attachWorkspaceCompanyCookie(res, session.companyId);
   return res;

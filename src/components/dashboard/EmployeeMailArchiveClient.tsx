@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { CloudUpload, Mail, Send } from "lucide-react";
 
@@ -17,6 +17,14 @@ type ArchiveRow = {
   size?: number;
 };
 
+type Verification = {
+  googleConnected?: boolean;
+  lastJobCompleted?: boolean;
+  hasArchivedMessages?: boolean;
+  mailBackupWorking?: boolean;
+  hint?: string;
+};
+
 type Status = {
   googleConnected?: boolean;
   status?: string;
@@ -24,9 +32,21 @@ type Status = {
   lastError?: string;
   archivedCount?: number;
   companyEmailArchiveCount?: number;
+  verification?: Verification;
 };
 
 const fetchOpts: RequestInit = { credentials: "include" };
+
+function CheckRow({ ok, children }: { ok: boolean; children: ReactNode }) {
+  return (
+    <li className="flex items-start gap-2">
+      <span className={ok ? "text-emerald-600" : "text-slate-400"} aria-hidden>
+        {ok ? "✓" : "○"}
+      </span>
+      <span className={ok ? "text-slate-800" : undefined}>{children}</span>
+    </li>
+  );
+}
 
 export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) {
   const searchParams = useSearchParams();
@@ -233,7 +253,31 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
           <p className="mt-3 text-xs text-slate-500">
             Archived: {status.archivedCount ?? 0} (you) · Company total:{" "}
             {status.companyEmailArchiveCount ?? 0}
+            {status.status && status.status !== "idle" ? (
+              <> · Job: <strong>{status.status}</strong></>
+            ) : null}
           </p>
+
+          <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm">
+            <p className="font-medium text-slate-800">Is mail backup working?</p>
+            <ul className="mt-2 space-y-1 text-slate-600">
+              <CheckRow ok={Boolean(status.verification?.googleConnected ?? googleConnected)}>
+                Gmail connected (OAuth tokens saved)
+              </CheckRow>
+              <CheckRow ok={Boolean(status.verification?.lastJobCompleted)}>
+                Backup job completed at least once
+              </CheckRow>
+              <CheckRow ok={Boolean(status.verification?.hasArchivedMessages)}>
+                At least 1 message in company vault
+              </CheckRow>
+            </ul>
+            <p className="mt-2 text-xs text-slate-500">
+              {status.verification?.mailBackupWorking
+                ? "Yes — all checks passed. Messages should appear below."
+                : status.verification?.hint ||
+                  'Tap "Start my email backup" and wait for the green success message.'}
+            </p>
+          </div>
         </div>
       )}
 
