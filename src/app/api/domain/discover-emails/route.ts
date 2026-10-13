@@ -9,7 +9,7 @@ import { loadTenantCompany } from "@/lib/tenant";
 import { upsertProfileInvite } from "@/lib/workspace/workspace-profiles";
 
 export async function GET() {
-  const auth = await requireWorkspace(true);
+  const auth = await requireWorkspace();
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
 

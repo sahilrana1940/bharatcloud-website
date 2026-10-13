@@ -22,7 +22,7 @@ export function SettingsConnectDomain() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/domain/discover-emails");
+      const res = await fetch("/api/domain/discover-emails", { credentials: "include" });
       const j = await res.json();
       if (res.status === 403) {
         setLoading(false);
@@ -49,6 +49,7 @@ export function SettingsConnectDomain() {
     setMessage(null);
     const res = await fetch("/api/domain/discover-emails", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         domain,
