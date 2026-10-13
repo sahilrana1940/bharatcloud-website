@@ -54,15 +54,30 @@ export async function resolveGoogleAccountEmail(
     const { data } = await oauth2Api.userinfo.get();
     const email = data.email?.trim().toLowerCase();
     if (email && emailDomain(email)) return { email };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "userinfo failed";
-    return {
-      error: `Could not read Google profile (${msg}). Reconnect and allow email permission.`,
-    };
+  } catch {
+    /* try Gmail / Drive profile next */
+  }
+
+  try {
+    const gmail = google.gmail({ version: "v1", auth: oauth2 });
+    const { data } = await gmail.users.getProfile({ userId: "me" });
+    const email = data.emailAddress?.trim().toLowerCase();
+    if (email && emailDomain(email)) return { email };
+  } catch {
+    /* drive about next */
+  }
+
+  try {
+    const drive = google.drive({ version: "v3", auth: oauth2 });
+    const { data } = await drive.about.get({ fields: "user" });
+    const email = data.user?.emailAddress?.trim().toLowerCase();
+    if (email && emailDomain(email)) return { email };
+  } catch {
+    /* fall through */
   }
 
   return {
     error:
-      "Google profile has no email — use a Google account with email and allow email scope.",
+      "Could not read your Google work email. Sign in with the same address you use on BharatCloud (e.g. sunderbanihub@gorjrmcourier.com), allow all permissions, or remove GOOGLE_SCOPES on Vercel and redeploy.",
   };
 }

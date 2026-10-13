@@ -36,6 +36,7 @@ export async function GET(req: Request) {
   const authUrl = oauth2.generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
+    include_granted_scopes: true,
     scope: scopes,
     state,
     login_hint: session.email,

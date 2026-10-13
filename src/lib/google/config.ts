@@ -23,10 +23,15 @@ const GMAIL_SCOPE_URLS = [
   "https://www.googleapis.com/auth/gmail.metadata",
 ];
 
-const DEFAULT_DRIVE_SCOPES = [
+/** Always requested — needed for id_token email + userinfo (even when GOOGLE_SCOPES env is set). */
+const REQUIRED_OAUTH_SCOPES = [
   "openid",
   "profile",
   "https://www.googleapis.com/auth/userinfo.email",
+];
+
+const DEFAULT_DRIVE_SCOPES = [
+  ...REQUIRED_OAUTH_SCOPES,
   "https://www.googleapis.com/auth/drive.readonly",
 ];
 
@@ -50,6 +55,10 @@ function parseGoogleScopesEnv(raw: string): string[] {
   return [...new Set(out)];
 }
 
+function withRequiredScopes(scopes: string[]): string[] {
+  return [...new Set([...REQUIRED_OAUTH_SCOPES, ...scopes])];
+}
+
 /**
  * OAuth scopes — override in Vercel with space-separated GOOGLE_SCOPES.
  * Example:
@@ -61,13 +70,13 @@ export function resolveGoogleOAuthScopeList(opts?: {
   const fromEnv = process.env.GOOGLE_SCOPES?.trim();
   if (fromEnv) {
     const parsed = parseGoogleScopesEnv(fromEnv);
-    if (parsed.length) return parsed;
+    if (parsed.length) return withRequiredScopes(parsed);
   }
 
   const includeGmail = opts?.includeGmail ?? true;
   const scopes = [...DEFAULT_DRIVE_SCOPES];
   if (includeGmail) scopes.push(...GMAIL_SCOPE_URLS);
-  return scopes;
+  return withRequiredScopes(scopes);
 }
 
 export function getGoogleOAuthScopesString(opts?: { includeGmail?: boolean }): string {
