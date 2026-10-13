@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { assertEmailBackupEnabled } from "@/lib/backup/email-backup-guard";
+import { resolveArchiveCompanyId } from "@/lib/archive/resolve-archive-company";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { resolveCompanyDomain } from "@/lib/workspace/company";
 import { DEMO_EMAILS } from "@/lib/workspace/demo-data";
@@ -8,9 +8,6 @@ import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { isWorkspaceOwner } from "@/lib/workspace/nav";
 
 export async function GET(req: Request) {
-  const disabled = assertEmailBackupEnabled();
-  if (disabled) return disabled;
-
   const auth = await requireWorkspace();
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
@@ -33,14 +30,17 @@ export async function GET(req: Request) {
   const limit = 50;
   const offset = (page - 1) * limit;
 
-  const domain = await resolveCompanyDomain(session.companyId, session.email);
   const supabase = await getSupabaseOrNull();
+  const companyId = supabase
+    ? await resolveArchiveCompanyId(supabase, session.companyId, session.email)
+    : session.companyId;
+  const domain = await resolveCompanyDomain(companyId, session.email);
   let rows = [...DEMO_EMAILS];
   if (supabase) {
     let query = supabase
       .from("email_backups")
       .select("*", { count: "exact" })
-      .eq("company_id", session.companyId);
+      .eq("company_id", companyId);
     if (domain) query = query.eq("company_domain", domain);
     // Single company inbox: all staff Gmail backups in one list (optional ?owner= filter).
     if (owner) {

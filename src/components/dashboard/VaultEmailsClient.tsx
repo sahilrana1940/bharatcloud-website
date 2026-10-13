@@ -34,7 +34,7 @@ export function VaultEmailsClient({
     if (owner) params.set("owner", owner);
     if (range) params.set("range", range);
     if (attachment) params.set("attachment", "1");
-    const res = await fetch(`/api/emails/list?${params}`);
+    const res = await fetch(`/api/emails/list?${params}`, { credentials: "include" });
     const j = await res.json();
     setEmails(j.emails || []);
   }, [q, owner, range, attachment]);

@@ -21,7 +21,9 @@ export function VaultPageClient({ userEmail }: { userEmail: string }) {
   const [emails, setEmails] = useState<MailRow[]>([]);
 
   const loadEmails = useCallback(async () => {
-    const res = await fetch(`/api/emails/list?q=${encodeURIComponent(q)}`);
+    const res = await fetch(`/api/emails/list?q=${encodeURIComponent(q)}`, {
+      credentials: "include",
+    });
     const j = await res.json();
     setEmails(j.emails || []);
   }, [q]);
