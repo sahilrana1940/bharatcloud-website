@@ -1,19 +1,17 @@
 import { NextResponse } from "next/server";
 
+import { isPlatformAdminSession } from "@/lib/admin/access";
 import { getBillingPlan, planFromAmount } from "@/lib/billing/plans";
-import { isSuperAdminSession } from "@/lib/b2b/session";
+import { getSessionRole } from "@/lib/auth";
 import {
   demoPaymentApprove,
   demoPaymentsList,
 } from "@/lib/payments/store";
-import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
 async function canManagePayments() {
-  if (await isSuperAdminSession()) return true;
-  const auth = await requireWorkspace(true);
-  if (auth instanceof NextResponse) return false;
-  return auth.session.role === "admin";
+  const role = await getSessionRole();
+  return isPlatformAdminSession(role);
 }
 
 export async function GET() {
@@ -45,10 +43,11 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { paymentId } = await req.json();
+  const { paymentId, action } = await req.json();
   if (!paymentId) {
     return NextResponse.json({ error: "paymentId required" }, { status: 400 });
   }
+  const reject = action === "reject";
 
   const supabase = await getSupabaseOrNull();
   if (!supabase) {
@@ -69,11 +68,15 @@ export async function PATCH(req: Request) {
 
   const { error: updErr } = await supabase
     .from("payments")
-    .update({ status: "approved" })
+    .update({ status: reject ? "rejected" : "approved" })
     .eq("id", paymentId);
 
   if (updErr) {
     return NextResponse.json({ error: updErr.message }, { status: 500 });
+  }
+
+  if (reject) {
+    return NextResponse.json({ ok: true, rejected: true });
   }
 
   const planId =

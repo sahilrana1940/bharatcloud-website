@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { AdminDashboardClient } from "@/components/admin/AdminDashboardClient";
+import { PlatformAdminHub } from "@/components/admin/PlatformAdminHub";
 import { getSessionRole } from "@/lib/auth";
 import { isPlatformAdminSession } from "@/lib/admin/access";
 
@@ -9,5 +9,5 @@ export default async function AdminHomePage() {
   if (!isPlatformAdminSession(role)) {
     redirect("/dashboard");
   }
-  return <AdminDashboardClient />;
+  return <PlatformAdminHub />;
 }
