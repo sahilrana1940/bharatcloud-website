@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSessionRole } from "@/lib/auth";
-import { SUPER_ADMIN_EMAIL } from "@/lib/b2b/constants";
+import { isPlatformAdminSession } from "@/lib/admin/access";
 import { demoRecoveryListPending, demoRecoveryUpdate } from "@/lib/personal/recovery-demo";
 import { sendRecoveryCodeEmail } from "@/lib/email/recovery-mail";
 import { generateBackupCode, hashBackupCode } from "@/lib/personal/pin";
@@ -9,7 +9,7 @@ import { getSupabaseOrNull } from "@/lib/workspace/db";
 
 async function guard() {
   const role = await getSessionRole();
-  return role?.role === "super_admin" || role?.email === SUPER_ADMIN_EMAIL;
+  return isPlatformAdminSession(role);
 }
 
 export async function GET() {

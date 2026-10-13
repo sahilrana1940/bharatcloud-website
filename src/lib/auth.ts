@@ -23,7 +23,7 @@ export function roleFromEmailDemo(email: string): UserRoleInfo {
   if (isSuperAdminEmail(e)) {
     return {
       role: "super_admin",
-      is_company_owner: true,
+      is_company_owner: false,
       company_domain: null,
       email: e,
     };
@@ -49,7 +49,7 @@ export async function getUserRole(email: string): Promise<UserRoleInfo> {
   if (isSuperAdminEmail(normalized)) {
     return {
       role: "super_admin",
-      is_company_owner: true,
+      is_company_owner: false,
       company_domain: null,
       email: normalized,
     };
@@ -126,6 +126,11 @@ export async function getSessionRole(): Promise<UserRoleInfo | null> {
   const email = jar.get(WS_EMAIL_COOKIE)?.value;
   if (!email) return null;
 
+  const normalized = email.toLowerCase();
+  if (isSuperAdminEmail(normalized)) {
+    return getUserRole(normalized);
+  }
+
   const cached = jar.get(WS_SAAS_ROLE_COOKIE)?.value as SaasRole | undefined;
   const isOwner = jar.get(WS_IS_OWNER_COOKIE)?.value === "1";
   if (cached) {
@@ -133,7 +138,7 @@ export async function getSessionRole(): Promise<UserRoleInfo | null> {
       role: cached,
       is_company_owner: isOwner,
       company_domain: null,
-      email: email.toLowerCase(),
+      email: normalized,
     };
   }
   return getUserRole(email);

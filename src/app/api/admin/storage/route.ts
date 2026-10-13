@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSessionRole } from "@/lib/auth";
-import { SUPER_ADMIN_EMAIL } from "@/lib/b2b/constants";
+import { isPlatformAdminSession } from "@/lib/admin/access";
 import { demoStorageStats } from "@/lib/personal/demo-store";
 import {
   BUCKET_COLD,
@@ -19,7 +19,7 @@ function bytesToGb(n: number) {
 
 export async function GET() {
   const role = await getSessionRole();
-  if (!role || (role.role !== "super_admin" && role.email !== SUPER_ADMIN_EMAIL)) {
+  if (!isPlatformAdminSession(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -58,7 +58,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const role = await getSessionRole();
-  if (!role || (role.role !== "super_admin" && role.email !== SUPER_ADMIN_EMAIL)) {
+  if (!isPlatformAdminSession(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

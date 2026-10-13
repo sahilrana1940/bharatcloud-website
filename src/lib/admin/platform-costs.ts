@@ -9,10 +9,9 @@ export type CostLine = {
   billingUrl?: string;
 };
 
-export const SUPER_ADMIN_PLATFORM_EMAILS = [
-  "admin@bharatcloud.store",
-  "sahilrana1940@gmail.com",
-] as const;
+import { listSuperAdminEmails } from "@/lib/brand";
+
+export const SUPER_ADMIN_PLATFORM_EMAILS = listSuperAdminEmails();
 
 /** Approximate monthly infra — update when you get real invoices. */
 export const PLATFORM_COST_LINES: CostLine[] = [

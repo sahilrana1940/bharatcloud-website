@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { SUPER_ADMIN_EMAIL } from "@/lib/b2b/constants";
+import { isPlatformAdminSession } from "@/lib/admin/access";
 import { getSessionRole } from "@/lib/auth";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
 export async function GET() {
   const role = await getSessionRole();
-  if (!role || (role.role !== "super_admin" && role.email !== SUPER_ADMIN_EMAIL)) {
+  if (!isPlatformAdminSession(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
