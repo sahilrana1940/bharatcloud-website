@@ -1,5 +1,5 @@
-import { BillingClient } from "@/components/dashboard/BillingClient";
+import { BillingDashboardClient } from "@/components/dashboard/BillingDashboardClient";
 
 export default function BillingPage() {
-  return <BillingClient />;
+  return <BillingDashboardClient />;
 }

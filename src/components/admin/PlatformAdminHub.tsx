@@ -110,7 +110,13 @@ export function PlatformAdminHub() {
           : "Costs exceed approved payments so far — normal early stage. Approve paid customers via UPI screenshot flow."}
       </p>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <QuickCard
+          href="/admin/companies"
+          title="Companies & billing"
+          body="See total paid vs due per tenant (INR, GST inclusive) alongside storage and seats."
+          cta="Open companies"
+        />
         <QuickCard
           href="/admin/payments"
           title="UPI + QR approvals"

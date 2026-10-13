@@ -25,6 +25,8 @@ type Company = {
   employees: number;
   storage_gb: number;
   status: string;
+  total_paid?: number;
+  due_amount?: number;
 };
 
 type Payment = {
@@ -124,6 +126,8 @@ export function AdminDashboardClient() {
                 <th className="px-4 py-3">Owner</th>
                 <th className="px-4 py-3">Employees</th>
                 <th className="px-4 py-3">Storage</th>
+                <th className="px-4 py-3">Total paid</th>
+                <th className="px-4 py-3">Due</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Action</th>
               </tr>
@@ -135,6 +139,8 @@ export function AdminDashboardClient() {
                   <td className="px-4 py-3 text-slate-600">{c.owner_email}</td>
                   <td className="px-4 py-3">{c.employees}</td>
                   <td className="px-4 py-3">{c.storage_gb} GB</td>
+                  <td className="px-4 py-3">₹{(c.total_paid ?? 0).toLocaleString("en-IN")}</td>
+                  <td className="px-4 py-3">₹{(c.due_amount ?? 0).toLocaleString("en-IN")}</td>
                   <td className="px-4 py-3 capitalize">{c.status}</td>
                   <td className="px-4 py-3">
                     <Link
