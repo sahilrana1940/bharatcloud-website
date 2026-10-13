@@ -141,7 +141,9 @@ export function BillingDashboardClient() {
                     {r.date ? new Date(r.date).toLocaleDateString("en-IN") : "—"}
                   </td>
                   <td className="px-4 py-3 font-medium text-slate-900">
-                    {r.service === "b3" ? `b3 (${r.units} GB)` : r.service}
+                    {r.service === "b3"
+                      ? `b3 · ${(usage?.b3StorageGb ?? r.units).toFixed(1)} GB`
+                      : r.service}
                   </td>
                   <td className="px-4 py-3 text-right font-medium">₹{r.amount}</td>
                 </tr>
