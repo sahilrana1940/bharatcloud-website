@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { createOAuth2Client, emailDomain } from "@/lib/google/client";
 import {
   exchangeOAuthCode,
-  oauthCallbackRedirectUri,
+  formatOAuthRedirectMismatchHint,
+  oauthRedirectUriForWorkspaceExchange,
   resolveGoogleAccountEmail,
 } from "@/lib/google/oauth-callback";
 import { verifyGoogleOAuthState } from "@/lib/google/oauth-state";
@@ -30,19 +31,17 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL("/api/auth/google/demo", url.origin));
   }
 
-  const redirectUri = oauthCallbackRedirectUri(req);
+  const redirectUri = oauthRedirectUriForWorkspaceExchange(req);
   let tokens;
   try {
     const exchanged = await exchangeOAuthCode(oauth2, code, redirectUri);
     tokens = exchanged.tokens;
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Token exchange failed";
-    return NextResponse.json(
-      {
-        error: `OAuth token error — set GOOGLE_REDIRECT_URI to ${redirectUri}. ${msg}`,
-      },
-      { status: 400 },
-    );
+    const hint = /redirect_uri/i.test(msg)
+      ? formatOAuthRedirectMismatchHint(redirectUri)
+      : `OAuth token error — GOOGLE_REDIRECT_URI=${redirectUri}. ${msg}`;
+    return NextResponse.json({ error: hint }, { status: 400 });
   }
 
   const resolved = await resolveGoogleAccountEmail(oauth2, tokens);

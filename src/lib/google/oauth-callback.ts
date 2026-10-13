@@ -2,11 +2,45 @@ import type { OAuth2Client } from "google-auth-library";
 import { google } from "googleapis";
 
 import { emailDomain } from "@/lib/google/client";
+import { getGoogleOAuthConfig } from "@/lib/google/config";
+import { getGoogleDriveOAuthRedirectUri } from "@/lib/google/drive-oauth";
 
-/** Redirect URI must match the callback URL Google hit (path + host), not only env default. */
+/** Request URL (fallback when env redirect is not set). */
 export function oauthCallbackRedirectUri(req: Request): string {
   const url = new URL(req.url);
   return `${url.origin}${url.pathname}`;
+}
+
+/**
+ * Must match `generateAuthUrl` redirect_uri exactly (same as GOOGLE_REDIRECT_URI).
+ * Using the request host here causes redirect_uri_mismatch when www vs apex differ.
+ */
+export function oauthRedirectUriForDriveExchange(req: Request): string {
+  if (process.env.GOOGLE_REDIRECT_URI?.trim()) {
+    return getGoogleDriveOAuthRedirectUri();
+  }
+  return oauthCallbackRedirectUri(req);
+}
+
+export function oauthRedirectUriForWorkspaceExchange(req: Request): string {
+  const { redirectUri } = getGoogleOAuthConfig();
+  if (
+    process.env.GOOGLE_REDIRECT_URI?.trim() ||
+    process.env.GOOGLE_OAUTH_REDIRECT_URI?.trim()
+  ) {
+    return redirectUri;
+  }
+  return oauthCallbackRedirectUri(req);
+}
+
+export function formatOAuthRedirectMismatchHint(registeredUri: string): string {
+  const alt = registeredUri.includes("://www.")
+    ? registeredUri.replace("://www.", "://")
+    : registeredUri.replace("://", "://www.");
+  return (
+    `redirect_uri_mismatch — set Vercel GOOGLE_REDIRECT_URI to exactly: ${registeredUri}. ` +
+    `In Google Cloud Console add BOTH Authorized redirect URIs if needed: ${registeredUri} and ${alt}`
+  );
 }
 
 export async function exchangeOAuthCode(

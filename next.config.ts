@@ -1,6 +1,25 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+    if (!appUrl) return [];
+    try {
+      const u = new URL(appUrl);
+      if (!u.hostname.startsWith("www.")) return [];
+      const apex = u.hostname.replace(/^www\./, "");
+      return [
+        {
+          source: "/:path*",
+          has: [{ type: "host", value: apex }],
+          destination: `${u.origin}/:path*`,
+          permanent: true,
+        },
+      ];
+    } catch {
+      return [];
+    }
+  },
   async headers() {
     return [
       {

@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { createGoogleDriveOAuth2Client } from "@/lib/google/drive-oauth";
 import {
   exchangeOAuthCode,
-  oauthCallbackRedirectUri,
+  formatOAuthRedirectMismatchHint,
+  oauthRedirectUriForDriveExchange,
   resolveGoogleAccountEmail,
 } from "@/lib/google/oauth-callback";
 import { verifyGoogleOAuthState } from "@/lib/google/oauth-state";
@@ -53,22 +54,22 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Database not configured" }, { status: 500 });
   }
 
-  const redirectUri = oauthCallbackRedirectUri(req);
+  const redirectUri = oauthRedirectUriForDriveExchange(req);
   let tokens;
   try {
     const exchanged = await exchangeOAuthCode(oauth2, code, redirectUri);
     tokens = exchanged.tokens;
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Token exchange failed";
+    const hint = /redirect_uri/i.test(msg)
+      ? formatOAuthRedirectMismatchHint(redirectUri)
+      : `OAuth token error — GOOGLE_REDIRECT_URI=${redirectUri}. ${msg}`;
     const errDest = new URL(
       linkState.returnTo.startsWith("/") ? linkState.returnTo : "/settings",
       url.origin,
     );
     errDest.searchParams.set("drive", "error");
-    errDest.searchParams.set(
-      "reason",
-      `OAuth token error — set GOOGLE_REDIRECT_URI to ${redirectUri}. ${msg}`,
-    );
+    errDest.searchParams.set("reason", hint);
     return NextResponse.redirect(errDest);
   }
 
