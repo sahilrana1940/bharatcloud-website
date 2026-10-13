@@ -8,10 +8,14 @@ export async function sendArchivedMailForward(opts: {
   originalFrom: string;
   originalDate: string;
   bodyText: string;
-}): Promise<{ sent: boolean; error?: string }> {
+}): Promise<{ sent: boolean; demoQueued?: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
-    return { sent: false, error: "Company mail not configured (RESEND_API_KEY)." };
+    return {
+      sent: false,
+      demoQueued: true,
+      error: "RESEND_API_KEY not set — forward saved in BharatCloud log only (demo).",
+    };
   }
 
   const from =
