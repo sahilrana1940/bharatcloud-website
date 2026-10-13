@@ -18,6 +18,10 @@ import {
 } from "@/lib/b2b/super-admin-auth";
 import { SUPER_ADMIN_COOKIE } from "@/lib/b2b/session";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
+import {
+  PLATFORM_OPERATOR_COMPANY_ID,
+  PLATFORM_OPERATOR_ORG_ID,
+} from "@/lib/platform/operator";
 import { resolveCompanyIdForEmail } from "@/lib/workspace/resolve-company";
 import { touchProfileLogin } from "@/lib/workspace/workspace-profiles";
 
@@ -38,19 +42,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
 
-  if (platformSuperAdmin && supabase) {
-    const { data: anyOrg } = await supabase
-      .from("organizations")
-      .select("id, status")
-      .limit(1)
-      .maybeSingle();
-    if (anyOrg?.id && anyOrg.status !== "blocked") {
-      orgId = anyOrg.id;
-    }
-  }
-
-  if (!orgId && platformSuperAdmin && !supabase) {
-    orgId = "platform-super-admin";
+  if (platformSuperAdmin) {
+    orgId = PLATFORM_OPERATOR_ORG_ID;
   }
 
   if (!orgId && !platformSuperAdmin) {
@@ -115,14 +108,13 @@ export async function POST(req: Request) {
   }
 
   if (!orgId) {
-    return NextResponse.json(
-      { error: platformSuperAdmin ? "No organization in database yet" : "Account not found" },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: "Account not found" }, { status: 404 });
   }
 
-  const workspaceCompanyId = await resolveCompanyIdForEmail(ownerEmail);
-  if (supabase) {
+  const workspaceCompanyId = platformSuperAdmin
+    ? PLATFORM_OPERATOR_COMPANY_ID
+    : await resolveCompanyIdForEmail(ownerEmail);
+  if (supabase && !platformSuperAdmin) {
     await touchProfileLogin(supabase, ownerEmail, workspaceCompanyId);
   }
   const saas = await getUserRole(ownerEmail);
@@ -150,10 +142,10 @@ export async function POST(req: Request) {
   res.cookies.set(WS_COMPANY_COOKIE, workspaceCompanyId, wsOpts);
   res.cookies.set(WS_EMAIL_COOKIE, ownerEmail, wsOpts);
   const workspaceAdmin =
-    saas.role === "super_admin" ||
-    saas.is_company_owner ||
-    saas.role === "company_owner" ||
-    ownerEmail.startsWith("admin@");
+    !platformSuperAdmin &&
+    (saas.is_company_owner ||
+      saas.role === "company_owner" ||
+      ownerEmail.startsWith("admin@"));
   res.cookies.set(WS_ROLE_COOKIE, workspaceAdmin ? "admin" : "member", wsOpts);
   if (platformSuperAdmin) {
     res.cookies.set(SUPER_ADMIN_COOKIE, "1", {

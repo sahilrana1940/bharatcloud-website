@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { SUPER_ADMIN_EMAIL } from "@/lib/brand";
+import { isSuperAdminEmail } from "@/lib/brand";
 import { getUploadContext } from "@/lib/personal/access";
 import { demoAllUsers, demoGetUser, demoUpdateUser } from "@/lib/personal/users-demo";
 import { demoRecoveryListPending } from "@/lib/personal/recovery-demo";
@@ -9,7 +9,7 @@ import { VAULT_TABLE } from "@/lib/vault/table";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
 function guard(email: string | undefined) {
-  return email?.toLowerCase() === SUPER_ADMIN_EMAIL;
+  return isSuperAdminEmail(email);
 }
 
 export async function GET() {

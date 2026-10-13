@@ -1,4 +1,8 @@
 import { emailDomain } from "@/lib/google/client";
+import {
+  isPlatformOperatorEmail,
+  PLATFORM_OPERATOR_COMPANY_ID,
+} from "@/lib/platform/operator";
 
 import {
   canAutoJoinCompany,
@@ -36,6 +40,9 @@ async function upsertCompanyUser(
  */
 export async function resolveCompanyIdForEmail(email: string): Promise<string> {
   const normalized = email.trim().toLowerCase();
+  if (isPlatformOperatorEmail(normalized)) {
+    return PLATFORM_OPERATOR_COMPANY_ID;
+  }
   const supabase = await getSupabaseOrNull();
   if (!supabase) return DEMO_COMPANY_ID;
 

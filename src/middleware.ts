@@ -9,12 +9,16 @@ import type { SaasRole } from "@/lib/workspace/session";
 
 function readRole(req: NextRequest): SaasRole {
   const email = req.cookies.get("bc_workspace_email")?.value?.toLowerCase();
+  if (isSuperAdminEmail(email)) return "super_admin";
+
+  const cached = req.cookies.get("bc_saas_role")?.value as SaasRole | undefined;
+  if (cached === "super_admin") return "super_admin";
+
   const isOwnerCookie = req.cookies.get("bc_is_company_owner")?.value === "1";
   const wsAdmin = req.cookies.get("bc_workspace_role")?.value === "admin";
   if (isOwnerCookie || wsAdmin) return "company_owner";
 
-  const cached = req.cookies.get("bc_saas_role")?.value as SaasRole | undefined;
-  if (cached === "company_owner" || cached === "super_admin") return cached;
+  if (cached === "company_owner") return cached;
   if (isSuperAdminEmail(email)) return "super_admin";
   if (email?.startsWith("admin@")) return "company_owner";
   if (cached) return cached;

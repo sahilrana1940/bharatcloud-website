@@ -23,7 +23,7 @@ export function roleFromEmailDemo(email: string): UserRoleInfo {
   if (isSuperAdminEmail(e)) {
     return {
       role: "super_admin",
-      is_company_owner: true,
+      is_company_owner: false,
       company_domain: null,
       email: e,
     };
@@ -49,7 +49,7 @@ export async function getUserRole(email: string): Promise<UserRoleInfo> {
   if (isSuperAdminEmail(normalized)) {
     return {
       role: "super_admin",
-      is_company_owner: true,
+      is_company_owner: false,
       company_domain: null,
       email: normalized,
     };

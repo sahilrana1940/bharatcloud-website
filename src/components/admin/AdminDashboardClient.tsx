@@ -67,9 +67,9 @@ export function AdminDashboardClient() {
   return (
     <div>
       <ProPageHeader
-        eyebrow="BharatCloud"
-        title="Platform admin"
-        description="Companies, payments, and storage — manage the whole fleet from one console."
+        eyebrow="BharatCloud platform"
+        title="Super admin console"
+        description="BharatCloud operator account — not linked to any customer company. See who signed up, approve UPI plans, and monitor backups across all tenants."
         action={<ProPrimaryButton href="/admin/super">Open Nexus Super</ProPrimaryButton>}
       />
 
