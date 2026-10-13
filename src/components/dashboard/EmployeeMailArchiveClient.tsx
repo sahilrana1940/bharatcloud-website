@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { CloudUpload, Mail, Send } from "lucide-react";
+import { CloudUpload, Mail, Search, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,8 @@ type ArchiveRow = {
   file_name: string;
   subject?: string;
   from_email?: string;
+  to_email?: string;
+  snippet?: string;
   message_date?: string;
   owner_email?: string;
   size?: number;
@@ -60,6 +62,25 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
   const [forwardTo, setForwardTo] = useState("");
   const [forwardMsg, setForwardMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((m) => {
+      const hay = [
+        m.subject,
+        m.from_email,
+        m.to_email,
+        m.snippet,
+        m.file_name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [items, searchQuery]);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -299,12 +320,38 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
         </p>
       )}
 
-      <h2 className="mt-10 text-lg font-semibold text-slate-900">Archived messages</h2>
+      <div className="mt-10 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold text-slate-900">Archived messages</h2>
+        {!loading && items.length > 0 && (
+          <Button type="button" size="sm" variant="outline" onClick={() => refresh()}>
+            Refresh list
+          </Button>
+        )}
+      </div>
+      {!loading && items.length > 0 && (
+        <div className="mt-4">
+          <div className="relative max-w-2xl">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search your archived mail — subject, from, to, or any word…"
+              className="pl-10"
+            />
+          </div>
+          <p className="mt-1.5 text-xs text-slate-500">
+            Showing {filteredItems.length} of {items.length} messages
+            {searchQuery.trim() ? ` for “${searchQuery.trim()}”` : ""}. Tap{" "}
+            <strong>Forward from company mail</strong> on a row to send it on.
+          </p>
+        </div>
+      )}
       {loading ? (
         <p className="mt-4 text-slate-500">Loading…</p>
       ) : (
-        <ul className="mt-4 space-y-3">
-          {items.map((e) => (
+        <ul className="mt-4 max-h-[min(600px,70vh)] space-y-3 overflow-y-auto">
+          {filteredItems.map((e) => (
             <li
               key={e.id}
               className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
@@ -313,9 +360,13 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
                 {e.subject || e.file_name || "(no subject)"}
               </p>
               <p className="text-xs text-slate-500">
-                {e.from_email} ·{" "}
+                From: {e.from_email || "—"}
+                {e.to_email ? ` → ${e.to_email}` : ""} ·{" "}
                 {e.message_date ? new Date(e.message_date).toLocaleString() : "—"}
               </p>
+              {e.snippet ? (
+                <p className="mt-1 line-clamp-2 text-xs text-slate-500">{e.snippet}</p>
+              ) : null}
               {forwardId === e.id ? (
                 <div className="mt-3 flex flex-wrap items-end gap-2">
                   <Input
@@ -353,14 +404,16 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
               )}
             </li>
           ))}
-          {!items.length && (
+          {!filteredItems.length && (
             <li className="text-sm text-slate-500">
-              {!googleConnected
-                ? "Connect Gmail first, then run backup."
-                : (status.verification?.hasArchivedMessages ||
-                    (status.archivedCount ?? 0) > 0)
-                  ? `${status.archivedCount ?? 1} message(s) in vault — refresh the page (Ctrl+Shift+R) or tap Start my email backup again to reload the list.`
-                  : "No archived mail yet — tap Start my email backup."}
+              {items.length && searchQuery.trim()
+                ? `No match for “${searchQuery.trim()}”. Try another word or clear search.`
+                : !googleConnected
+                  ? "Connect Gmail first, then run backup."
+                  : (status.verification?.hasArchivedMessages ||
+                      (status.archivedCount ?? 0) > 0)
+                    ? `${status.archivedCount ?? 1} message(s) in vault — tap Refresh list or run backup again.`
+                    : "No archived mail yet — tap Start my email backup (imports up to 50 recent messages per run)."}
             </li>
           )}
         </ul>

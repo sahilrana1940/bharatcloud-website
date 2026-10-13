@@ -31,7 +31,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const scope = url.searchParams.get("scope") || "mine";
   const page = Math.max(1, Number(url.searchParams.get("page") || 1));
-  const limit = 40;
+  const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit") || 500)));
   const offset = (page - 1) * limit;
 
   const mapEb = (rows: Record<string, unknown>[]) =>
@@ -40,6 +40,8 @@ export async function GET(req: Request) {
       file_name: (r.subject as string) || "email",
       subject: r.subject as string,
       from_email: r.from_email as string,
+      to_email: r.to_email as string,
+      snippet: (r.body_text as string) || "",
       message_date: r.date as string,
       owner_email: r.owner_email as string,
       size: 0,
