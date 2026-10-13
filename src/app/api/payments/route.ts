@@ -51,12 +51,16 @@ export async function POST(req: Request) {
 
   let amount = getBillingPlan("starter").price;
   let planId = "starter";
+  let proofUrl = "";
+  let proofNote = "";
   try {
     const body = await req.json();
     if (body.plan) planId = String(body.plan);
     const plan = getBillingPlan(planId);
     planId = plan.id;
     amount = body.amount ? Number(body.amount) : plan.price;
+    proofUrl = String(body.proofUrl || body.proof_url || "").trim();
+    proofNote = String(body.proofNote || body.proof_note || "").trim();
   } catch {
     /* defaults */
   }
@@ -80,6 +84,8 @@ export async function POST(req: Request) {
     amount,
     status,
     plan_name: plan.id,
+    proof_url: proofUrl || null,
+    proof_note: proofNote || null,
   };
 
   let { data, error } = await supabase
@@ -88,13 +94,18 @@ export async function POST(req: Request) {
     .select()
     .single();
 
-  if (error?.message.includes("plan_name")) {
-    const { plan_name: _drop, ...withoutPlan } = insertRow;
-    const retry = await supabase
-      .from("payments")
-      .insert(withoutPlan)
-      .select()
-      .single();
+  if (error?.message.includes("plan_name") || error?.message.includes("proof_")) {
+    const {
+      plan_name: _p,
+      proof_url: _u,
+      proof_note: _n,
+      ...minimal
+    } = insertRow;
+    let retry = await supabase.from("payments").insert(minimal).select().single();
+    if (retry.error?.message.includes("plan_name")) {
+      const { plan_name: _p2, ...m2 } = insertRow;
+      retry = await supabase.from("payments").insert(m2).select().single();
+    }
     data = retry.data;
     error = retry.error;
   }

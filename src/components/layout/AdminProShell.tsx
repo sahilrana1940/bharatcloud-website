@@ -4,14 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  Building2,
   CreditCard,
   HardDrive,
   LayoutDashboard,
+  Mail,
   Menu,
   Shield,
   Sparkles,
   LogOut,
+  Users,
   X,
 } from "lucide-react";
 
@@ -20,12 +21,13 @@ import { ProMeshBackground } from "@/components/ui/pro/primitives";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
-  { href: "/admin/super", label: "Super console", icon: Sparkles, exact: true },
-  { href: "/admin/payments", label: "Payments", icon: CreditCard },
+  { href: "/admin", label: "Command center", icon: LayoutDashboard, exact: true },
+  { href: "/admin/payments", label: "UPI approvals", icon: CreditCard },
+  { href: "/admin/members", label: "Members", icon: Users },
+  { href: "/admin/gmail", label: "Gmail access", icon: Mail },
+  { href: "/admin/super", label: "Nexus metrics", icon: Sparkles, exact: true },
   { href: "/admin/storage", label: "Storage", icon: HardDrive },
   { href: "/admin/recovery", label: "Recovery", icon: Shield },
-  { href: "/dashboard/company-admin", label: "Company view", icon: Building2 },
 ];
 
 function NavLinks({
@@ -73,18 +75,18 @@ export function AdminProShell({ children }: { children: React.ReactNode }) {
         <aside className="relative z-10 hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white/90 p-5 backdrop-blur-xl lg:flex">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-sky-600 text-sm font-black text-white">
-              AD
+              BC
             </span>
             <BrandMark titleClass="text-slate-900" accentClass="text-cyan-600" href="/admin" />
           </div>
-          <p className="mt-2 text-[10px] uppercase tracking-widest text-slate-400">Super admin</p>
+          <p className="mt-2 text-[10px] uppercase tracking-widest text-slate-400">Platform super admin</p>
           <nav className="mt-8 flex-1 space-y-1">
             <NavLinks pathname={pathname} />
           </nav>
           <div className="mt-auto space-y-2 border-t border-slate-200 pt-4">
-            <Link href="/dashboard/drive" className="block text-xs text-slate-500 hover:text-cyan-600">
-              ← Back to workspace
-            </Link>
+            <p className="text-[10px] leading-relaxed text-slate-400">
+              Not a customer company login — BharatCloud operator only.
+            </p>
             <form action="/api/auth/logout" method="post">
               <button
                 type="submit"
