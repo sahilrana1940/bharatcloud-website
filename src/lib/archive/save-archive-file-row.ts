@@ -60,7 +60,7 @@ export async function upsertArchiveEmailFileRow(
   delete withoutCentral.is_central;
   delete withoutCentral.metadata;
 
-  const attempts: ArchiveEmailFileRow[] = [row, withoutCentral, minimalColumns(row)];
+  const attempts: ArchiveEmailFileRow[] = [withoutCentral, minimalColumns(row), row];
 
   let existingId: string | null = null;
   const byGmail = await supabase

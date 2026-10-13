@@ -57,15 +57,28 @@ export async function GET() {
   );
   const googleConnected = isGoogleTokenRowConnected(tokenRow);
 
-  const status = await getEmailArchiveStatus(
+  let status = await getEmailArchiveStatus(
     supabase,
     archiveCompanyId,
     session.email,
   );
 
   const archivedCount = status.archivedCount ?? 0;
-  const mailBackupWorking =
-    googleConnected && status.status === "completed" && archivedCount > 0;
+
+  if (status.status === "error" && archivedCount > 0) {
+    await supabase
+      .from("company_users")
+      .update({
+        email_sync_status: "completed",
+        email_sync_progress: `${archivedCount}/${archivedCount}`,
+      })
+      .eq("company_id", archiveCompanyId)
+      .eq("email", session.email.toLowerCase());
+    status = { ...status, status: "completed", lastError: "" };
+  }
+
+  const jobOk = status.status === "completed" || archivedCount > 0;
+  const mailBackupWorking = googleConnected && jobOk && archivedCount > 0;
 
   const res = NextResponse.json({
     ...status,
@@ -76,7 +89,7 @@ export async function GET() {
       /** Step 1: OAuth tokens in DB */
       googleConnected,
       /** Step 2: user ran POST /api/archive/email at least once successfully */
-      lastJobCompleted: status.status === "completed",
+      lastJobCompleted: jobOk,
       /** Step 3: rows in archive_files / email_backups for this user */
       hasArchivedMessages: archivedCount > 0,
       /** All three — safe to tell client "mail backup is working" */

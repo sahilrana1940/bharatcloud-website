@@ -126,30 +126,31 @@ export async function runEmailArchiveForUser(
         throw new Error(`Could not save email_backups (${ebErr.message}).`);
       }
 
-      const archiveRow = {
-        company_id: opts.companyId,
-        uploaded_by: email,
-        owner_email: email,
-        type: "email" as const,
-        file_name: `${subject.slice(0, 120)}.json`,
-        size: buf.length,
-        storage_path: storagePath,
-        is_central: true,
-        gmail_id: msg.id,
-        subject,
-        from_email: from,
-        message_date: dateStr ? new Date(dateStr).toISOString() : null,
-        metadata: { to, threadId: payload.threadId },
-      };
+      if (process.env.EMAIL_ARCHIVE_FILES_INDEX === "1") {
+        const archiveRow = {
+          company_id: opts.companyId,
+          uploaded_by: email,
+          owner_email: email,
+          type: "email" as const,
+          file_name: `${subject.slice(0, 120)}.json`,
+          size: buf.length,
+          storage_path: storagePath,
+          gmail_id: msg.id,
+          subject,
+          from_email: from,
+          message_date: dateStr ? new Date(dateStr).toISOString() : null,
+          metadata: { to, threadId: payload.threadId },
+        };
 
-      const indexResult = await upsertArchiveEmailFileRow(
-        supabase,
-        opts.companyId,
-        msg.id,
-        archiveRow,
-      );
-      if (!indexResult.ok && indexResult.warning && !archiveIndexWarning) {
-        archiveIndexWarning = indexResult.warning;
+        const indexResult = await upsertArchiveEmailFileRow(
+          supabase,
+          opts.companyId,
+          msg.id,
+          archiveRow,
+        );
+        if (!indexResult.ok && indexResult.warning && !archiveIndexWarning) {
+          archiveIndexWarning = indexResult.warning;
+        }
       }
 
       imported += 1;

@@ -34,6 +34,41 @@ export async function GET(req: Request) {
   const limit = 40;
   const offset = (page - 1) * limit;
 
+  const mapEb = (rows: Record<string, unknown>[]) =>
+    rows.map((r) => ({
+      id: r.id as string,
+      file_name: (r.subject as string) || "email",
+      subject: r.subject as string,
+      from_email: r.from_email as string,
+      message_date: r.date as string,
+      owner_email: r.owner_email as string,
+      size: 0,
+    }));
+
+  const cookieFix = companyId !== session.companyId || cookieRepaired;
+
+  let ebQuery = supabase
+    .from("email_backups")
+    .select("*", { count: "exact" })
+    .eq("company_id", companyId)
+    .order("date", { ascending: false });
+  if (scope !== "company") {
+    ebQuery = ebQuery.eq("owner_email", session.email.toLowerCase());
+  }
+  const ebFirst = await ebQuery.range(offset, offset + limit - 1);
+  if (!ebFirst.error && (ebFirst.data?.length || (ebFirst.count ?? 0) > 0)) {
+    const res = NextResponse.json({
+      items: mapEb(ebFirst.data || []),
+      page,
+      total: ebFirst.count || 0,
+      companyId,
+      email: session.email,
+      source: "email_backups",
+    });
+    if (cookieFix) attachWorkspaceCompanyCookie(res, companyId);
+    return res;
+  }
+
   let query = supabase
     .from("archive_files")
     .select(
@@ -49,17 +84,6 @@ export async function GET(req: Request) {
   }
 
   const { data, count, error } = await query.range(offset, offset + limit - 1);
-
-  const mapEb = (rows: Record<string, unknown>[]) =>
-    rows.map((r) => ({
-      id: r.id as string,
-      file_name: (r.subject as string) || "email",
-      subject: r.subject as string,
-      from_email: r.from_email as string,
-      message_date: r.date as string,
-      owner_email: r.owner_email as string,
-      size: 0,
-    }));
 
   if (error?.message.includes("archive_files")) {
     const fallback = await supabase

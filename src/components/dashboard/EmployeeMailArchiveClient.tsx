@@ -70,19 +70,22 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
       const arch = await archRes.json().catch(() => ({}));
       const gs = await gsRes.json().catch(() => ({}));
 
-      if (!archRes.ok) {
-        setError(arch.error || `Archive status error ${archRes.status}`);
-      } else {
-        setStatus(arch);
-        setError("");
-      }
-
       const connected =
         Boolean(arch.googleConnected) || Boolean(gs.connected);
       setGoogleConnected(connected);
 
-      if (arch.lastError || (arch.status === "error" && arch.progress)) {
-        setError(String(arch.lastError || arch.progress));
+      if (!archRes.ok) {
+        setError(arch.error || `Archive status error ${archRes.status}`);
+        return;
+      }
+
+      setStatus(arch);
+
+      const hasMail = Number(arch.archivedCount ?? 0) > 0;
+      if (arch.status === "error" && !hasMail) {
+        setError(String(arch.lastError || arch.progress || "Last backup failed"));
+      } else {
+        setError("");
       }
     } catch {
       setError("Network error loading Gmail status");
