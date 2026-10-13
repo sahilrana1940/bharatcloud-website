@@ -56,17 +56,38 @@ export async function GET(req: Request) {
     ebQuery = ebQuery.eq("owner_email", session.email.toLowerCase());
   }
   const ebFirst = await ebQuery.range(offset, offset + limit - 1);
-  if (!ebFirst.error && (ebFirst.data?.length || (ebFirst.count ?? 0) > 0)) {
+  if (!ebFirst.error && ebFirst.data?.length) {
     const res = NextResponse.json({
-      items: mapEb(ebFirst.data || []),
+      items: mapEb(ebFirst.data),
       page,
-      total: ebFirst.count || 0,
+      total: ebFirst.count || ebFirst.data.length,
       companyId,
       email: session.email,
       source: "email_backups",
     });
     if (cookieFix) attachWorkspaceCompanyCookie(res, companyId);
     return res;
+  }
+
+  if (!ebFirst.error && (ebFirst.count ?? 0) > 0 && !ebFirst.data?.length) {
+    const ebRelaxed = await supabase
+      .from("email_backups")
+      .select("*", { count: "exact" })
+      .eq("company_id", companyId)
+      .order("date", { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (ebRelaxed.data?.length) {
+      const res = NextResponse.json({
+        items: mapEb(ebRelaxed.data),
+        page,
+        total: ebRelaxed.count || ebRelaxed.data.length,
+        companyId,
+        email: session.email,
+        source: "email_backups",
+      });
+      if (cookieFix) attachWorkspaceCompanyCookie(res, companyId);
+      return res;
+    }
   }
 
   let query = supabase

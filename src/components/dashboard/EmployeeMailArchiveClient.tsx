@@ -355,9 +355,12 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
           ))}
           {!items.length && (
             <li className="text-sm text-slate-500">
-              {googleConnected
-                ? "No archived mail yet — tap Start my email backup."
-                : "Connect Gmail first, then run backup."}
+              {!googleConnected
+                ? "Connect Gmail first, then run backup."
+                : (status.verification?.hasArchivedMessages ||
+                    (status.archivedCount ?? 0) > 0)
+                  ? `${status.archivedCount ?? 1} message(s) in vault — refresh the page (Ctrl+Shift+R) or tap Start my email backup again to reload the list.`
+                  : "No archived mail yet — tap Start my email backup."}
             </li>
           )}
         </ul>
