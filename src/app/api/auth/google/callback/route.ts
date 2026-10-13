@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { createOAuth2Client, emailDomain } from "@/lib/google/client";
+import {
+  exchangeOAuthCode,
+  oauthCallbackRedirectUri,
+  resolveGoogleAccountEmail,
+} from "@/lib/google/oauth-callback";
 import { verifyGoogleOAuthState } from "@/lib/google/oauth-state";
 import { saveGoogleOAuthTokens } from "@/lib/google/save-tokens";
 import {
@@ -25,15 +30,28 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL("/api/auth/google/demo", url.origin));
   }
 
-  const { tokens } = await oauth2.getToken(code);
-  oauth2.setCredentials(tokens);
-  const ticket = await fetch(
-    `https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokens.access_token}`,
-  );
-  const profile = await ticket.json();
-  const email = String(profile.email || "").toLowerCase();
+  const redirectUri = oauthCallbackRedirectUri(req);
+  let tokens;
+  try {
+    const exchanged = await exchangeOAuthCode(oauth2, code, redirectUri);
+    tokens = exchanged.tokens;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Token exchange failed";
+    return NextResponse.json(
+      {
+        error: `OAuth token error — set GOOGLE_REDIRECT_URI to ${redirectUri}. ${msg}`,
+      },
+      { status: 400 },
+    );
+  }
+
+  const resolved = await resolveGoogleAccountEmail(oauth2, tokens);
+  if ("error" in resolved) {
+    return NextResponse.json({ error: resolved.error }, { status: 400 });
+  }
+  const email = resolved.email;
   const domain = emailDomain(email);
-  if (!email || !domain) {
+  if (!domain) {
     return NextResponse.json({ error: "Invalid Google profile" }, { status: 400 });
   }
 

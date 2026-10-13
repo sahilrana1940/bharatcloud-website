@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { emailDomain } from "@/lib/google/client";
 import { createGoogleDriveOAuth2Client } from "@/lib/google/drive-oauth";
+import {
+  exchangeOAuthCode,
+  oauthCallbackRedirectUri,
+  resolveGoogleAccountEmail,
+} from "@/lib/google/oauth-callback";
 import { verifyGoogleOAuthState } from "@/lib/google/oauth-state";
 import { saveGoogleOAuthTokens } from "@/lib/google/save-tokens";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
@@ -49,17 +53,36 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Database not configured" }, { status: 500 });
   }
 
-  const { tokens } = await oauth2.getToken(code);
-  oauth2.setCredentials(tokens);
-
-  const ticket = await fetch(
-    `https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokens.access_token}`,
-  );
-  const profile = await ticket.json();
-  const googleEmail = String(profile.email || "").toLowerCase();
-  if (!googleEmail || !emailDomain(googleEmail)) {
-    return NextResponse.json({ error: "Invalid Google profile" }, { status: 400 });
+  const redirectUri = oauthCallbackRedirectUri(req);
+  let tokens;
+  try {
+    const exchanged = await exchangeOAuthCode(oauth2, code, redirectUri);
+    tokens = exchanged.tokens;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Token exchange failed";
+    const errDest = new URL(
+      linkState.returnTo.startsWith("/") ? linkState.returnTo : "/settings",
+      url.origin,
+    );
+    errDest.searchParams.set("drive", "error");
+    errDest.searchParams.set(
+      "reason",
+      `OAuth token error — set GOOGLE_REDIRECT_URI to ${redirectUri}. ${msg}`,
+    );
+    return NextResponse.redirect(errDest);
   }
+
+  const resolved = await resolveGoogleAccountEmail(oauth2, tokens);
+  if ("error" in resolved) {
+    const errDest = new URL(
+      linkState.returnTo.startsWith("/") ? linkState.returnTo : "/settings",
+      url.origin,
+    );
+    errDest.searchParams.set("drive", "error");
+    errDest.searchParams.set("reason", resolved.error);
+    return NextResponse.redirect(errDest);
+  }
+  const googleEmail = resolved.email;
 
   if (googleEmail !== linkState.email) {
     const mismatch = new URL(
