@@ -3,7 +3,7 @@
 create table if not exists billing_usage (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references companies(id) on delete cascade,
-  service text not null check (service in ('VPS', 'B3', 'Mail')),
+  service text not null check (service in ('VPS', 'b3', 'Mail')),
   units numeric not null default 1,
   amount int not null,
   month date not null,

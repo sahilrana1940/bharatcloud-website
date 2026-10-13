@@ -78,7 +78,7 @@ export function BillingDashboardClient() {
       <ProPageHeader
         eyebrow="Workspace"
         title="Billing"
-        description="Current month metered usage (VPS, B3 storage, Mail). All amounts in INR — GST 18% included."
+        description="Current month metered usage (VPS, b3 object storage, Mail). All amounts in INR — GST 18% included."
         action={
           <ProPrimaryButton type="button" onClick={() => setPayOpen(true)}>
             Pay now
@@ -128,7 +128,9 @@ export function BillingDashboardClient() {
                   <td className="px-4 py-3 text-slate-600">
                     {r.date ? new Date(r.date).toLocaleDateString("en-IN") : "—"}
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{r.service}</td>
+                  <td className="px-4 py-3 font-medium text-slate-900">
+                    {r.service === "b3" ? `b3 (${r.units} GB)` : r.service}
+                  </td>
                   <td className="px-4 py-3 text-right font-medium">₹{r.amount}</td>
                 </tr>
               ))}
