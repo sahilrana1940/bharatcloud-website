@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getBillingPlan, planFromAmount } from "@/lib/billing/plans";
 import { isSuperAdminSession } from "@/lib/b2b/session";
 import {
   demoPaymentApprove,
@@ -75,16 +76,23 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: updErr.message }, { status: 500 });
   }
 
+  const planId =
+    (payment as { plan_name?: string }).plan_name ||
+    planFromAmount(Number(payment.amount)).id;
+  const plan = getBillingPlan(planId);
+
   const companyId = (payment as { company_id?: string }).company_id;
+  const companyUpdate = {
+    subscription_status: "active",
+    plan_name: plan.id,
+    storage_limit_gb: plan.storageGb,
+  };
   if (companyId) {
-    await supabase
-      .from("companies")
-      .update({ subscription_status: "active", plan_name: "pro" })
-      .eq("id", companyId);
+    await supabase.from("companies").update(companyUpdate).eq("id", companyId);
   } else {
     await supabase
       .from("companies")
-      .update({ subscription_status: "active", plan_name: "pro" })
+      .update(companyUpdate)
       .eq("domain", payment.company_domain);
   }
 

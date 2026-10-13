@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { isPaymentBypassEnabled } from "@/lib/billing/payment-bypass";
+import { isBillingUpiLive } from "@/lib/billing/upi-live";
 import {
   createRazorpayPaymentLink,
   WORKSPACE_PLANS,
@@ -75,6 +76,18 @@ export async function POST(req: Request) {
         { status: 409 },
       );
     }
+  }
+
+  const razorpayConfigured = Boolean(
+    process.env.RAZORPAY_KEY_ID?.trim() && process.env.RAZORPAY_KEY_SECRET?.trim(),
+  );
+  if (!razorpayConfigured || !isBillingUpiLive()) {
+    return NextResponse.json({
+      ok: true,
+      useBillingPage: true,
+      redirect: `${appUrl}/dashboard/billing`,
+      message: "UPI billing + super admin approval (Razorpay disabled for today)",
+    });
   }
 
   try {

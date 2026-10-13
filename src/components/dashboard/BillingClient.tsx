@@ -20,20 +20,31 @@ const PRO_FEATURES = [
   "Team dashboard & per-user backup status",
 ];
 
+type BillingConfig = {
+  upiLive?: boolean;
+  simulateUpiFlow?: boolean;
+};
+
 export function BillingClient() {
   const router = useRouter();
   const [toast, setToast] = useState("");
   const [active, setActive] = useState(false);
   const [selectedId, setSelectedId] = useState<BillingPlanId>("starter");
+  const [billingConfig, setBillingConfig] = useState<BillingConfig>({
+    simulateUpiFlow: true,
+  });
 
   const selected = BILLING_PLANS.find((p) => p.id === selectedId) ?? BILLING_PLANS[0];
+  const simulateUpi = billingConfig.simulateUpiFlow !== false;
 
   useEffect(() => {
-    fetch("/api/billing/status")
-      .then((r) => r.json())
-      .then((j) => {
-        if (j.active) setActive(true);
-      });
+    Promise.all([
+      fetch("/api/billing/status").then((r) => r.json()),
+      fetch("/api/billing/config").then((r) => r.json()),
+    ]).then(([status, cfg]) => {
+      if (status.active) setActive(true);
+      setBillingConfig(cfg);
+    });
   }, []);
 
   const upiLink = useMemo(
@@ -43,8 +54,8 @@ export function BillingClient() {
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiLink)}`;
 
-  const upiId = process.env.NEXT_PUBLIC_UPI_ID || "9469276461@idfcfirst";
-  const payeeName = process.env.NEXT_PUBLIC_UPI_PAYEE_NAME || "Sahil Rana";
+  const upiId = simulateUpi ? "demo@upi (no real money today)" : "Set NEXT_PUBLIC_UPI_ID on server";
+  const payeeName = simulateUpi ? "BharatCloud — super admin approves" : "UPI payee";
 
   function notify(msg: string) {
     setToast(msg);
@@ -66,7 +77,11 @@ export function BillingClient() {
         router.push(j.redirect || "/dashboard/team?paid=1");
         return;
       }
-      notify("Payment recorded — we will activate soon.");
+      notify(
+        simulateUpi
+          ? "Request sent — super admin will approve at /admin/payments (no real UPI charge today)."
+          : "Payment recorded — we will activate after verification.",
+      );
       router.push("/dashboard/team");
     } else notify(j.error || "Could not record payment — try again");
   }
@@ -95,6 +110,17 @@ export function BillingClient() {
     <div className="min-h-screen overflow-y-auto bg-transparent px-4 pb-[140px] pt-6 sm:px-8 lg:pb-10">
       <h1 className="text-3xl font-bold text-slate-900">Billing</h1>
       <p className="mt-1 text-slate-500">Choose a plan — pay via UPI (monthly)</p>
+      {simulateUpi ? (
+        <p className="mt-3 max-w-2xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <strong>Demo / rehearsal mode:</strong> आज असली UPI पर पैसा नहीं जाएगा। Plan चुनें → नीचे{" "}
+          <strong>I have paid</strong> दबाएँ → owner/super admin{" "}
+          <a href="/admin/payments" className="font-semibold text-cyan-800 underline">
+            Pending payments
+          </a>{" "}
+          से Approve करेगा। Live UPI के लिए Vercel पर{" "}
+          <code className="text-xs">BILLING_UPI_LIVE=1</code> + अपना VPA।
+        </p>
+      ) : null}
 
       <div className="mt-8 grid max-w-4xl gap-4 sm:grid-cols-3">
         {BILLING_PLANS.map((plan) => {
@@ -135,17 +161,23 @@ export function BillingClient() {
 
       <div className="mt-8 max-w-md rounded-2xl border border-white/10 bg-[#1E2639] p-6 text-center">
         <p className="text-sm text-slate-400">
-          Scan to pay — <span className="text-slate-200">{selected.name}</span> ₹
-          {selected.price}
+          {simulateUpi ? "Rehearsal QR (₹1 demo — do not use for real pay)" : "Scan to pay"} —{" "}
+          <span className="text-slate-200">{selected.name}</span> ₹{selected.price}
         </p>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={qrUrl}
-          alt="UPI QR"
-          className="mx-auto mt-4 rounded-xl bg-white p-2"
-          width={220}
-          height={220}
-        />
+        {simulateUpi ? (
+          <div className="mx-auto mt-4 flex h-[220px] w-[220px] items-center justify-center rounded-xl border border-dashed border-slate-500 bg-slate-800/50 p-4 text-xs text-slate-300">
+            Skip real UPI today. Tap the green button below — super admin approves the plan.
+          </div>
+        ) : (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={qrUrl}
+            alt="UPI QR"
+            className="mx-auto mt-4 rounded-xl bg-white p-2"
+            width={220}
+            height={220}
+          />
+        )}
         <p className="mt-2 text-sm text-slate-300">{payeeName}</p>
         <p className="mt-1 text-xs text-slate-500 break-all">{upiId}</p>
         <p className="mt-2 text-[10px] text-slate-600">
@@ -153,27 +185,31 @@ export function BillingClient() {
         </p>
       </div>
 
-      <div className="mt-6 flex max-w-md flex-col gap-3 sm:flex-row">
-        <a
-          href={upiLink}
-          className="flex flex-1 items-center justify-center rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 py-3 text-sm font-semibold text-white"
-        >
-          Pay with GPay
-        </a>
-        <a
-          href={upiLink}
-          className="flex flex-1 items-center justify-center rounded-xl border border-white/10 bg-[#1E2639] py-3 text-sm font-semibold text-slate-200"
-        >
-          Pay with PhonePe
-        </a>
-      </div>
+      {!simulateUpi ? (
+        <div className="mt-6 flex max-w-md flex-col gap-3 sm:flex-row">
+          <a
+            href={upiLink}
+            className="flex flex-1 items-center justify-center rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 py-3 text-sm font-semibold text-white"
+          >
+            Pay with GPay
+          </a>
+          <a
+            href={upiLink}
+            className="flex flex-1 items-center justify-center rounded-xl border border-white/10 bg-[#1E2639] py-3 text-sm font-semibold text-slate-200"
+          >
+            Pay with PhonePe
+          </a>
+        </div>
+      ) : null}
 
       <button
         type="button"
         onClick={confirmPaid}
         className="mt-8 w-full max-w-md rounded-xl bg-emerald-600/90 py-3.5 text-sm font-semibold text-white"
       >
-        I have paid ₹{selected.price} — start backup setup
+        {simulateUpi
+          ? `Request plan activation (₹${selected.price} UPI rehearsal)`
+          : `I have paid ₹${selected.price} — start backup setup`}
       </button>
 
       <Toast message={toast} />

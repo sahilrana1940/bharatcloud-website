@@ -7,8 +7,7 @@ function envBypassEnabled(): boolean {
   return (
     process.env.PAYMENT_BYPASS === "1" ||
     // Common Vercel typo (PAMENT_BYPASS)
-    process.env.PAMENT_BYPASS === "1" ||
-    process.env.PAYMENT_AUTO_APPROVE === "1"
+    process.env.PAMENT_BYPASS === "1"
   );
 }
 

@@ -1,3 +1,5 @@
+import { billingUpiPayee, isBillingUpiLive } from "@/lib/billing/upi-live";
+
 export type BillingPlanId = "starter" | "standard" | "business";
 
 export type BillingPlan = {
@@ -45,9 +47,17 @@ export function getBillingPlan(id: string | undefined): BillingPlan {
   return found ?? BILLING_PLANS[0];
 }
 
-/** UPI deep link (client or server — uses NEXT_PUBLIC_UPI_*). */
+export function planFromAmount(amount: number): BillingPlan {
+  const exact = BILLING_PLANS.find((p) => p.price === amount);
+  return exact ?? getBillingPlan("starter");
+}
+
+/** UPI deep link (server). In demo mode uses a non-collecting placeholder VPA. */
 export function getUpiLink(amount: number, plan: string): string {
-  const upiId = process.env.NEXT_PUBLIC_UPI_ID || "9469276461@idfcfirst";
-  const name = process.env.NEXT_PUBLIC_UPI_PAYEE_NAME || "Sahil Rana";
-  return `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(name)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`Bharat Cloud ${plan}`)}`;
+  const { upiId, payeeName } = billingUpiPayee();
+  const am = isBillingUpiLive() ? amount : 1;
+  const tn = isBillingUpiLive()
+    ? `Bharat Cloud ${plan}`
+    : `DEMO BharatCloud ${plan} (no real charge)`;
+  return `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${am}&cu=INR&tn=${encodeURIComponent(tn)}`;
 }
