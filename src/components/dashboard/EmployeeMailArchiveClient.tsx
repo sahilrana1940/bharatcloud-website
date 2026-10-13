@@ -61,6 +61,16 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
   const [forwardId, setForwardId] = useState<string | null>(null);
   const [forwardTo, setForwardTo] = useState("");
   const [forwardMsg, setForwardMsg] = useState("");
+  const [forwardErr, setForwardErr] = useState(false);
+  const [forwards, setForwards] = useState<
+    Array<{
+      id: string;
+      to_email: string;
+      subject: string | null;
+      delivery_status: string;
+      created_at: string;
+    }>
+  >([]);
   const [successMsg, setSuccessMsg] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -113,6 +123,16 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
     }
   }, []);
 
+  const loadForwards = useCallback(async () => {
+    try {
+      const res = await fetch("/api/emails/forwards", fetchOpts);
+      const j = await res.json().catch(() => ({}));
+      if (res.ok) setForwards(j.forwards || []);
+    } catch {
+      /* optional */
+    }
+  }, []);
+
   const loadList = useCallback(async () => {
     try {
       const res = await fetch("/api/dashboard/employee/mail", fetchOpts);
@@ -130,9 +150,9 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    await Promise.all([loadStatus(), loadList()]);
+    await Promise.all([loadStatus(), loadList(), loadForwards()]);
     setLoading(false);
-  }, [loadStatus, loadList]);
+  }, [loadStatus, loadList, loadForwards]);
 
   useEffect(() => {
     const drive = searchParams.get("drive");
@@ -196,6 +216,7 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
 
   async function submitForward() {
     if (!forwardId || !forwardTo.trim()) return;
+    setForwardErr(false);
     const res = await fetch("/api/emails/forward", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -203,10 +224,15 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
       body: JSON.stringify({ emailId: forwardId, to: forwardTo.trim() }),
     });
     const j = await res.json();
-    setForwardMsg(res.ok ? j.message || "Sent" : j.error || "Forward failed");
     if (res.ok) {
+      setForwardMsg(j.message || "Forward recorded");
+      setForwardErr(false);
       setForwardId(null);
       setForwardTo("");
+      await loadForwards();
+    } else {
+      setForwardMsg(j.error || "Forward failed");
+      setForwardErr(true);
     }
   }
 
@@ -315,9 +341,45 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
       )}
 
       {forwardMsg && (
-        <p className="mt-4 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-900">
+        <p
+          className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
+            forwardErr
+              ? "border-amber-200 bg-amber-50 text-amber-900"
+              : "border-cyan-200 bg-cyan-50 text-cyan-900"
+          }`}
+        >
           {forwardMsg}
         </p>
+      )}
+
+      {forwards.length > 0 && (
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-900">Your recent forwards</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Yahan dikhega kya bheja — real inbox ke liye Vercel par RESEND_API_KEY lagao.
+          </p>
+          <ul className="mt-3 max-h-40 space-y-2 overflow-y-auto text-sm">
+            {forwards.map((f) => (
+              <li
+                key={f.id}
+                className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2"
+              >
+                <span className="font-medium text-slate-800">{f.subject || "Forward"}</span>
+                <span className="text-xs text-slate-500">→ {f.to_email}</span>
+                <span
+                  className={`text-[10px] uppercase tracking-wide ${
+                    f.delivery_status === "sent" ? "text-emerald-600" : "text-amber-600"
+                  }`}
+                >
+                  {f.delivery_status === "sent" ? "Sent" : "Logged (demo)"}
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  {new Date(f.created_at).toLocaleString()}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div className="mt-10 flex flex-wrap items-center justify-between gap-3">

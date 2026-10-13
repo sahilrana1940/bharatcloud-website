@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
+import { resolveArchiveCompanyId } from "@/lib/archive/resolve-archive-company";
 import { sendArchivedMailForward } from "@/lib/email/company-forward";
+import { loadArchivedEmailForForward } from "@/lib/email/load-archived-body";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { isWorkspaceOwner } from "@/lib/workspace/nav";
@@ -23,48 +25,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
   }
 
-  type Row = {
-    company_id: string;
-    owner_email: string;
-    subject: string | null;
-    from_email: string | null;
-    date: string | null;
-    body_text: string | null;
-  };
+  const companyId = await resolveArchiveCompanyId(
+    supabase,
+    session.companyId,
+    session.email,
+  );
 
-  let row: Row | null = null;
-
-  const { data: archiveRow } = await supabase
-    .from("archive_files")
-    .select(
-      "company_id, owner_email, subject, from_email, message_date, file_name, metadata",
-    )
-    .eq("id", emailId)
-    .eq("company_id", session.companyId)
-    .eq("type", "email")
-    .maybeSingle();
-
-  if (archiveRow) {
-    row = {
-      company_id: archiveRow.company_id as string,
-      owner_email: String(archiveRow.owner_email || ""),
-      subject: (archiveRow.subject as string) || (archiveRow.file_name as string),
-      from_email: (archiveRow.from_email as string) || null,
-      date: (archiveRow.message_date as string) || null,
-      body_text: (archiveRow.subject as string) || "",
-    };
-  } else {
-    const { data: backupRow, error } = await supabase
-      .from("email_backups")
-      .select(
-        "id, company_id, owner_email, subject, from_email, date, body_text",
-      )
-      .eq("id", emailId)
-      .eq("company_id", session.companyId)
-      .maybeSingle();
-    if (!error && backupRow) row = backupRow as Row;
-  }
-
+  const row = await loadArchivedEmailForForward(supabase, emailId, companyId);
   if (!row) {
     return NextResponse.json({ error: "Email not found" }, { status: 404 });
   }
@@ -87,7 +54,7 @@ export async function POST(req: Request) {
   const { data: company } = await supabase
     .from("companies")
     .select("admin_email")
-    .eq("id", session.companyId)
+    .eq("id", companyId)
     .maybeSingle();
 
   const companyFrom = String(company?.admin_email || "").toLowerCase();
@@ -105,13 +72,37 @@ export async function POST(req: Request) {
     bodyText: String(row.body_text || ""),
   });
 
-  if (!result.sent) {
+  const deliveryStatus = result.sent ? "sent" : result.demoQueued ? "demo_logged" : "failed";
+
+  const logRow = {
+    company_id: companyId,
+    archived_email_id: row.id,
+    from_company_email: companyFrom,
+    requested_by: me,
+    to_email: to,
+    subject: `Fwd: ${row.subject || "(no subject)"}`,
+    body_preview: String(row.body_text || "").slice(0, 500),
+    delivery_status: deliveryStatus,
+  };
+
+  const { error: logErr } = await supabase.from("email_forward_log").insert(logRow);
+  if (logErr && !logErr.message.includes("email_forward_log")) {
+    console.warn("[forward] log insert", logErr.message);
+  }
+
+  if (!result.sent && !result.demoQueued) {
     return NextResponse.json({ error: result.error || "Send failed" }, { status: 502 });
   }
 
+  const message = result.sent
+    ? `Forwarded from ${companyFrom}. Check ${to} inbox (and spam).`
+    : `Forward recorded (demo). Add RESEND_API_KEY on Vercel to send real email to ${to}.`;
+
   return NextResponse.json({
     ok: true,
-    message: `Forwarded from ${companyFrom}. Recipient can reply to company mail.`,
+    message,
     from: companyFrom,
+    demoMode: Boolean(result.demoQueued),
+    deliveryStatus,
   });
 }
