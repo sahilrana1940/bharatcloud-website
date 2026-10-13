@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { ensureCompanyUserForArchive } from "@/lib/archive/resolve-archive-company";
 import { upsertArchiveEmailFileRow } from "@/lib/archive/save-archive-file-row";
+import { upsertEmailBackupRow } from "@/lib/archive/save-email-backup-row";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { gmailClient } from "@/lib/google/client";
 
@@ -104,26 +105,23 @@ export async function runEmailArchiveForUser(
         );
       }
 
-      const { error: ebErr } = await supabase.from("email_backups").upsert(
-        {
-          company_id: opts.companyId,
-          company_domain: opts.domain,
-          owner_email: email,
-          gmail_id: msg.id,
-          thread_id: payload.threadId,
-          subject,
-          from_email: from,
-          to_email: to,
-          date: dateStr ? new Date(dateStr).toISOString() : null,
-          body_text: payload.snippet || subject,
-          has_attachment: false,
-          folder: "INBOX",
-          s3_path: storagePath,
-        },
-        { onConflict: "gmail_id" },
-      );
-      if (ebErr) {
-        throw new Error(`Could not save email_backups (${ebErr.message}).`);
+      const ebResult = await upsertEmailBackupRow(supabase, {
+        company_id: opts.companyId,
+        company_domain: opts.domain,
+        owner_email: email,
+        gmail_id: msg.id,
+        thread_id: payload.threadId,
+        subject,
+        from_email: from,
+        to_email: to,
+        date: dateStr ? new Date(dateStr).toISOString() : null,
+        body_text: payload.snippet || subject,
+        has_attachment: false,
+        folder: "INBOX",
+        s3_path: storagePath,
+      });
+      if (!ebResult.ok) {
+        throw new Error(`Could not save email_backups (${ebResult.error}).`);
       }
 
       if (process.env.EMAIL_ARCHIVE_FILES_INDEX === "1") {

@@ -14,6 +14,13 @@ alter table archive_files add column if not exists metadata jsonb;
 alter table company_users add column if not exists email_sync_status text default 'idle';
 alter table company_users add column if not exists email_sync_progress text;
 
+-- email_backups (fixes "folder column does not exist")
+alter table email_backups add column if not exists company_domain text;
+alter table email_backups add column if not exists thread_id text;
+alter table email_backups add column if not exists to_email text;
+alter table email_backups add column if not exists folder text;
+alter table email_backups add column if not exists created_at timestamptz not null default now();
+
 -- Clear stale orange error for Sunderbani hub (change email if needed)
 update company_users
 set email_sync_status = 'idle', email_sync_progress = null
