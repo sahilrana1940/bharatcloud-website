@@ -24,6 +24,7 @@ export const WORKSPACE_NAV: WorkspaceNavItem[] = [
   { href: "/dashboard/recent", label: "Recent", icon: "Clock", for: "owner" },
   { href: "/dashboard/trash", label: "Trash", icon: "Trash2", for: "owner" },
   { href: "/dashboard/team", label: "Team & backup", icon: "User", for: "owner" },
+  { href: "/dashboard/storage", label: "B3 Storage", icon: "B3Storage", for: "owner" },
   { href: "/dashboard/billing", label: "Billing", icon: "CreditCard", for: "owner" },
   { href: "/settings", label: "Settings", icon: "Settings", for: "all" },
 ];

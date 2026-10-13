@@ -25,7 +25,7 @@ type BillingConfig = {
   simulateUpiFlow?: boolean;
 };
 
-export function BillingClient() {
+export function BillingClient({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
   const [toast, setToast] = useState("");
   const [active, setActive] = useState(false);
@@ -90,7 +90,7 @@ export function BillingClient() {
     } else notify(j.error || "Could not record payment — try again");
   }
 
-  if (active) {
+  if (active && !embedded) {
     return (
       <div className="min-h-screen overflow-y-auto bg-transparent px-4 pb-[140px] pt-6 sm:px-8 lg:pb-10">
         <h1 className="text-3xl font-bold text-slate-900">Billing</h1>
@@ -110,10 +110,18 @@ export function BillingClient() {
     );
   }
 
+  const shellClass = embedded
+    ? ""
+    : "min-h-screen overflow-y-auto bg-transparent px-4 pb-[140px] pt-6 sm:px-8 lg:pb-10";
+
   return (
-    <div className="min-h-screen overflow-y-auto bg-transparent px-4 pb-[140px] pt-6 sm:px-8 lg:pb-10">
-      <h1 className="text-3xl font-bold text-slate-900">Billing</h1>
-      <p className="mt-1 text-slate-500">Choose a plan — pay via UPI (monthly)</p>
+    <div className={shellClass}>
+      {!embedded ? (
+        <>
+          <h1 className="text-3xl font-bold text-slate-900">Billing</h1>
+          <p className="mt-1 text-slate-500">Choose a plan — pay via UPI (monthly)</p>
+        </>
+      ) : null}
       {simulateUpi ? (
         <p className="mt-3 max-w-2xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <strong>Demo / rehearsal mode:</strong> आज असली UPI पर पैसा नहीं जाएगा। Plan चुनें → नीचे{" "}

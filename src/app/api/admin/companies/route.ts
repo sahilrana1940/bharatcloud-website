@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { isPlatformAdminSession } from "@/lib/admin/access";
+import { companyPaymentBalances } from "@/lib/billing/company-balances";
 import { getSessionRole } from "@/lib/auth";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
@@ -20,6 +21,8 @@ export async function GET() {
           employees: 5,
           storage_gb: 44.5,
           status: "active",
+          total_paid: 1999,
+          due_amount: 843,
         },
       ],
     });
@@ -37,6 +40,12 @@ export async function GET() {
       .select("drive_used_gb")
       .eq("company_id", c.id);
     const storage = (users || []).reduce((s, u) => s + Number(u.drive_used_gb || 0), 0);
+    const balances = await companyPaymentBalances(
+      supabase,
+      c.id,
+      (c as { plan_name?: string }).plan_name,
+      c.domain,
+    );
     rows.push({
       id: c.id,
       domain: c.domain,
@@ -44,6 +53,8 @@ export async function GET() {
       employees: count || 0,
       storage_gb: storage,
       status: c.subscription_status || "trial",
+      total_paid: balances.totalPaid,
+      due_amount: balances.dueAmount,
     });
   }
   return NextResponse.json({ companies: rows });

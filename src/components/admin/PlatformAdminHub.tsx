@@ -14,14 +14,19 @@ import {
 
 import { ProPageHeader, ProStatCard, ProTableWrap } from "@/components/ui/pro/primitives";
 
-type CostLine = { vendor: string; purpose: string; amountInr: number };
+type CostLine = { vendor: string; purpose: string; amountInr: number; legacy?: boolean };
 
 type Finance = {
   revenueInr: number;
+  revenueThisMonthInr?: number;
   monthlyCostsInr: number;
+  monthlyLegacyCostsInr?: number;
   netInr: number;
+  netThisMonthInr?: number;
   pendingPayments: number;
   approvedPayments: number;
+  customerPaidTotalInr?: number;
+  customerDueTotalInr?: number;
   costLines?: CostLine[];
 };
 
@@ -75,28 +80,47 @@ export function PlatformAdminHub() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <ProStatCard
-          label="Total earned (approved UPI)"
+          label="UPI earned (all time)"
           value={`₹${(finance?.revenueInr ?? stats?.revenue ?? 0).toLocaleString("en-IN")}`}
           icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
         />
         <ProStatCard
-          label="Monthly infra cost (est.)"
+          label="UPI this month"
+          value={`₹${(finance?.revenueThisMonthInr ?? 0).toLocaleString("en-IN")}`}
+          hint="Approved payments"
+          icon={<IndianRupee className="h-4 w-4 text-emerald-600" />}
+        />
+        <ProStatCard
+          label="Active infra / month"
           value={`₹${(finance?.monthlyCostsInr ?? 0).toLocaleString("en-IN")}`}
+          hint="Excludes legacy Wasabi"
           icon={<TrendingDown className="h-4 w-4 text-amber-600" />}
         />
         <ProStatCard
-          label="Net (earn − cost)"
-          value={`₹${(finance?.netInr ?? 0).toLocaleString("en-IN")}`}
+          label="Net this month"
+          value={`₹${(finance?.netThisMonthInr ?? 0).toLocaleString("en-IN")}`}
           icon={<Wallet className="h-4 w-4 text-cyan-600" />}
         />
         <ProStatCard
-          label="Pending UPI approvals"
-          value={String(finance?.pendingPayments ?? 0)}
-          icon={<IndianRupee className="h-4 w-4 text-violet-600" />}
+          label="Tenants paid (live)"
+          value={`₹${(finance?.customerPaidTotalInr ?? 0).toLocaleString("en-IN")}`}
+          hint="All companies"
+          icon={<Building2 className="h-4 w-4 text-cyan-600" />}
+        />
+        <ProStatCard
+          label="Tenants due (live)"
+          value={`₹${(finance?.customerDueTotalInr ?? 0).toLocaleString("en-IN")}`}
+          hint="Usage + plans"
+          icon={<Wallet className="h-4 w-4 text-violet-600" />}
         />
       </div>
+
+      <p className="text-sm text-slate-600">
+        Pending UPI approvals: <strong>{finance?.pendingPayments ?? 0}</strong> · Approved count:{" "}
+        <strong>{finance?.approvedPayments ?? 0}</strong>
+      </p>
 
       <p
         className={`rounded-xl border px-4 py-3 text-sm ${
@@ -110,7 +134,13 @@ export function PlatformAdminHub() {
           : "Costs exceed approved payments so far — normal early stage. Approve paid customers via UPI screenshot flow."}
       </p>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <QuickCard
+          href="/admin/companies"
+          title="Companies & billing"
+          body="See total paid vs due per tenant (INR, GST inclusive) alongside storage and seats."
+          cta="Open companies"
+        />
         <QuickCard
           href="/admin/payments"
           title="UPI + QR approvals"
@@ -154,6 +184,14 @@ export function PlatformAdminHub() {
       {finance?.costLines?.length ? (
         <section>
           <h2 className="mb-3 text-lg font-bold text-slate-900">Your monthly bills (edit in platform-costs.ts)</h2>
+          <p className="mb-4 text-sm text-slate-600">
+            Platform infra you pay (Vercel, Supabase, Wasabi, Blob). Customer{" "}
+            <strong>B3 + usage billing</strong> is separate — see each company on{" "}
+            <a href="/admin/companies" className="font-semibold text-cyan-700 underline">
+              Companies
+            </a>{" "}
+            and their <code className="text-xs">/dashboard/billing</code> page.
+          </p>
           <ProTableWrap>
             <table className="w-full min-w-[520px] text-left text-sm">
               <thead>
@@ -164,14 +202,48 @@ export function PlatformAdminHub() {
                 </tr>
               </thead>
               <tbody>
-                {finance.costLines.map((line: { vendor: string; purpose: string; amountInr: number }) => (
-                  <tr key={line.vendor} className="border-b border-slate-100">
-                    <td className="px-4 py-3 font-medium">{line.vendor}</td>
+                {finance.costLines.map((line) => (
+                  <tr
+                    key={`${line.vendor}-${line.purpose}`}
+                    className={`border-b border-slate-100 ${line.legacy ? "bg-slate-50/80 text-slate-500" : ""}`}
+                  >
+                    <td className="px-4 py-3 font-medium">
+                      {line.vendor}
+                      {line.legacy ? (
+                        <span className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold uppercase">
+                          legacy
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-3 text-slate-600">{line.purpose}</td>
                     <td className="px-4 py-3">₹{line.amountInr.toLocaleString("en-IN")}</td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-200 bg-cyan-50/50 font-semibold">
+                  <td className="px-4 py-3" colSpan={2}>Active platform total (live P&L)</td>
+                  <td className="px-4 py-3">
+                    ₹{(finance.monthlyCostsInr ?? 0).toLocaleString("en-IN")}
+                  </td>
+                </tr>
+                {(finance.monthlyLegacyCostsInr ?? 0) > 0 ? (
+                  <tr className="text-sm text-slate-500">
+                    <td className="px-4 py-2" colSpan={2}>Legacy vendors (not in net above)</td>
+                    <td className="px-4 py-2">
+                      ₹{finance.monthlyLegacyCostsInr!.toLocaleString("en-IN")}
+                    </td>
+                  </tr>
+                ) : null}
+                <tr className="border-t border-slate-200 bg-emerald-50/40 text-sm">
+                  <td className="px-4 py-3" colSpan={2}>
+                    Approved UPI revenue (all time) − active costs
+                  </td>
+                  <td className="px-4 py-3 font-bold text-emerald-800">
+                    ₹{(finance.netInr ?? 0).toLocaleString("en-IN")}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </ProTableWrap>
         </section>

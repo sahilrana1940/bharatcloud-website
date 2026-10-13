@@ -7,6 +7,8 @@ export type CostLine = {
   /** Day of month payment is usually due (1–28) */
   dueDayOfMonth: number;
   billingUrl?: string;
+  /** Shown in table but excluded from active monthly P&L total (e.g. old Wasabi vault). */
+  legacy?: boolean;
 };
 
 import { listSuperAdminEmails } from "@/lib/brand";
@@ -23,6 +25,13 @@ export const PLATFORM_COST_LINES: CostLine[] = [
     billingUrl: "https://vercel.com/dashboard",
   },
   {
+    vendor: "Vercel Blob",
+    purpose: "Bharat Big Bucket (B3) — tenant object storage",
+    amountInr: 600,
+    dueDayOfMonth: 1,
+    billingUrl: "https://vercel.com/dashboard/stores",
+  },
+  {
     vendor: "Supabase",
     purpose: "Postgres + auth + API",
     amountInr: 2000,
@@ -31,10 +40,11 @@ export const PLATFORM_COST_LINES: CostLine[] = [
   },
   {
     vendor: "Wasabi",
-    purpose: "S3 archive bucket (drive backups)",
+    purpose: "Legacy S3 vault (Google Drive archive backups)",
     amountInr: 800,
     dueDayOfMonth: 10,
     billingUrl: "https://console.wasabisys.com",
+    legacy: true,
   },
   {
     vendor: "Hostinger / domain",
@@ -65,6 +75,13 @@ export function nextDueDate(dueDayOfMonth: number, from = new Date()): Date {
   return d;
 }
 
-export function monthlyTotalInr(): number {
-  return PLATFORM_COST_LINES.reduce((s, l) => s + l.amountInr, 0);
+export function monthlyTotalInr(includeLegacy = false): number {
+  return PLATFORM_COST_LINES.filter((l) => includeLegacy || !l.legacy).reduce(
+    (s, l) => s + l.amountInr,
+    0,
+  );
+}
+
+export function monthlyLegacyTotalInr(): number {
+  return PLATFORM_COST_LINES.filter((l) => l.legacy).reduce((s, l) => s + l.amountInr, 0);
 }
