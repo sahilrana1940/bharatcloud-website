@@ -1,262 +1,84 @@
 "use client";
+import { useEffect, useState } from "react";
+import { Database, HardDrive, Check, AlertCircle, Loader2 } from "lucide-react";
 
-import { Cloud, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-
-import { BackupValueStrip } from "@/components/dashboard/BackupValueStrip";
-import { openUpgradePaymentLink } from "@/lib/billing/upgrade-pro";
-
-function formatGb(bytes: number) {
-  if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
-  return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+async function safeJson(res: Response) {
+  const text = await res.text();
+  if (!text) return { ok: res.ok, empty: true };
+  try { return JSON.parse(text); }
+  catch { return { ok: false, error: "Server returned HTML", raw: text.slice(0,200) }; }
 }
 
 export function BackupOnboarding({ userEmail }: { userEmail: string }) {
-  const [oauthConfigured, setOauthConfigured] = useState(true);
-  const [s3Ok, setS3Ok] = useState(true);
-  const [paid, setPaid] = useState(false);
-  const [googleLinked, setGoogleLinked] = useState(false);
-  const [jobStatus, setJobStatus] = useState<string | null>(null);
-  const [filesDone, setFilesDone] = useState(0);
-  const [bytesCompressed, setBytesCompressed] = useState(0);
-  const [bytesOriginal, setBytesOriginal] = useState(0);
-  const [savedPct, setSavedPct] = useState(0);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [status, setStatus] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const load = useCallback(async () => {
-    const [cfg, g, bill, pay, sum] = await Promise.all([
-      fetch("/api/config/public").then((r) => r.json()),
-      fetch("/api/team/google-status").then((r) => r.json()),
-      fetch("/api/billing/status").then((r) => r.json()),
-      fetch("/api/payments").then((r) => r.json()),
-      fetch("/api/backup/summary").then((r) => r.json()),
-    ]);
-    setOauthConfigured(cfg.googleOAuthConfigured !== false);
-    setS3Ok(cfg.s3Configured !== false);
-    setGoogleLinked(Boolean(g.connected));
-    const payments = pay.payments || [];
-    const paidViaCompany =
-      bill.paymentBypass === true ||
-      bill.active === true ||
-      bill.subscriptionStatus === "active";
-    const paidViaPayments = payments.some((p: { status: string }) =>
-      ["approved", "paid", "active"].includes(p.status),
-    );
-    setPaid(paidViaCompany || paidViaPayments);
-    if (sum.jobStatus === "running" || sum.jobStatus === "queued") {
-      setJobStatus(String(sum.jobStatus));
-      setFilesDone(sum.filesDone || 0);
-    }
-    if (sum.filesArchived > 0 && sum.jobStatus === "completed") {
-      setJobStatus("completed");
-      setFilesDone(sum.filesArchived);
-    }
-    setBytesCompressed(sum.bytesCompressed || 0);
-    setBytesOriginal(sum.bytesOriginal || 0);
-    setSavedPct(sum.savedPct || 0);
-  }, []);
-
-  const runTick = useCallback(async () => {
-    const res = await fetch("/api/backup/tick", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    const j = await res.json();
-    if (j.status) setJobStatus(String(j.status));
-    if (j.filesDone) setFilesDone(j.filesDone);
-    if (j.bytesCompressed) setBytesCompressed(j.bytesCompressed);
-    if (j.bytesOriginal) setBytesOriginal(j.bytesOriginal);
-    if (j.savedPct) setSavedPct(j.savedPct);
-    if (j.done) {
-      if (tickRef.current) clearInterval(tickRef.current);
-      setJobStatus("completed");
-    }
-  }, []);
-
-  const startAuto = useCallback(async () => {
-    setJobStatus("running");
-    const res = await fetch("/api/backup/start-auto", { method: "POST" });
-    const j = await res.json();
-    if (!res.ok) {
-      setJobStatus(j.error || "failed");
-      return;
-    }
-    setFilesDone(j.filesDone || 0);
-    if (!j.done) {
-      if (tickRef.current) clearInterval(tickRef.current);
-      tickRef.current = setInterval(() => runTick(), 4000);
-      runTick();
-    } else {
-      setJobStatus("completed");
-    }
-  }, [runTick]);
-
-  useEffect(() => {
-    load();
-    return () => {
-      if (tickRef.current) clearInterval(tickRef.current);
-    };
-  }, [load]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const p = new URLSearchParams(window.location.search);
-    if (p.get("paid") === "1") setPaid(true);
-    if (p.get("setup") === "google") setOauthConfigured(false);
-    if (p.get("autostart") === "1" && googleLinked && paid) {
-      startAuto();
-      window.history.replaceState({}, "", "/dashboard/team");
-    }
-  }, [googleLinked, paid, startAuto]);
-
-  useEffect(() => {
-    if (jobStatus === "running" && !tickRef.current) {
-      tickRef.current = setInterval(() => runTick(), 4000);
-    }
-  }, [jobStatus, runTick]);
-
-  async function upgradeToPro() {
-    setCheckoutLoading(true);
+  const loadStatus = async () => {
     try {
-      const result = await openUpgradePaymentLink({
-        companyEmail: userEmail,
-        plan: "pro",
-      });
-      if (!result.ok) alert(result.error);
-    } finally {
-      setCheckoutLoading(false);
-    }
-  }
+      setLoading(true);
+      const res = await fetch("/api/backup/status", { cache: "no-store" });
+      const data = await safeJson(res);
+      setStatus(data);
+    } catch (e: any) {
+      setStatus({ ok: false, error: e.message });
+    } finally { setLoading(false); }
+  };
 
-  if (!paid) {
-    return (
-      <>
-        <div className="mt-6 rounded-2xl border border-white/10 bg-[#1E2639] p-6 text-center">
-          <p className="text-slate-300">
-            BharatCloud Pro unlocks <strong>automatic Google Drive archive</strong> for your company.
-          </p>
-          <button
-            type="button"
-            disabled={checkoutLoading}
-            onClick={() => upgradeToPro()}
-            className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-6 py-3 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {checkoutLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Upgrade to Pro
-          </button>
-          <p className="mt-3 text-xs text-slate-500">
-            Or pay via UPI on Billing — plans from ₹999/mo
-          </p>
-        </div>
-        <BackupValueStrip />
-      </>
-    );
-  }
+  useEffect(() => { loadStatus(); }, []);
 
-  if (!oauthConfigured) {
-    return (
-      <>
-        <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-6">
-          <p className="font-semibold text-amber-100">Google backup setup required</p>
-          <p className="mt-2 text-sm text-amber-200/90">
-            Add Google OAuth in Vercel (Production + Preview), then redeploy. Your app will not crash —
-            this screen guides you.
-          </p>
-          <a
-            href="https://github.com/sahilrana1940/bharatcloud-website/blob/main/docs/GOOGLE_DRIVE_CONNECT.md"
-            className="mt-4 inline-block text-sm text-cyan-400 underline"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open setup guide
-          </a>
-        </div>
-        <BackupValueStrip />
-      </>
-    );
-  }
+  const connectDrive = async () => {
+    setActionLoading(true);
+    window.location.href = "/api/auth/google?redirect=/dashboard/team";
+  };
 
-  if (!s3Ok) {
-    return (
-      <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-6 text-sm text-amber-100">
-        Archive storage is not configured. Set <code>WASABI_*</code> or <code>E2E_S3_*</code> and{" "}
-        <code>ARCHIVE_S3_BUCKET</code> (e.g. bharatcloud-archiver) on Vercel.
-      </div>
-    );
-  }
+  const startArchive = async () => {
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/backup/start", { method: "POST" });
+      const data = await safeJson(res);
+      alert(data.ok? "Archive started - SIN1 Bucket: bharatcloud-archiver" : data.error || "Failed");
+      await loadStatus();
+    } finally { setActionLoading(false); }
+  };
 
-  if (!googleLinked) {
-    return (
-      <>
-        <div className="mt-6 rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-sky-950/80 to-[#1E2639] p-8 text-center">
-          <Cloud className="mx-auto h-12 w-12 text-cyan-400" />
-          <h2 className="mt-4 text-xl font-bold text-white">
-            Connect Company Google Drive to Start Backup
-          </h2>
-          <p className="mt-2 text-sm text-slate-400">
-            One click — we list your entire Drive, compress photos, and store copies in{" "}
-            <span className="text-slate-200">your company archive bucket</span> for{" "}
-            <span className="text-slate-200">{userEmail}</span>.
-          </p>
-          <ul className="mx-auto mt-4 max-w-md text-left text-xs text-slate-500">
-            <li>• Videos kept in original quality (safe for CCTV / long archives)</li>
-            <li>• Photos optimized to save space</li>
-            <li>• No manual file IDs or share links</li>
-          </ul>
-          <a
-            href="/settings"
-            className="mt-6 inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-400 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-sky-500/30"
-          >
-            Connect Google Drive &amp; Start Backup
-          </a>
-        </div>
-        <BackupValueStrip />
-      </>
-    );
+  if (loading) {
+    return <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin"/> Checking backup status...</div>;
   }
-
-  const running = jobStatus === "running" || jobStatus === "queued";
 
   return (
-    <>
-      <div className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6">
-        <p className="font-medium text-emerald-100">Google Drive connected</p>
-        {running ? (
-          <div className="mt-3">
-            <p className="flex items-center gap-2 text-sm text-emerald-200/90">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Drive status: <strong>Backing up…</strong> ({filesDone} files)
-            </p>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
-              <div className="h-full w-2/3 animate-pulse bg-gradient-to-r from-emerald-500 to-cyan-400" />
-            </div>
-            <p className="mt-2 text-xs text-slate-400">
-              Keep this tab open or come back later — backup continues in chunks.
-            </p>
-          </div>
-        ) : jobStatus === "completed" ? (
-          <p className="mt-2 text-sm text-emerald-200/90">
-            Drive status: <strong>Archived</strong> — {filesDone} files ·{" "}
-            {formatGb(bytesCompressed)} stored
-            {savedPct > 0 ? ` (${savedPct}% smaller than originals on photos)` : ""}
-          </p>
-        ) : (
-          <p className="mt-2 text-sm text-emerald-200/90">Ready to archive your Google Drive.</p>
-        )}
+    <div className="space-y-4">
+      {status?.error && (
+        <div className="flex gap-2 rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700"><AlertCircle className="h-4 w-4 mt-0.5"/><span>{status.error}</span></div>
+      )}
 
-        {!running && (
-          <button
-            type="button"
-            onClick={() => startAuto()}
-            className="mt-4 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white"
-          >
-            {jobStatus === "completed" ? "Run backup again" : "Start automatic backup"}
-          </button>
-        )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-900"><HardDrive className="h-4 w-4"/> Google Drive</div>
+          <p className="mt-2 text-xs text-slate-500">{status?.driveConnected? `Connected: ${status.driveEmail || userEmail}` : "Not connected"}</p>
+          <div className="mt-3">
+            {status?.driveConnected? (
+              <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full"><Check className="h-3 w-3"/> Connected</span>
+            ) : (
+              <button onClick={connectDrive} disabled={actionLoading} className="w-full rounded-xl bg-black text-white text-sm py-2.5 hover:bg-slate-800 disabled:opacity-50">Connect Google Drive</button>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-900"><Database className="h-4 w-4"/> BharatCloud SIN1</div>
+          <p className="mt-2 text-xs text-slate-500">Bucket: bharatcloud-archiver • E2E • India Safe</p>
+          <div className="mt-3">
+            <button onClick={startArchive} disabled={!status?.driveConnected || actionLoading} className="w-full rounded-xl bg-[#0B5FFF] text-white text-sm py-2.5 hover:bg-blue-700 disabled:opacity-40 flex items-center justify-center gap-2">
+              {actionLoading && <Loader2 className="h-4 w-4 animate-spin"/>} Start Archive to Cloud
+            </button>
+          </div>
+        </div>
       </div>
-      <BackupValueStrip />
-    </>
+
+      <div className="rounded-xl bg-white border border-slate-200 p-3 text-[11px] text-slate-500 flex justify-between">
+        <span>User: {userEmail}</span><span>Role: {status?.role || "team"} • {status?.plan || "Free (5GB)"}</span>
+      </div>
+    </div>
   );
 }
