@@ -1,6 +1,6 @@
 import { billingUpiPayee, isBillingUpiLive } from "@/lib/billing/upi-live";
 
-export type BillingPlanId = "starter" | "standard" | "business";
+export type BillingPlanId = "starter" | "growth" | "scale" | "standard" | "business";
 
 export type BillingPlan = {
   id: BillingPlanId;
@@ -15,35 +15,36 @@ export type BillingPlan = {
 export const BILLING_PLANS: BillingPlan[] = [
   {
     id: "starter",
-    name: "Starter",
-    price: 999,
+    name: "STARTER",
+    price: 5999,
     users: "5 Users",
-    storage: "100GB",
+    storage: "100GB per ID",
     storageGb: 100,
-    tag: "MOST POPULAR",
-  },
-  {
-    id: "standard",
-    name: "Standard",
-    price: 2199,
-    users: "10 Users",
-    storage: "500GB",
-    storageGb: 500,
     tag: "",
   },
   {
-    id: "business",
-    name: "Business",
-    price: 3499,
+    id: "growth",
+    name: "GROWTH",
+    price: 12999,
     users: "20 Users",
-    storage: "1TB",
-    storageGb: 1024,
+    storage: "200GB per ID",
+    storageGb: 200,
+    tag: "MOST POPULAR",
+  },
+  {
+    id: "scale",
+    name: "SCALE",
+    price: 14999,
+    users: "50 Users",
+    storage: "500GB per ID",
+    storageGb: 500,
     tag: "BEST FOR BUSINESS",
   },
 ];
 
 export function getBillingPlan(id: string | undefined): BillingPlan {
-  const found = BILLING_PLANS.find((p) => p.id === id);
+  const key = id === "standard" ? "growth" : id === "business" ? "scale" : id;
+  const found = BILLING_PLANS.find((p) => p.id === key);
   return found ?? BILLING_PLANS[0];
 }
 
