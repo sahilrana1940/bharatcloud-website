@@ -5,7 +5,7 @@
  */
 export function remainingCredit(yearlyInr: number, daysUsed: number): number {
   const used = (yearlyInr / 365) * Math.max(0, daysUsed);
-  return Math.round(yearlyInr - used); // 90 days pe = 4520 aayega - sahi hai
+  return Math.round(yearlyInr - used);
 }
 
 export function upgradePay(newYearlyInr: number, remainingInr: number): number {
@@ -23,15 +23,15 @@ export function quoteUpgrade(yearlyInr: number, newYearlyInr: number, daysUsed: 
   };
 }
 
-/** Product example shown on the upgrade modal and pricing page - FIX 4499/8500 jo client ko dikhana hai */
 export const UPGRADE_EXAMPLE = {
   daysUsed: 90,
   fromPlanLabel: "100GB",
   toPlanLabel: "300GB",
   fromYearlyInr: 5999,
   toYearlyInr: 12999,
-  remainingInr: 4499, // Fixed for marketing - 5999/12*9
-  payInr: 8500,       // 12999-4499
+  remainingInr: 4499,
+  payInr: 8500,
 } as const;
 
 export const OFFER_DAYS_LEFT = 27;
+export const UPGRADE_CONFIG = { DAYS_LEFT: 27 };

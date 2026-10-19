@@ -3,15 +3,16 @@ export type StoragePlan = {
   name: string
   yearlyInr: number
   storage: string
+  storageLabel: string
   maxIds: number
   label: string
   badge?: string
 }
 
 export const STORAGE_PLANS: StoragePlan[] = [
-  { id: "starter", name: "Starter", yearlyInr: 5999, storage: "100GB", maxIds: 5, label: "5 IDs FIX", badge: "MOST POPULAR" },
-  { id: "growth", name: "Growth", yearlyInr: 12999, storage: "300GB", maxIds: 20, label: "20 IDs MAX" },
-  { id: "scale", name: "Scale", yearlyInr: 14999, storage: "1TB", maxIds: 50, label: "50 IDs MAX" },
+  { id: "100gb", name: "100GB FIX", yearlyInr: 5999, storage: "100GB", storageLabel: "100GB FIX", maxIds: 5, label: "5 IDs FIX", badge: "MOST POPULAR" },
+  { id: "300gb", name: "300GB MAX", yearlyInr: 12999, storage: "300GB", storageLabel: "300GB MAX", maxIds: 20, label: "20 IDs MAX" },
+  { id: "1tb", name: "1TB MAX", yearlyInr: 14999, storage: "1TB", storageLabel: "1TB MAX", maxIds: 50, label: "50 IDs MAX" },
 ]
 
 export function formatInr(n?: number): string {
