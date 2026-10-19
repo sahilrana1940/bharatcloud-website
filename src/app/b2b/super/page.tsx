@@ -1,7 +1,9 @@
-import { SuperAdminClient } from "@/components/b2b/SuperAdminClient";
-import { isSuperAdminSession } from "@/lib/b2b/session";
+import { CheckoutClient } from "../../components/checkout/CheckoutClient";
 
-export default async function SuperAdminPage() {
-  const authed = await isSuperAdminSession();
-  return <SuperAdminClient authed={authed} />;
+export default function Page() {
+  return (
+    <div className="p-6">
+      <CheckoutClient />
+    </div>
+  );
 }
