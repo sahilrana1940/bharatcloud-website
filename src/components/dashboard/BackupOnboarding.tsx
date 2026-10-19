@@ -180,9 +180,9 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
 
   if (!s3Ok) {
     return (
-      <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
-        Archive storage is not configured. Set <code>WASABI_*</code> or <code>E2E_S3_*</code> and{" "}
-        <code>ARCHIVE_S3_BUCKET</code> (e.g. bharatcloud-archiver) on Vercel.
+      <div className="mt-6 rounded border border-yellow-200 bg-yellow-50 p-4 text-sm text-amber-950">
+        <p>Archive storage pending setup. Admin needs to configure E2E bucket on Vercel env.</p>
+        <p className="mt-1 text-xs">For dev: Add mock fallback - show 0 team members, disable Sync All Drives button</p>
       </div>
     );
   }

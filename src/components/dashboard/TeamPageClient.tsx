@@ -30,11 +30,15 @@ export function TeamPageClient({
   const [toast, setToast] = useState("");
   const [globalProgress, setGlobalProgress] = useState<string | null>(null);
   const [proActive, setProActive] = useState<boolean | null>(null);
+  const [archivePending, setArchivePending] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const load = useCallback(async () => {
     const res = await fetch("/api/team/users");
     const j = await res.json();
-    if (res.ok) setMembers(j.users || []);
+    if (res.ok) {
+      setMembers(j.users || []);
+      setArchivePending(Boolean(j.archivePending));
+    }
   }, []);
 
   const loadBilling = useCallback(async () => {
@@ -137,7 +141,8 @@ export function TeamPageClient({
               <button
                 type="button"
                 onClick={() => syncDrive()}
-                className="flex items-center gap-2 rounded-xl bg-[#00BAF2] px-4 py-2.5 text-sm font-semibold text-[#062033]"
+                disabled={archivePending}
+                className="flex items-center gap-2 rounded-xl bg-[#00BAF2] px-4 py-2.5 text-sm font-semibold text-[#062033] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <RefreshCw className="h-4 w-4" /> Sync All Drives
               </button>
