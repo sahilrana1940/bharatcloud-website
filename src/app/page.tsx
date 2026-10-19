@@ -1,5 +1,12 @@
-import { LandingPage } from "@/components/b2b/LandingPage";
+import type { Metadata } from "next";
 
-export default function Home() {
-  return <LandingPage />;
+import { LandingView } from "@/components/saas/LandingView";
+
+export const metadata: Metadata = {
+  title: "Bharat Cloud.store",
+  description: "Mumbai E2E company storage with fixed mailbox caps.",
+};
+
+export default function HomePage() {
+  return <LandingView />;
 }

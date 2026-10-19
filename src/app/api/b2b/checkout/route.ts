@@ -11,8 +11,7 @@ export async function POST(req: Request) {
   }
 
   const orderId = `order_${Date.now()}`;
-  const razorpayKey =
-    process.env.NEXT_PUBLIC_RAZORPAY_KEY || process.env.RAZORPAY_KEY;
+  const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
   const total = withGst(selected.priceInr);
 
   return NextResponse.json({

@@ -13,9 +13,9 @@ export function BackupValueStrip() {
       {items.map(({ icon: Icon, text }) => (
         <div
           key={text}
-          className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#1E2639]/60 px-4 py-3 text-sm text-slate-300"
+          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm"
         >
-          <Icon className="h-4 w-4 shrink-0 text-cyan-400" />
+          <Icon className="h-4 w-4 shrink-0 text-cyan-600" />
           {text}
         </div>
       ))}

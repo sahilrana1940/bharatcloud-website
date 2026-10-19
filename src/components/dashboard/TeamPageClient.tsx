@@ -144,7 +144,7 @@ export function TeamPageClient({
               <button
                 type="button"
                 onClick={addUsers}
-                className="flex items-center gap-2 rounded-xl border border-cyan-500/40 px-4 py-2.5 text-sm text-cyan-300"
+                className="flex items-center gap-2 rounded-xl border border-cyan-200 bg-white px-4 py-2.5 text-sm font-medium text-cyan-700 shadow-sm hover:bg-cyan-50"
               >
                 <UserPlus className="h-4 w-4" /> Add User
               </button>
@@ -156,20 +156,20 @@ export function TeamPageClient({
       <BackupOnboarding userEmail={userEmail} />
 
       {(globalProgress || syncing) && (
-        <div className="mt-6 rounded-2xl border border-cyan-500/20 bg-[#1E2639] p-4">
-          <p className="text-sm text-cyan-300">
+        <div className="mt-6 rounded-2xl border border-cyan-200 bg-white p-4 shadow-sm">
+          <p className="text-sm font-medium text-cyan-800">
             {globalProgress || "Drive sync in progress…"}
           </p>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800">
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
             <div className="h-full w-2/3 animate-pulse bg-gradient-to-r from-sky-500 to-cyan-400" />
           </div>
         </div>
       )}
 
-      <div className="mt-8 overflow-x-auto rounded-2xl border border-white/10 bg-[#1E2639]">
-        <table className="w-full min-w-[720px] text-left text-sm">
+      <div className="mt-8 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <table className="w-full min-w-[720px] text-left text-sm text-slate-900">
           <thead>
-            <tr className="border-b border-white/10 text-slate-400">
+            <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Drive Status</th>
@@ -178,36 +178,41 @@ export function TeamPageClient({
             </tr>
           </thead>
           <tbody>
+            {members.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                  No team members yet.
+                </td>
+              </tr>
+            ) : null}
             {members.map((m) => {
               const used = m.storage_used_gb ?? m.drive_used_gb ?? 0;
               const limit = m.drive_limit_gb ?? 15;
               return (
-                <tr key={m.id} className="border-b border-white/5 text-slate-200">
-                  <td className="px-4 py-3">{m.email}</td>
-                  <td className="px-4 py-3">{m.name || m.email.split("@")[0]}</td>
-                  <td className="px-4 py-3 capitalize">{m.drive_sync_status || "idle"}</td>
-                  <td className="px-4 py-3">{used}GB / {limit}GB</td>
+                <tr key={m.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-900">{m.email}</td>
+                  <td className="px-4 py-3 text-slate-700">{m.name || m.email.split("@")[0]}</td>
+                  <td className="px-4 py-3 capitalize text-slate-700">{m.drive_sync_status || "idle"}</td>
+                  <td className="px-4 py-3 text-slate-700">{used}GB / {limit}GB</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
                       {(canManageTeam || m.email === userEmail) && (
                         <button
                           type="button"
                           onClick={() => syncDrive(m.email)}
-                          className="rounded-lg bg-[#1E3A5F] px-3 py-1.5 text-xs text-blue-300"
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                         >
                           Sync Drive
                         </button>
                       )}
                       {canManageTeam && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => enableBackup(m.email)}
-                            className="rounded-lg bg-cyan-600/80 px-3 py-1.5 text-xs font-semibold text-white"
-                          >
-                            Enable backup
-                          </button>
-                        </>
+                        <button
+                          type="button"
+                          onClick={() => enableBackup(m.email)}
+                          className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
+                        >
+                          Enable backup
+                        </button>
                       )}
                     </div>
                   </td>

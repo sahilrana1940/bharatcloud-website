@@ -133,8 +133,8 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
   if (!paid) {
     return (
       <>
-        <div className="mt-6 rounded-2xl border border-white/10 bg-[#1E2639] p-6 text-center">
-          <p className="text-slate-300">
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+          <p className="text-slate-700">
             BharatCloud Pro unlocks <strong>automatic Google Drive archive</strong> for your company.
           </p>
           <button
@@ -158,15 +158,15 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
   if (!oauthConfigured) {
     return (
       <>
-        <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-6">
-          <p className="font-semibold text-amber-100">Google backup setup required</p>
-          <p className="mt-2 text-sm text-amber-200/90">
+        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-6">
+          <p className="font-semibold text-amber-900">Google backup setup required</p>
+          <p className="mt-2 text-sm text-amber-800">
             Add Google OAuth in Vercel (Production + Preview), then redeploy. Your app will not crash —
             this screen guides you.
           </p>
           <a
             href="https://github.com/sahilrana1940/bharatcloud-website/blob/main/docs/GOOGLE_DRIVE_CONNECT.md"
-            className="mt-4 inline-block text-sm text-cyan-400 underline"
+            className="mt-4 inline-block text-sm text-cyan-700 underline"
             target="_blank"
             rel="noreferrer"
           >
@@ -180,7 +180,7 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
 
   if (!s3Ok) {
     return (
-      <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-6 text-sm text-amber-100">
+      <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
         Archive storage is not configured. Set <code>WASABI_*</code> or <code>E2E_S3_*</code> and{" "}
         <code>ARCHIVE_S3_BUCKET</code> (e.g. bharatcloud-archiver) on Vercel.
       </div>
@@ -190,15 +190,15 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
   if (!googleLinked) {
     return (
       <>
-        <div className="mt-6 rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-sky-950/80 to-[#1E2639] p-8 text-center">
-          <Cloud className="mx-auto h-12 w-12 text-cyan-400" />
-          <h2 className="mt-4 text-xl font-bold text-white">
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <Cloud className="mx-auto h-12 w-12 text-cyan-600" />
+          <h2 className="mt-4 text-xl font-bold text-slate-900">
             Connect Company Google Drive to Start Backup
           </h2>
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-slate-600">
             One click — we list your entire Drive, compress photos, and store copies in{" "}
-            <span className="text-slate-200">your company archive bucket</span> for{" "}
-            <span className="text-slate-200">{userEmail}</span>.
+            <span className="font-medium text-slate-800">your company archive bucket</span> for{" "}
+            <span className="font-medium text-slate-800">{userEmail}</span>.
           </p>
           <ul className="mx-auto mt-4 max-w-md text-left text-xs text-slate-500">
             <li>• Videos kept in original quality (safe for CCTV / long archives)</li>
@@ -221,29 +221,29 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
 
   return (
     <>
-      <div className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6">
-        <p className="font-medium text-emerald-100">Google Drive connected</p>
+      <div className="mt-6 rounded-2xl border border-emerald-200 bg-white p-6 shadow-sm">
+        <p className="font-medium text-emerald-800">Google Drive connected</p>
         {running ? (
           <div className="mt-3">
-            <p className="flex items-center gap-2 text-sm text-emerald-200/90">
+            <p className="flex items-center gap-2 text-sm text-emerald-800">
               <Loader2 className="h-4 w-4 animate-spin" />
               Drive status: <strong>Backing up…</strong> ({filesDone} files)
             </p>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
               <div className="h-full w-2/3 animate-pulse bg-gradient-to-r from-emerald-500 to-cyan-400" />
             </div>
-            <p className="mt-2 text-xs text-slate-400">
+            <p className="mt-2 text-xs text-slate-500">
               Keep this tab open or come back later — backup continues in chunks.
             </p>
           </div>
         ) : jobStatus === "completed" ? (
-          <p className="mt-2 text-sm text-emerald-200/90">
+          <p className="mt-2 text-sm text-emerald-800">
             Drive status: <strong>Archived</strong> — {filesDone} files ·{" "}
             {formatGb(bytesCompressed)} stored
             {savedPct > 0 ? ` (${savedPct}% smaller than originals on photos)` : ""}
           </p>
         ) : (
-          <p className="mt-2 text-sm text-emerald-200/90">Ready to archive your Google Drive.</p>
+          <p className="mt-2 text-sm text-emerald-800">Ready to archive your Google Drive.</p>
         )}
 
         {!running && (

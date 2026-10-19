@@ -27,6 +27,9 @@ function readRole(req: NextRequest): SaasRole {
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  if (pathname === "/dashboard") {
+    return NextResponse.next();
+  }
   const email = req.cookies.get("bc_workspace_email")?.value;
   const role = readRole(req);
 

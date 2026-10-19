@@ -7,6 +7,8 @@ import { BharatCloudFooter } from "@/components/BharatCloudFooter";
 const HIDE_PREFIXES = [
   "/dashboard",
   "/admin",
+  "/super-admin",
+  "/pricing",
   "/settings",
   "/login",
   "/signup",
@@ -16,7 +18,7 @@ const HIDE_PREFIXES = [
 
 export function ConditionalFooter() {
   const pathname = usePathname();
-  if (HIDE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+  if (pathname === "/" || HIDE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return null;
   }
   return <BharatCloudFooter />;

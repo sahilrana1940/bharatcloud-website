@@ -51,4 +51,9 @@ body {
       0 0 0 1px rgba(34, 211, 238, 0.35),
       0 12px 40px rgba(14, 165, 233, 0.12);
   }
+
+  .saas-num {
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
 }

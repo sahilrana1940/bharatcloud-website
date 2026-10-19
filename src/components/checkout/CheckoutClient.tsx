@@ -37,11 +37,11 @@ function CheckoutInner() {
   async function pay() {
     setError("");
     setLoading(true);
-    const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY;
+    const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
     if (!key) {
       setLoading(false);
       setError(
-        "Razorpay test key missing. Set NEXT_PUBLIC_RAZORPAY_KEY on Vercel.",
+        "Razorpay key missing. Set NEXT_PUBLIC_RAZORPAY_KEY_ID on Vercel.",
       );
       return;
     }
@@ -76,6 +76,26 @@ function CheckoutInner() {
         router.push(`/checkout/success?plan=${plan.id}`);
       },
       theme: { color: "#0ea5e9" },
+      config: {
+        display: {
+          blocks: {
+            upi: {
+              name: "Pay via UPI",
+              instruments: [{ method: "upi" }],
+            },
+          },
+          sequence: ["block.upi"],
+          preferences: { show_default_blocks: false },
+        },
+      },
+      method: {
+        upi: true,
+        card: false,
+        netbanking: false,
+        wallet: false,
+        emi: false,
+        paylater: false,
+      },
     });
     setLoading(false);
     rzp.open();
@@ -112,7 +132,7 @@ function CheckoutInner() {
           </p>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <Button className="w-full" onClick={pay} disabled={loading}>
-            {loading ? "Opening Razorpay…" : "Pay with Razorpay (test)"}
+            {loading ? "Opening UPI checkout…" : "Pay with UPI"}
           </Button>
           <Button
             type="button"
