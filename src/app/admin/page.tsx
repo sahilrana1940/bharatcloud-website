@@ -1,13 +1,16 @@
-import { redirect } from "next/navigation";
+"use client";
 
-import { PlatformAdminHub } from "@/components/admin/PlatformAdminHub";
-import { getSessionRole } from "@/lib/auth";
-import { isPlatformAdminSession } from "@/lib/admin/access";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default async function AdminHomePage() {
-  const role = await getSessionRole();
-  if (!isPlatformAdminSession(role)) {
-    redirect("/dashboard");
-  }
-  return <PlatformAdminHub />;
+export default function AdminRedirect() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/admin/platform");
+  }, [router]);
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-black font-mono text-red-500">
+      GOD MODE LOADING...
+    </div>
+  );
 }
