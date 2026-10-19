@@ -18,11 +18,44 @@ type Member = {
 export function MembersAdminClient() {
   const [members, setMembers] = useState<Member[]>([]);
   const [toast, setToast] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/admin/members");
-    const j = await res.json();
-    if (res.ok) setMembers(j.members || []);
+    setLoading(true);
+    const fallback: Member[] = [
+      {
+        id: "1",
+        email: "you@company.com",
+        domain: "Acme Pvt Ltd",
+        role: "20 IDs Rs12999",
+        googleConnectStatus: "Active",
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    try {
+      const res = await fetch("/api/godmode/workspaces");
+      if (!res.ok) throw new Error("workspaces");
+      const j = await res.json();
+      const rows = (j.workspaces || []).map((row: {
+        id: number;
+        name: string;
+        email: string;
+        plan: string;
+        status: string;
+      }) => ({
+        id: String(row.id),
+        email: row.email,
+        domain: row.name,
+        role: row.plan,
+        googleConnectStatus: row.status || "Active",
+        createdAt: new Date().toISOString(),
+      }));
+      setMembers(rows.length ? rows : fallback);
+    } catch {
+      setMembers(fallback);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -63,7 +96,7 @@ export function MembersAdminClient() {
             {members.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
-                  No members yet
+                  {loading ? "Loading members…" : "No members yet"}
                 </td>
               </tr>
             ) : (

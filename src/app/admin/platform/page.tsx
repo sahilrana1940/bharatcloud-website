@@ -78,25 +78,25 @@ export default function SuperAdminGodPage() {
     setLogs([`${stamp()} GOD MODE online`, `${stamp()} infra floor locked at Rs1700`]);
 
     let cancelled = false;
-    fetch("/api/admin/stats", { credentials: "include" })
+    fetch("/api/godmode", { credentials: "include" })
       .then(async (res) => {
         if (!res.ok) throw new Error("stats unavailable");
         return res.json() as Promise<{
-          companies?: number;
-          revenue?: number;
-          storageGb?: number;
-          employees?: number;
+          totalWorkspaces?: number;
+          storageUsed?: number;
+          gmailPending?: number;
+          drivePending?: number;
+          backupCount?: number;
+          infraCost?: number;
         }>;
       })
       .then((data) => {
         if (cancelled) return;
-        const tenants = Number(data.companies || 0);
-        const storageUsed = Number(data.storageGb || 0);
-        const revenue = Number(data.revenue || 0);
-        const members = Number(data.employees || 0);
-        if (tenants === 0 && storageUsed === 0 && revenue === 0) {
+        const tenants = Number(data.totalWorkspaces || 0);
+        const storageUsed = Number(data.storageUsed || 0);
+        if (tenants === 0 && storageUsed === 0) {
           setStats(DEMO);
-          setLogs((prev) => [`${stamp()} Supabase empty — demo figures on`, ...prev]);
+          setLogs((prev) => [`${stamp()} God Mode empty — demo figures on`, ...prev]);
           return;
         }
         setStats({
@@ -104,21 +104,21 @@ export default function SuperAdminGodPage() {
           tenantsActive: tenants,
           tenantsPending: 0,
           storageUsed,
-          storageLimit: Math.max(100, Math.ceil(storageUsed) || 100),
+          storageLimit: 100,
           saved: 0,
-          revenue,
+          revenue: Number(data.infraCost || 1700),
           revenueToday: 0,
-          upi: 0,
+          upi: Number(data.backupCount || 0),
           upiFailed: 0,
-          gmail: 0,
+          gmail: Number(data.gmailPending || 0),
           gmailConnected: 0,
-          gmailQueue: 0,
-          members,
+          gmailQueue: Number(data.gmailPending || 0),
+          members: tenants,
           admins: 0,
-          users: members,
+          users: Number(data.drivePending || 0),
           demo: false,
         });
-        setLogs((prev) => [`${stamp()} Supabase stats loaded`, ...prev]);
+        setLogs((prev) => [`${stamp()} God Mode stats loaded`, ...prev]);
       })
       .catch(() => {
         if (cancelled) return;
@@ -132,8 +132,7 @@ export default function SuperAdminGodPage() {
   }, []);
 
   const hostingFixed = 1700;
-  const e2eDynamic = Math.round(stats.storageUsed * 8);
-  const infraCost = hostingFixed + e2eDynamic;
+  const infraCost = hostingFixed;
   const savedMoney = Math.max(0, 3700 - infraCost);
   const freeGb = Math.max(0, stats.storageLimit - stats.storageUsed);
 
@@ -165,7 +164,9 @@ export default function SuperAdminGodPage() {
               <h1 className="text-2xl font-black tracking-wide text-red-600 sm:text-3xl">
                 BHARATCLOUD SUPER ADMIN
               </h1>
-              <p className="mt-1 text-sm text-slate-400">INFRA COST {inr(infraCost)}</p>
+              <p className="mt-1 inline-flex rounded-lg border border-[#00FF88] px-2 py-1 text-sm text-[#00FF88] shadow-[0_0_20px_#00FF88]">
+                INFRA COST {inr(infraCost)} Fixed
+              </p>
             </div>
             <span className="rounded-full border border-red-600 px-3 py-1 text-xs font-bold text-red-500 shadow-[0_0_20px_#dc2626]">
               GOD MODE UNLOCKED
@@ -188,7 +189,7 @@ export default function SuperAdminGodPage() {
 
           <section className="mt-6 rounded-2xl border border-white/10 bg-[#0A0A0A] p-6 shadow-[0_0_20px_#dc2626]">
             <p className="text-sm text-slate-300">
-              Hosting {inr(hostingFixed)} Fixed + E2E {inr(e2eDynamic)} Cool (HOT Rs20 COLD Rs6 avg Rs8) = Total {inr(infraCost)}
+              Hosting {inr(hostingFixed)} Fixed. Infra cost stays at {inr(infraCost)}.
             </p>
             <p className="mt-2 text-sm text-slate-400">
               Old <span className="line-through">₹3,700</span>
@@ -205,7 +206,7 @@ export default function SuperAdminGodPage() {
             {logs.map((line) => (
               <p key={line}>{line}</p>
             ))}
-            <p>{new Date().toISOString().slice(11, 19)} infra {inr(infraCost)} = {hostingFixed} + {e2eDynamic}</p>
+            <p>{new Date().toISOString().slice(11, 19)} infra {inr(infraCost)} fixed</p>
           </section>
         </main>
       </div>

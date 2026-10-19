@@ -1,0 +1,176 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+type Stats = {
+  totalWorkspaces: number;
+  storageUsed: number;
+  gmailPending: number;
+  drivePending: number;
+  backupCount: number;
+  infraCost: number;
+};
+
+type Workspace = {
+  id: number;
+  name: string;
+  email: string;
+  plan: string;
+  status: string;
+  storage: string;
+};
+
+type Tier = { name: string; used: string; limit: string };
+type Approval = { user: string; type: string; status: string; date: string };
+
+const FALLBACK_STATS: Stats = {
+  totalWorkspaces: 50,
+  storageUsed: 90,
+  gmailPending: 3,
+  drivePending: 2,
+  backupCount: 0,
+  infraCost: 1700,
+};
+
+const FALLBACK_WORKSPACES: Workspace[] = [
+  {
+    id: 1,
+    name: "Acme Pvt Ltd",
+    email: "you@company.com",
+    plan: "20 IDs Rs12999",
+    status: "Active",
+    storage: "300GB",
+  },
+];
+
+const FALLBACK_TIERS: Tier[] = [{ name: "Tier 1 Mumbai E2E", used: "90GB", limit: "300GB" }];
+const FALLBACK_APPROVALS: Approval[] = [
+  { user: "test@gmail.com", type: "Gmail", status: "Pending", date: "Today" },
+];
+
+export default function GodModePage() {
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<Stats>(FALLBACK_STATS);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(FALLBACK_WORKSPACES);
+  const [tiers, setTiers] = useState<Tier[]>(FALLBACK_TIERS);
+  const [approvals, setApprovals] = useState<Approval[]>(FALLBACK_APPROVALS);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      try {
+        const [statsRes, workRes, storeRes, approveRes] = await Promise.all([
+          fetch("/api/godmode"),
+          fetch("/api/godmode/workspaces"),
+          fetch("/api/godmode/storage"),
+          fetch("/api/godmode/approvals"),
+        ]);
+        if (!statsRes.ok || !workRes.ok || !storeRes.ok || !approveRes.ok) {
+          throw new Error("godmode api");
+        }
+        const statsJson = (await statsRes.json()) as Stats;
+        const workJson = (await workRes.json()) as { workspaces?: Workspace[] };
+        const storeJson = (await storeRes.json()) as { tiers?: Tier[] };
+        const approveJson = (await approveRes.json()) as { approvals?: Approval[] };
+        if (cancelled) return;
+        setStats({ ...FALLBACK_STATS, ...statsJson, infraCost: statsJson.infraCost || 1700 });
+        setWorkspaces(workJson.workspaces?.length ? workJson.workspaces : FALLBACK_WORKSPACES);
+        setTiers(storeJson.tiers?.length ? storeJson.tiers : FALLBACK_TIERS);
+        setApprovals(approveJson.approvals?.length ? approveJson.approvals : FALLBACK_APPROVALS);
+      } catch {
+        if (cancelled) return;
+        setStats(FALLBACK_STATS);
+        setWorkspaces(FALLBACK_WORKSPACES);
+        setTiers(FALLBACK_TIERS);
+        setApprovals(FALLBACK_APPROVALS);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-black px-6 py-8 text-white">
+      <header className="flex items-center justify-between rounded-2xl border-2 border-[#FF3B30] px-5 py-4 shadow-[0_0_20px_#FF3B30]">
+        <h1 className="text-2xl font-black text-[#FF3B30]">BHARATCLOUD SUPER ADMIN</h1>
+        <Link href="/admin/platform" className="text-sm text-[#00D4FF]">
+          Command center
+        </Link>
+      </header>
+
+      {loading ? <p className="mt-6 font-mono text-[#00FF88]">Loading God Mode…</p> : null}
+
+      <section className="mt-6 grid gap-4 md:grid-cols-3">
+        <Card color="#00D4FF" label="WORKSPACES" value={String(stats.totalWorkspaces)} />
+        <Card color="#FF9500" label="STORAGE" value={`${stats.storageUsed}GB`} />
+        <Card color="#00FF88" label="INFRA COST" value={`Rs ${stats.infraCost} Fixed`} />
+        <Card color="#FF3B30" label="GMAIL PENDING" value={String(stats.gmailPending)} />
+        <Card color="#00D4FF" label="DRIVE PENDING" value={String(stats.drivePending)} />
+        <Card color="#FF9500" label="BACKUPS" value={String(stats.backupCount)} />
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-lg font-bold">All workspace members</h2>
+        <ul className="mt-3 space-y-2">
+          {workspaces.map((row) => (
+            <li key={row.id} className="rounded-xl border border-white/10 bg-[#0A0A0A] px-4 py-3 text-sm">
+              <span className="font-semibold">{row.name}</span>
+              <span className="ml-3 text-slate-400">{row.email}</span>
+              <span className="ml-3 text-[#00FF88]">{row.status}</span>
+              <span className="ml-3">{row.plan}</span>
+              <span className="ml-3 text-[#00D4FF]">{row.storage}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-lg font-bold">Storage tiers</h2>
+        <div className="mt-3 grid gap-3">
+          {tiers.map((tier) => (
+            <article key={tier.name} className="rounded-xl border border-[#FF9500] bg-[#0A0A0A] p-4 shadow-[0_0_20px_#FF9500]">
+              <p className="font-semibold">{tier.name}</p>
+              <p className="mt-1 text-sm text-slate-300">
+                {tier.used} / {tier.limit}
+              </p>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+                <div className="h-full w-[30%] bg-[#00FF88]" />
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-lg font-bold">Gmail and Drive approvals</h2>
+        <ul className="mt-3 space-y-2">
+          {approvals.map((row) => (
+            <li key={`${row.type}-${row.user}`} className="rounded-xl border border-white/10 bg-[#0A0A0A] px-4 py-3 text-sm">
+              <span className="font-semibold">{row.user}</span>
+              <span className="ml-3 text-[#FF9500]">{row.type}</span>
+              <span className="ml-3 text-[#FF3B30]">{row.status}</span>
+              <span className="ml-3 text-slate-400">{row.date}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
+
+function Card({ color, label, value }: { color: string; label: string; value: string }) {
+  return (
+    <article className="rounded-2xl border bg-[#0A0A0A] p-5" style={{ borderColor: color, boxShadow: `0 0 20px ${color}` }}>
+      <p className="text-xs font-bold tracking-[0.16em]" style={{ color }}>
+        {label}
+      </p>
+      <p className="mt-3 text-3xl font-black">{value}</p>
+    </article>
+  );
+}

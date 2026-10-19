@@ -3,6 +3,7 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(process.cwd()),
+  images: { unoptimized: true },
   async redirects() {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
     if (!appUrl) return [];
