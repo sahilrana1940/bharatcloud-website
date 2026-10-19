@@ -5,19 +5,31 @@ export const RENT = {
   PAUSE_DAYS: 7,
 }
 
+export const RENT_CONFIG = RENT
+
 export function fiveIdRentQuote() {
-  const admin = RENT.ADMIN
-  const emp = RENT.EMP_30
-  const monthly = admin + 4 * emp
-  const elevenMonths = monthly * 11
+  const ADMIN = 199
+  const EMP = 49
+  const monthly = ADMIN + 4 * EMP // 199+196=395
+  const elevenMonths = monthly * 11 // 4345
+  const firstYearTotal = 5999 + elevenMonths // 10344
   return {
-    admin: admin,
-    emp: emp,
-    monthly: monthly,
-    elevenMonths: elevenMonths,
-    totalFirstYear: 5999 + elevenMonths,
-    breakdown: "Rs." + admin + " + 4xRs." + emp + " = Rs." + monthly + "/mo x11"
+    admin: ADMIN,
+    emp: EMP,
+    monthly,
+    elevenMonths,
+    firstYearTotal,
+    breakdown: "Rs.199 + 4xRs.49 = Rs.395/mo x 11",
+    adminStr: "Rs. " + ADMIN + "/mo",
+    empStr: "Rs. " + EMP + "/mo",
+    totalStr: "Rs. " + monthly,
   }
 }
 
-export const RENT_CONFIG = RENT
+export function formatRent(n: number): string {
+  if (typeof n !== "number") return "Rs. 0"
+  return "Rs. " + n.toLocaleString("en-IN")
+}
+
+export const fiveIdRent = fiveIdRentQuote
+export const getFiveIdRent = fiveIdRentQuote

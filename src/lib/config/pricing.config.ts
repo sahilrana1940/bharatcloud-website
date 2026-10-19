@@ -1,11 +1,11 @@
 export type StoragePlan = {
-  id: string;
-  name: string;
-  yearlyInr: number;
-  storage: string;
-  maxIds: number;
-  label: string;
-  badge?: string;
+  id: string
+  name: string
+  yearlyInr: number
+  storage: string
+  maxIds: number
+  label: string
+  badge?: string
 }
 
 export const STORAGE_PLANS: StoragePlan[] = [
@@ -14,7 +14,8 @@ export const STORAGE_PLANS: StoragePlan[] = [
   { id: "scale", name: "Scale", yearlyInr: 14999, storage: "1TB", maxIds: 50, label: "50 IDs MAX" },
 ]
 
-export function formatInr(n: number): string {
+export function formatInr(n?: number): string {
+  if (typeof n !== "number") return "Rs. 0"
   return "Rs. " + n.toLocaleString("en-IN")
 }
 
