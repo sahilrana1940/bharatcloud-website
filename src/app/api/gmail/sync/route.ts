@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { assertEmailBackupEnabled } from "@/lib/backup/email-backup-guard";
+import { saveTeamMail } from "@/lib/gmail/sync";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { gmailClient } from "@/lib/google/client";
 import { fetchGoogleTokenRow } from "@/lib/google/token-row";
@@ -80,6 +81,9 @@ async function runGmailSync(
       const subject = headers.find((h) => h.name === "Subject")?.value || "";
       const from = headers.find((h) => h.name === "From")?.value || "";
       const to = headers.find((h) => h.name === "To")?.value || "";
+      const messageId =
+        headers.find((h) => h.name?.toLowerCase() === "message-id")?.value ||
+        `<${msg.id}@mail.gmail.com>`;
       const dateStr = headers.find((h) => h.name === "Date")?.value;
       const labels = full.data.labelIds || [];
       const folder = labels.includes("SENT") ? "SENT" : "INBOX";
@@ -87,8 +91,53 @@ async function runGmailSync(
       const attPart = parts.find((p) => p.filename && p.body?.attachmentId);
       const hasAtt = Boolean(attPart?.filename);
       let s3Path: string | null = null;
+      const toList = Array.from(
+        new Set(
+          [...(to.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || []), m.email]
+            .map((email) => email.toLowerCase()),
+        ),
+      );
+      let teamSaved: { duplicate: boolean } | null = null;
+      try {
+        teamSaved = await saveTeamMail(
+          {
+            headers: {
+              "message-id": messageId,
+              subject,
+              from,
+              to,
+            },
+            toList,
+            raw: `Message-ID: ${messageId}\r\nFrom: ${from}\r\nTo: ${to}\r\nSubject: ${subject}\r\n\r\n${full.data.snippet || subject}`,
+            subject,
+            from_email: from,
+            snippet: full.data.snippet || subject,
+          },
+          session.companyId,
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        if (!/team_emails|schema cache|E2E credentials/i.test(message)) {
+          await supabase
+            .from("company_users")
+            .update({ email_sync_status: "error", email_sync_progress: message.slice(0, 180) })
+            .eq("company_id", session.companyId)
+            .eq("email", m.email);
+          continue;
+        }
+      }
 
-      if (attPart?.body?.attachmentId && tokenRow?.refresh_token) {
+      if (teamSaved?.duplicate) {
+        imported += 1;
+        await supabase
+          .from("company_users")
+          .update({ email_sync_progress: `${i}/${total}` })
+          .eq("company_id", session.companyId)
+          .eq("email", m.email);
+        continue;
+      }
+
+      if (!teamSaved && attPart?.body?.attachmentId && tokenRow?.refresh_token) {
         try {
           const att = await gmail.users.messages.attachments.get({
             userId: "me",
@@ -107,6 +156,16 @@ async function runGmailSync(
         } catch {
           /* skip attachment */
         }
+      }
+
+      if (teamSaved) {
+        imported += 1;
+        await supabase
+          .from("company_users")
+          .update({ email_sync_progress: `${i}/${total}` })
+          .eq("company_id", session.companyId)
+          .eq("email", m.email);
+        continue;
       }
 
       await supabase.from("email_backups").upsert(

@@ -68,3 +68,25 @@ export function nextDueDate(dueDayOfMonth: number, from = new Date()): Date {
 export function monthlyTotalInr(): number {
   return PLATFORM_COST_LINES.reduce((s, l) => s + l.amountInr, 0);
 }
+
+/** E2E Mumbai object storage. Bill is usage × rate, not a flat line. */
+export const E2E_RATES = {
+  hotPerGb: 20,
+  coldPerGb: 6,
+  hotShare: 0.2,
+  coldShare: 0.8,
+  hostingInr: 1700,
+  previousBillInr: 3700,
+} as const;
+
+/** hot GB = total × 0.2 at Rs 20, cold GB = total × 0.8 at Rs 6. */
+export function calculateBill(totalGB: number): number {
+  const gb = Number.isFinite(totalGB) ? Math.max(0, totalGB) : 0;
+  const hot = gb * E2E_RATES.hotShare;
+  const cold = gb * E2E_RATES.coldShare;
+  return hot * E2E_RATES.hotPerGb + cold * E2E_RATES.coldPerGb;
+}
+
+export function platformTotalInr(storageGb: number): number {
+  return E2E_RATES.hostingInr + calculateBill(storageGb);
+}

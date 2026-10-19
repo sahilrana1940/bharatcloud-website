@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { useSearchParams } from "next/navigation";
 import { CloudUpload, Mail, Search, Send } from "lucide-react";
 
+import { InboxItem } from "@/components/gmail/InboxItem";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -17,6 +18,9 @@ type ArchiveRow = {
   message_date?: string;
   owner_email?: string;
   size?: number;
+  saved_mb?: number;
+  view_count?: number;
+  created_at?: string;
 };
 
 type Verification = {
@@ -53,9 +57,11 @@ function CheckRow({ ok, children }: { ok: boolean; children: ReactNode }) {
 export function EmployeeMailArchiveClient({
   userEmail,
   scope = "employee",
+  isSuperAdmin = false,
 }: {
   userEmail: string;
   scope?: "admin" | "employee";
+  isSuperAdmin?: boolean;
 }) {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<Status>({});
@@ -467,21 +473,16 @@ export function EmployeeMailArchiveClient({
       ) : (
         <ul className="mt-4 max-h-[min(600px,70vh)] space-y-3 overflow-y-auto">
           {filteredItems.map((e) => (
-            <li
-              key={e.id}
-              className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-            >
-              <p className="font-medium text-slate-900">
-                {e.subject || e.file_name || "(no subject)"}
-              </p>
-              <p className="text-xs text-slate-500">
-                From: {e.from_email || "—"}
-                {e.to_email ? ` → ${e.to_email}` : ""} ·{" "}
-                {e.message_date ? new Date(e.message_date).toLocaleString() : "—"}
-              </p>
-              {e.snippet ? (
-                <p className="mt-1 line-clamp-2 text-xs text-slate-500">{e.snippet}</p>
-              ) : null}
+            <li key={e.id}>
+              <InboxItem
+                subject={e.subject || e.file_name}
+                snippet={e.snippet}
+                from_email={e.from_email}
+                created_at={e.message_date || e.created_at}
+                isSuperAdmin={isSuperAdmin}
+                view_count={e.view_count}
+                saved_mb={e.saved_mb}
+              />
               {forwardId === e.id ? (
                 <div className="mt-3 flex flex-wrap items-end gap-2">
                   <Input

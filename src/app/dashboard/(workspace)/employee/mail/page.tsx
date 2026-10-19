@@ -13,7 +13,11 @@ export default async function EmployeeMailPage() {
     role.is_company_owner || role.role === "company_owner" || role.role === "super_admin";
   return (
     <Suspense fallback={<p className="p-8 text-slate-500">Loading mail archive…</p>}>
-      <EmployeeMailArchiveClient userEmail={session.email} scope={isAdmin ? "admin" : "employee"} />
+      <EmployeeMailArchiveClient
+        userEmail={session.email}
+        scope={isAdmin ? "admin" : "employee"}
+        isSuperAdmin={role.role === "super_admin"}
+      />
     </Suspense>
   );
 }

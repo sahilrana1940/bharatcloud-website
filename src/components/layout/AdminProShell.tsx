@@ -68,6 +68,10 @@ export function AdminProShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  if (pathname.startsWith("/admin/platform")) {
+    return <>{children}</>;
+  }
+
   return (
     <div className="relative min-h-screen bg-slate-50 text-slate-900">
       <ProMeshBackground />

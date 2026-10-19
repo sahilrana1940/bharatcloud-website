@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { isPlatformAdminSession } from "@/lib/admin/access";
+import { getSessionRole } from "@/lib/auth";
 import { readWorkspaceAuthRepaired } from "@/lib/billing/workspace-cookies";
 import { attachWorkspaceCompanyCookie } from "@/lib/billing/workspace-cookies";
 import { resolveArchiveCompanyId } from "@/lib/archive/resolve-archive-company";
@@ -40,18 +42,77 @@ export async function GET(req: Request) {
       file_name: (r.subject as string) || "email",
       subject: r.subject as string,
       from_email: r.from_email as string,
-      to_email: r.to_email as string,
       snippet: (r.body_text as string) || "",
-      message_date: r.date as string,
+      message_date: (r.date as string) || (r.created_at as string),
       owner_email: r.owner_email as string,
       size: 0,
+      saved_mb: Number(r.saved_mb || 0),
+      view_count: Number(r.view_count || 0),
     }));
+
+  const role = await getSessionRole();
+  const isSuperAdmin = isPlatformAdminSession(role);
+
+  const inbox = await supabase
+    .from("user_inbox_view")
+    .select(
+      "id, user_email, is_read, team_emails(subject, from_email, snippet, created_at, saved_mb, message_id, team_id)",
+    )
+    .eq("user_email", session.email.toLowerCase())
+    .order("id", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (!inbox.error && inbox.data?.length) {
+    const items = inbox.data.map((row) => {
+      const mail = Array.isArray(row.team_emails) ? row.team_emails[0] : row.team_emails;
+      return {
+        id: row.id as string,
+        file_name: mail?.subject || "email",
+        subject: mail?.subject || "",
+        from_email: mail?.from_email || "",
+        snippet: mail?.snippet || "",
+        message_date: mail?.created_at || "",
+        owner_email: row.user_email as string,
+        size: 0,
+        saved_mb: Number(mail?.saved_mb || 0),
+        view_count: isSuperAdmin ? undefined : 0,
+        message_id: mail?.message_id,
+        team_id: mail?.team_id,
+      };
+    });
+    if (isSuperAdmin) {
+      const ids = items.map((item) => item.message_id).filter(Boolean);
+      if (ids.length) {
+        const counts = await supabase
+          .from("user_inbox_view")
+          .select("message_id")
+          .in("message_id", ids as string[]);
+        const tally = new Map<string, number>();
+        for (const row of counts.data || []) {
+          const id = row.message_id as string;
+          tally.set(id, (tally.get(id) || 0) + 1);
+        }
+        for (const item of items) {
+          item.view_count = tally.get(item.message_id || "") || 0;
+        }
+      }
+    }
+    return NextResponse.json({
+      items,
+      page,
+      total: items.length,
+      companyId,
+      email: session.email,
+      source: "user_inbox_view",
+      isSuperAdmin,
+    });
+  }
 
   const cookieFix = companyId !== session.companyId || cookieRepaired;
 
   let ebQuery = supabase
     .from("email_backups")
-    .select("*", { count: "exact" })
+    .select("id, subject, from_email, body_text, date, owner_email", { count: "exact" })
     .eq("company_id", companyId)
     .order("date", { ascending: false });
   if (scope !== "company") {
@@ -74,7 +135,7 @@ export async function GET(req: Request) {
   if (!ebFirst.error && (ebFirst.count ?? 0) > 0 && !ebFirst.data?.length) {
     const ebRelaxed = await supabase
       .from("email_backups")
-      .select("*", { count: "exact" })
+      .select("id, subject, from_email, body_text, date, owner_email", { count: "exact" })
       .eq("company_id", companyId)
       .order("date", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -111,7 +172,7 @@ export async function GET(req: Request) {
   if (error?.message.includes("archive_files")) {
     const fallback = await supabase
       .from("email_backups")
-      .select("*", { count: "exact" })
+      .select("id, subject, from_email, body_text, date, owner_email", { count: "exact" })
       .eq("company_id", companyId)
       .eq("owner_email", session.email.toLowerCase())
       .order("date", { ascending: false })
@@ -135,7 +196,7 @@ export async function GET(req: Request) {
   if (!data?.length && (count === 0 || count === null)) {
     const fallback = await supabase
       .from("email_backups")
-      .select("*", { count: "exact" })
+      .select("id, subject, from_email, body_text, date, owner_email", { count: "exact" })
       .eq("company_id", companyId)
       .eq("owner_email", session.email.toLowerCase())
       .order("date", { ascending: false })
