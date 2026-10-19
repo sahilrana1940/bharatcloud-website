@@ -56,27 +56,27 @@ export function SuperAdminConsole() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080808] px-4 py-8 text-white sm:px-8">
+    <div className="min-h-screen bg-[#F4EFE6] px-4 py-8 text-[#10243E] sm:px-8">
       <div className="mx-auto max-w-6xl">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">SUPER ADMIN</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-[#0F766E]">SUPER ADMIN · Hostinger · E2E</p>
             <h1 className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-tight">
               Auto-Detect
-              <span className="inline-flex items-center gap-2 rounded-full border border-zinc-800 px-3 py-1 text-xs font-normal text-emerald-300">
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-normal text-emerald-700">
                 <span className="h-2 w-2 rounded-full bg-emerald-400" />
                 Live
               </span>
             </h1>
           </div>
-          <Link href="/dashboard" className="text-sm text-zinc-400 hover:text-white">
+          <Link href="/dashboard" className="text-sm text-slate-600 hover:text-[#10243E]">
             Open dashboard
           </Link>
         </header>
 
-        <section className="mt-8 overflow-x-auto rounded-[24px] border border-zinc-800 bg-zinc-900/50 backdrop-blur">
+        <section className="mt-8 overflow-x-auto rounded-[24px] border border-[#10243E]/10 bg-white shadow-sm">
           <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="text-zinc-500">
+            <thead className="bg-[#F4EFE6] text-slate-600">
               <tr>
                 <th className="px-5 py-4 font-medium">Tenant</th>
                 <th className="px-5 py-4 font-medium">Plan</th>
@@ -93,15 +93,15 @@ export function SuperAdminConsole() {
                   <tr
                     key={row.id}
                     onClick={() => setTenantId(row.id)}
-                    className={`cursor-pointer border-t border-zinc-800 ${selected ? "bg-white/5" : ""}`}
+                    className={`cursor-pointer border-t border-slate-100 ${selected ? "bg-[#E8F7FD]" : ""}`}
                   >
                     <td className="px-5 py-4">{row.tenant}</td>
-                    <td className="px-5 py-4 text-zinc-300">{row.plan}</td>
+                    <td className="px-5 py-4 text-slate-600">{row.plan}</td>
                     <td className="saas-num px-5 py-4">{row.ids}</td>
                     <td className="saas-num px-5 py-4">{row.rent}</td>
-                    <td className="px-5 py-4 text-zinc-300">{row.issue}</td>
+                    <td className="px-5 py-4 text-slate-600">{row.issue}</td>
                     <td className="px-5 py-4">
-                      <span className="rounded-full border border-zinc-700 px-2.5 py-1 text-xs">{row.badge}</span>
+                      <span className="rounded-full border border-slate-200 bg-[#F4EFE6] px-2.5 py-1 text-xs">{row.badge}</span>
                     </td>
                   </tr>
                 );
@@ -116,17 +116,17 @@ export function SuperAdminConsole() {
               key={command.id}
               type="button"
               onClick={() => run(command.id)}
-              className="rounded-full bg-white px-4 py-2 text-xs font-medium tracking-wide text-black"
+              className="rounded-full bg-[#00BAF2] px-4 py-2 text-xs font-medium tracking-wide text-[#062033]"
             >
               {command.label}
             </button>
           ))}
         </div>
 
-        <section className="mt-4 rounded-[24px] border border-zinc-800 bg-black p-5">
-          <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Log</p>
-          <div className="saas-num mt-3 min-h-32 space-y-2 text-xs text-emerald-300">
-            {log.length === 0 ? <p className="text-zinc-600">Waiting for a fix command.</p> : null}
+        <section className="mt-4 rounded-[24px] border border-[#10243E]/10 bg-[#10243E] p-5">
+          <p className="text-xs uppercase tracking-[0.16em] text-[#7DD3C7]">Log</p>
+          <div className="saas-num mt-3 min-h-32 space-y-2 text-xs text-[#7DFFB3]">
+            {log.length === 0 ? <p className="text-white/40">Waiting for a fix command.</p> : null}
             {log.map((line) => (
               <p key={line.id}>
                 {line.at} {line.command} {line.result}
@@ -160,9 +160,9 @@ export function SuperAdminConsole() {
 
 function ConfigChip({ file, value }: { file: string; value: string }) {
   return (
-    <div className="rounded-[24px] border border-zinc-800 bg-zinc-900/50 p-4 backdrop-blur">
-      <p className="text-xs text-zinc-500">{file}</p>
-      <p className="saas-num mt-2 text-sm text-zinc-200">{value}</p>
+    <div className="rounded-[24px] border border-[#10243E]/10 bg-white p-4 shadow-sm">
+      <p className="text-xs text-slate-500">{file}</p>
+      <p className="saas-num mt-2 text-sm text-[#10243E]">{value}</p>
     </div>
   );
 }

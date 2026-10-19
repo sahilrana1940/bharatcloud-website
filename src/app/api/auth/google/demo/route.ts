@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
-  const email = (url.searchParams.get("email") || "admin@rjadam.com").toLowerCase();
+  const email = (url.searchParams.get("email") || "company@bharatcloud.store").toLowerCase();
   const mode = url.searchParams.get("mode");
 
   if ((mode === "b2c" || url.searchParams.get("redirect") === "personal") && !isB2cEnabled()) {

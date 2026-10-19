@@ -1,4 +1,4 @@
-# आज का full concept demo (GOR JRM / BharatCloud)
+# Full concept demo (BharatCloud)
 
 Rough **wall-clock** time if one person does Supabase + Vercel and you test flows in parallel: **about 2–4 hours** (not calendar days).
 
@@ -11,8 +11,6 @@ Rough **wall-clock** time if one person does Supabase + Vercel and you test flow
 | `PAYMENT_BYPASS` | `0` unless you want to skip payment gate entirely |
 | `NEXT_PUBLIC_UPI_ID` | leave empty while `BILLING_UPI_LIVE=0` |
 | `RAZORPAY_*` | leave empty — Team “Upgrade” sends users to **Billing** page |
-
-Optional: `gorjrmcourier.com` demo Drive backup without 402 is already in tenant profile (no need to turn on global bypass).
 
 **Redeploy** after env changes (~3–5 min).
 
@@ -28,7 +26,7 @@ notify pgrst, 'reload schema';
 
 ### 1. Company owner (~20 min)
 
-1. Login as owner (`info@gorjrmcourier.com` or your owner email).
+1. Login as owner (`company@bharatcloud.store` or your owner email).
 2. **Billing** → pick plan → green **Request plan activation** (not real UPI).
 3. Super admin: **Admin → Approve payments** → **Approve** → owner sees active subscription.
 4. **Team** → Connect Google Drive → start backup.

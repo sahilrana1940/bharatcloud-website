@@ -16,7 +16,7 @@ const RESULT: Record<FixCommand, (tenant: string) => string> = {
   FORCE_UPGRADE: (tenant) =>
     `cron tick: pro-rata upgrade forced for ${tenant}. ID cap raised after payment.`,
   RESCAN: (tenant) =>
-    `cron tick: GoDaddy rescan queued for ${tenant}. Active mailbox count will refresh.`,
+    `cron tick: Hostinger rescan queued for ${tenant}. Archive stays on E2E.`,
 };
 
 /** Mock cron action. Swap the body later without renaming the export. */

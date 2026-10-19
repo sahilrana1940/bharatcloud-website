@@ -77,7 +77,7 @@ export function TeamPageClient({
         companyEmail: userEmail,
         plan: "pro",
       });
-      notify(result.ok ? "Razorpay checkout opened — complete payment to unlock Pro" : result.error);
+      notify(result.ok ? "Paytm checkout opened — complete payment to unlock Pro" : result.error);
     } finally {
       setUpgradeLoading(false);
     }
@@ -126,7 +126,7 @@ export function TeamPageClient({
               type="button"
               disabled={upgradeLoading}
               onClick={() => upgradeToPro()}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-500 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#10243E] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
             >
               {upgradeLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Upgrade to Pro
@@ -137,7 +137,7 @@ export function TeamPageClient({
               <button
                 type="button"
                 onClick={() => syncDrive()}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-4 py-2.5 text-sm font-semibold text-white"
+                className="flex items-center gap-2 rounded-xl bg-[#00BAF2] px-4 py-2.5 text-sm font-semibold text-[#062033]"
               >
                 <RefreshCw className="h-4 w-4" /> Sync All Drives
               </button>
@@ -209,7 +209,7 @@ export function TeamPageClient({
                         <button
                           type="button"
                           onClick={() => enableBackup(m.email)}
-                          className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
+                          className="rounded-lg bg-[#0F766E] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0F766E]/90"
                         >
                           Enable backup
                         </button>

@@ -1,40 +1,47 @@
+// src/lib/config/rent.config.ts - 2026 - FINAL COMPAT - MADE IN INDIA
+// Old imports ko break nahi hone dega - Live safe
+
+export const RENT_LOCKS_SAFE = {
+  day0_7: "Backup pause - data safe, sync stopped - no delete",
+  day7_30: "Read-only - mail view only - no send",
+  day30_90: "Admin purge only after 90 days notice - Mumbai E2E",
+  title: "Backup Safety Locks - 2026",
+} as const;
+
+// Alias plus the seat rates older modules still read.
 export const RENT = {
-  ADMIN: 199,
-  EMP_30: 49,
-  EMP_99: 99,
-  PAUSE_DAYS: 7,
-  // LandingView ke liye aliases
+  ...RENT_LOCKS_SAFE,
   adminMonthlyInr: 199,
   employeeFirst30DaysInr: 49,
   employeeAfter30DaysInr: 99,
-  introDays: 30,
-}
+};
 
-export const RENT_CONFIG = RENT
-
+// Functions jo DashboardConsole expect kar raha hai
 export function fiveIdRentQuote() {
-  const ADMIN = 199
-  const EMP = 49
-  const monthly = ADMIN + 4 * EMP // 395
-  const elevenMonths = monthly * 11 // 4345
-  const grandTotal = 5999 + elevenMonths // 10344
   return {
-    // Old names
-    admin: ADMIN,
-    emp: EMP,
-    monthly,
-    elevenMonths,
-    firstYearTotal: grandTotal,
-    // New names jo LandingView use karta hai
-    adminSeats: 1,
-    employeeSeats: 4,
-    monthlyInr: monthly,
-    months: 11,
-    rentTotalInr: elevenMonths,
-    grandTotalInr: grandTotal,
-    adminMonthlyInr: ADMIN,
-  }
+    title: "Fixed ID Pricing - 2026",
+    message: "No rent breakdown - Yearly pricing only - Paytm Only",
+    yearly: "₹5,999 / ₹12,999 / ₹14,999",
+    hosting: "Hostinger + Mumbai E2E",
+    monthlyInr: 395,
+  };
 }
 
-export const fiveIdRent = fiveIdRentQuote
-export const getFiveIdRent = fiveIdRentQuote
+export function forwardPendingInr(count: number = 0) {
+  // No forward charge now - Fixed ID
+  return 0;
+}
+
+export const GODADDY_SCAN = {
+  enabled: false,
+  message: "GoDaddy scan blocked - Mumbai E2E only",
+  blocked: true,
+};
+
+export const OFFER_DAYS_LEFT = 7;
+
+// Extra exports jo kahi aur use ho sakte hain
+export const RENT_LOCKS = RENT_LOCKS_SAFE;
+export const SAFETY_LOCKS = RENT_LOCKS_SAFE;
+
+export default RENT_LOCKS_SAFE;

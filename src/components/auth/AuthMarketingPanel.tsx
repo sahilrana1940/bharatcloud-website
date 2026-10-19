@@ -19,13 +19,13 @@ export function AuthMarketingPanel() {
       </div>
       <ul className="relative space-y-4 text-sm text-slate-700">
         <li className="flex gap-3">
-          <span className="font-bold text-cyan-600">✓</span> Mumbai-region archive on Wasabi S3
+          <span className="font-bold text-[#0F766E]">✓</span> Mumbai archive on E2E · site on Hostinger
         </li>
         <li className="flex gap-3">
           <span className="font-bold text-cyan-600">✓</span> AES-256 tokens & role-based access
         </li>
         <li className="flex gap-3">
-          <span className="font-bold text-cyan-600">✓</span> UPI + Razorpay billing for teams
+          <span className="font-bold text-[#00BAF2]">✓</span> Paytm only for team billing
         </li>
       </ul>
       <p className="relative text-xs text-slate-500">🇮🇳 Made in India · Enterprise-ready</p>

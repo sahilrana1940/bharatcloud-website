@@ -32,7 +32,7 @@ export default function EmployeeDashboardPage() {
       }
       if (res.status === 402) {
         window.alert(
-          "Payment required for Drive backup. For GOR JRM demo, deploy latest app (demo billing) or set PAYMENT_BYPASS=1 on Vercel / run migration 020 in Supabase.",
+          "Payment required for Drive backup. Complete Paytm billing, or set PAYMENT_BYPASS=1 on Vercel.",
         );
         return;
       }

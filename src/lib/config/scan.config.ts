@@ -1,12 +1,12 @@
 import { RENT } from "@/lib/config/rent.config";
 
 /**
- * GoDaddy mailbox scan.
+ * Mailbox scan for the Hostinger site. Archive bytes stay on E2E.
  * Pending forward = (activeFound - registered) * employee intro rent * months.
  *  (6 - 2) * 49 * 4 = 784
  */
 export const GODADDY_SCAN = {
-  provider: "GoDaddy",
+  provider: "Hostinger",
   activeFound: 6,
   registered: 2,
   pendingMonths: 4,

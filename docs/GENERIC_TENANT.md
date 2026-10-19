@@ -24,9 +24,3 @@
 ## DB migration
 
 Run `supabase/migrations/016_company_generic_backup.sql` on prod.
-
-## GOR JRM (first test client)
-
-- Domain: `gorjrmcourier.com`, owner `info@`
-- Handoff emails in `tenant-profile` seed directory on sync
-- Team should show hub + 2 ODH without manual invite after owner opens Team

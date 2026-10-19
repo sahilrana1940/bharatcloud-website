@@ -13,15 +13,7 @@ export async function GET() {
   const supabase = await getSupabaseOrNull();
   if (!supabase) {
     return NextResponse.json({
-      companies: [
-        {
-          domain: "rjadam.com",
-          owner_email: "admin@rjadam.com",
-          employees: 5,
-          storage_gb: 44.5,
-          status: "active",
-        },
-      ],
+      companies: [],
     });
   }
 

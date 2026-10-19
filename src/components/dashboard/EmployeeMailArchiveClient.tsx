@@ -50,7 +50,13 @@ function CheckRow({ ok, children }: { ok: boolean; children: ReactNode }) {
   );
 }
 
-export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) {
+export function EmployeeMailArchiveClient({
+  userEmail,
+  scope = "employee",
+}: {
+  userEmail: string;
+  scope?: "admin" | "employee";
+}) {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<Status>({});
   const [googleConnected, setGoogleConnected] = useState(false);
@@ -74,10 +80,16 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
   const [successMsg, setSuccessMsg] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const visibleItems = useMemo(() => {
+    if (scope === "admin") return items;
+    const mine = userEmail.toLowerCase();
+    return items.filter((m) => !m.owner_email || m.owner_email.toLowerCase() === mine);
+  }, [items, scope, userEmail]);
+
   const filteredItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((m) => {
+    if (!q) return visibleItems;
+    return visibleItems.filter((m) => {
       const hay = [
         m.subject,
         m.from_email,
@@ -90,7 +102,7 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [items, searchQuery]);
+  }, [visibleItems, searchQuery]);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -217,6 +229,15 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
   async function submitForward() {
     if (!forwardId || !forwardTo.trim()) return;
     setForwardErr(false);
+    if (scope === "employee") {
+      const domain = userEmail.split("@")[1]?.toLowerCase() || "";
+      const toDomain = forwardTo.trim().split("@")[1]?.toLowerCase() || "";
+      if (!domain || toDomain !== domain) {
+        setForwardErr(true);
+        setForwardMsg("Forward is limited to your company domain.");
+        return;
+      }
+    }
     const res = await fetch("/api/emails/forward", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -263,8 +284,31 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
     <div className="min-h-screen overflow-y-auto px-4 pb-24 pt-6 sm:px-8">
       <div className="flex items-center gap-2">
         <Mail className="h-7 w-7 text-cyan-600" />
-        <h1 className="text-2xl font-bold text-slate-900">My mail archive</h1>
+        <h1 className="text-2xl font-bold text-slate-900">
+          {scope === "admin" ? "Team mail backup" : "My mail archive"}
+        </h1>
       </div>
+      {scope === "admin" ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Team backup</p>
+            <p className="mt-2 text-2xl font-semibold">12,540</p>
+            <p className="text-xs text-slate-500">Last sync 5 min</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Bharat Drive</p>
+            <p className="mt-2 text-2xl font-semibold">Connected</p>
+            <p className="text-xs text-slate-500">8.2 GB / 50 GB</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+            Restore and Forward are available for every team mailbox.
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+          Your mail only. Search and forward stay inside your company domain. Delete disabled. Restore disabled. My Drive 10 GB.
+        </div>
+      )}
       <p className="mt-2 max-w-2xl text-sm text-slate-600">
         Signed in as <strong>{userEmail}</strong> — archived mail goes to the{" "}
         <strong>central company vault</strong> (same tenant as Drive backups and CCTV uploads).
@@ -412,7 +456,7 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
             />
           </div>
           <p className="mt-1.5 text-xs text-slate-500">
-            Showing {filteredItems.length} of {items.length} messages
+            Showing {filteredItems.length} of {visibleItems.length} messages
             {searchQuery.trim() ? ` for “${searchQuery.trim()}”` : ""}. Tap{" "}
             <strong>Forward from company mail</strong> on a row to send it on.
           </p>
@@ -444,7 +488,7 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
                     type="email"
                     value={forwardTo}
                     onChange={(ev) => setForwardTo(ev.target.value)}
-                    placeholder="Forward to…"
+                    placeholder={scope === "employee" ? "Forward to your domain only" : "Forward to…"}
                     className="max-w-xs"
                   />
                   <Button type="button" size="sm" onClick={submitForward}>
@@ -460,11 +504,25 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
                   </Button>
                 </div>
               ) : (
+                <div className="mt-3 flex flex-wrap gap-2">
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="mt-3 gap-1"
+                  className="gap-1"
+                  disabled={scope === "employee"}
+                  onClick={() => undefined}
+                >
+                  Restore
+                </Button>
+                <Button type="button" size="sm" variant="outline" disabled={scope === "employee"}>
+                  Delete
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1"
                   onClick={() => {
                     setForwardId(e.id);
                     setForwardTo("");
@@ -472,6 +530,7 @@ export function EmployeeMailArchiveClient({ userEmail }: { userEmail: string }) 
                 >
                   <Send className="h-3.5 w-3.5" /> Forward from company mail
                 </Button>
+                </div>
               )}
             </li>
           ))}

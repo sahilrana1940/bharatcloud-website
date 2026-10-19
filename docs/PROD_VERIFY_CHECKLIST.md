@@ -145,7 +145,7 @@ export PROD_URL="https://www.bharatcloud.store"
 export FREE_COOKIE='bc_workspace_email=UNPAID_USER@domain.com; bc_workspace_company=UNPAID_COMPANY_UUID'
 
 # Paid test user (subscription active or approved payment)
-export PAID_COOKIE='bc_workspace_email=info@gorjrmcourier.com; bc_workspace_company=PAID_COMPANY_UUID'
+export PAID_COOKIE='bc_workspace_email=company@bharatcloud.store; bc_workspace_company=PAID_COMPANY_UUID'
 
 # 1. Billing status
 curl -s "$PROD_URL/api/billing/status" -H "Cookie: $FREE_COOKIE" | jq .

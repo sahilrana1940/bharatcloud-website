@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
  * List company users for handoff checklist.
- * Usage: node scripts/verify-client-tenant.mjs gorjrmcourier.com
+ * Usage: node scripts/verify-client-tenant.mjs example.com
  */
 import { createClient } from "@supabase/supabase-js";
 
-const domain = (process.argv[2] || "gorjrmcourier.com").toLowerCase();
+const domain = (process.argv[2] || "bharatcloud.store").toLowerCase();
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -63,5 +63,3 @@ const staff = sorted.filter((u) => u.email !== company.admin_email);
 if (staff.length < 3) {
   console.log(`\nNote: only ${staff.length} employee(s) in DB — invite ${3 - staff.length} more on Team page.`);
 }
-
-console.log("\nHandoff doc: docs/clients/GORJRM_HANDOFF.md\n");

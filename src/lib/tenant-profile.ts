@@ -12,22 +12,7 @@ export type TenantProfile = {
   demoBillingUnlocked?: boolean;
 };
 
-const PROFILES: Record<string, TenantProfile> = {
-  "gorjrmcourier.com": {
-    demoBillingUnlocked: true,
-    legalName: "GOR JRM Courier (RJRM Logistics)",
-    addressLines: ["Bus Stand, near Honda Agency"],
-    cityStatePin: "Sunderbani, Jammu & Kashmir 185153, India",
-    phone: "+91 99888 64626",
-    publicEmail: "info@gorjrmcourier.com",
-    website: "https://www.gorjrmcourier.com",
-    handoffStaffEmails: [
-      "sunderbanihub@gorjrmcourier.com",
-      "nowsheraodh@gorjrmcourier.com",
-      "rajouriodh@gorjrmcourier.com",
-    ],
-  },
-};
+const PROFILES: Record<string, TenantProfile> = {};
 
 export function getTenantHandoffStaff(domain: string | null | undefined): string[] {
   const profile = getTenantProfile(domain);

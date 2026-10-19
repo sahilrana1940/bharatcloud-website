@@ -16,7 +16,7 @@
 ## Demo flows (no Google keys)
 | Button | URL |
 |--------|-----|
-| B2B | `/api/auth/google/demo?email=admin@rjadam.com` |
+| B2B | `/api/auth/google/demo?email=company@bharatcloud.store` |
 | B2C Personal | `/api/auth/google/demo?email=demo.user@gmail.com&mode=b2c` |
 | Super Admin | `/api/auth/google/demo?email=admin@bharatcloud.store` |
 

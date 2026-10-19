@@ -21,9 +21,4 @@ alter table email_backups add column if not exists to_email text;
 alter table email_backups add column if not exists folder text;
 alter table email_backups add column if not exists created_at timestamptz not null default now();
 
--- Clear stale orange error for Sunderbani hub (change email if needed)
-update company_users
-set email_sync_status = 'idle', email_sync_progress = null
-where lower(email) = lower('sunderbanihub@gorjrmcourier.com');
-
 notify pgrst, 'reload schema';

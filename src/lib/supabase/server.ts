@@ -64,7 +64,7 @@ export function getSupabaseAdmin() {
 /** Demo company when Supabase is not configured (local dev). */
 export const DEMO_COMPANY: B2BCompany = {
   id: "demo-company-001",
-  name: "RJ Adam Pvt Ltd",
+  name: "Bharat Cloud",
   plan: "500gb",
   storage_limit_gb: 500,
   created_at: new Date().toISOString(),
@@ -74,7 +74,7 @@ export const DEMO_IDS: B2BId[] = [
   {
     id: "demo-id-1",
     company_id: DEMO_COMPANY.id,
-    email_prefix: "accounts@rjadam.com",
+    email_prefix: "company@bharatcloud.store",
     storage_used_gb: 40,
     last_active_at: new Date().toISOString(),
     s3_prefix: "b2b/demo-company-001/accounts/",

@@ -1,38 +1,59 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-
-import { canAccessPath } from "@/lib/auth";
 import { isSuperAdminEmail } from "@/lib/brand";
-
-const B2C_ENABLED = process.env.ENABLE_B2C === "1";
 import type { SaasRole } from "@/lib/workspace/session";
 
+const B2C_ENABLED = process.env.ENABLE_B2C === "1";
+
+// Lightweight - No DB - Only cookies
 function readRole(req: NextRequest): SaasRole {
-  const email = req.cookies.get("bc_workspace_email")?.value?.toLowerCase();
-  if (isSuperAdminEmail(email)) return "super_admin";
+  const email = req.cookies.get("bc_workspace_email")?.value?.toLowerCase() || "";
+  
+  // Fastest check first - no function call if possible
+  if (email && isSuperAdminEmail(email)) return "super_admin";
 
   const cached = req.cookies.get("bc_saas_role")?.value as SaasRole | undefined;
   if (cached === "super_admin") return "super_admin";
 
   const isOwnerCookie = req.cookies.get("bc_is_company_owner")?.value === "1";
   const wsAdmin = req.cookies.get("bc_workspace_role")?.value === "admin";
+  
   if (isOwnerCookie || wsAdmin) return "company_owner";
-
-  if (cached === "company_owner") return cached;
-  if (isSuperAdminEmail(email)) return "super_admin";
-  if (email?.startsWith("admin@")) return "company_owner";
   if (cached) return cached;
+  
   return "employee";
+}
+
+// No DB - pure string check
+function canAccessFast(role: SaasRole, pathname: string): boolean {
+  if (role === "super_admin") return true;
+  if (role === "company_owner") {
+    return !pathname.startsWith("/dashboard/employee");
+  }
+  // employee
+  return !pathname.startsWith("/admin") && !pathname.startsWith("/dashboard/owner");
 }
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  if (pathname === "/dashboard") {
+
+  // 🔥 FIX 1 - PUBLIC PATHS - skip everything - yehi 26s bachaega
+  if (
+    pathname === "/" ||
+    pathname.startsWith("/pricing") ||
+    pathname === "/login" ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api/public") ||
+    pathname.includes("favicon") ||
+    pathname.includes(".")
+  ) {
     return NextResponse.next();
   }
+
   const email = req.cookies.get("bc_workspace_email")?.value;
   const role = readRole(req);
 
+  // Not logged in
   if (
     !email &&
     (pathname.startsWith("/dashboard") ||
@@ -44,15 +65,16 @@ export function middleware(req: NextRequest) {
   }
 
   if (pathname.startsWith("/admin")) {
-    if (!isSuperAdminEmail(email) && role !== "super_admin") {
+    if (role !== "super_admin") {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     return NextResponse.next();
   }
 
+  // super_admin -> /admin
   if (
     (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) &&
-    (isSuperAdminEmail(email) || role === "super_admin")
+    role === "super_admin"
   ) {
     return NextResponse.redirect(new URL("/admin", req.url));
   }
@@ -65,13 +87,13 @@ export function middleware(req: NextRequest) {
   }
 
   if (pathname.startsWith("/dashboard") || pathname.startsWith("/settings")) {
-    if (!canAccessPath(role, pathname)) {
+    if (!canAccessFast(role, pathname)) {
       const dest =
         role === "super_admin"
           ? "/admin"
           : role === "company_owner"
-            ? "/dashboard/owner"
-            : "/dashboard/employee";
+          ? "/dashboard/owner"
+          : "/dashboard/employee";
       return NextResponse.redirect(new URL(dest, req.url));
     }
   }
@@ -93,5 +115,6 @@ export const config = {
     "/personal/:path*",
     "/settings",
     "/settings/:path*",
+    // NOTE: "/" and "/pricing" intentionally NOT in matcher = FAST
   ],
 };

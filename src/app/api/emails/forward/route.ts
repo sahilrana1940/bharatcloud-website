@@ -100,7 +100,7 @@ export async function POST(req: Request) {
 
   if (result.demoQueued && result.error?.includes("domain is not verified")) {
     message =
-      `Forward logged (inbox not sent yet). Resend par gorjrmcourier.com domain verify karo, ` +
+      `Forward logged (inbox not sent yet). Verify the sending domain in Resend, ` +
       `ya Vercel par COMPANY_MAIL_FROM=onboarding@resend.dev (test). Neeche "Recent forwards" me dikhega.`;
   } else if (result.demoQueued) {
     message =

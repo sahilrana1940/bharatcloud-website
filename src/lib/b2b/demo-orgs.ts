@@ -4,8 +4,8 @@ import type { Organization, OrgMember } from "@/lib/supabase/server";
 export const demoOrganizations: Organization[] = [
   {
     id: "demo-org-001",
-    name: "RJ Adam Pvt Ltd",
-    owner_email: "admin@rjadam.com",
+    name: "Bharat Cloud",
+    owner_email: "company@bharatcloud.store",
     owner_phone: "+919876543210",
     plan: "starter",
     storage_limit: 100 * GB,
@@ -19,7 +19,7 @@ export const demoMembers: OrgMember[] = [
   {
     id: "demo-member-1",
     org_id: "demo-org-001",
-    user_email: "admin@rjadam.com",
+    user_email: "company@bharatcloud.store",
     role: "admin",
     joined_at: new Date().toISOString(),
   },

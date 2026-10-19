@@ -11,6 +11,7 @@ import {
   type BillingPlanId,
   getUpiLink,
 } from "@/lib/billing/plans";
+import { paytmDeepLink } from "@/lib/billing/paytm";
 
 const PRO_FEATURES = [
   "Automatic full Google Drive archive",
@@ -53,11 +54,10 @@ export function BillingClient() {
     () => getUpiLink(selected.price, selected.name),
     [selected.price, selected.name],
   );
-
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiLink)}`;
-
-  const upiId = simulateUpi ? "demo@upi (no real money today)" : "Set NEXT_PUBLIC_UPI_ID on server";
-  const payeeName = simulateUpi ? "BharatCloud — super admin approves" : "UPI payee";
+  const paytmLink = paytmDeepLink(selected.price, `Bharat Cloud ${selected.name}`);
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(paytmLink || upiLink)}`;
+  const upiId = simulateUpi ? "Paytm rehearsal (no real money today)" : "Set NEXT_PUBLIC_PAYTM_UPI_ID";
+  const payeeName = simulateUpi ? "Bharat Cloud — Paytm" : "Paytm";
 
   function notify(msg: string) {
     setToast(msg);
@@ -94,14 +94,14 @@ export function BillingClient() {
     return (
       <div className="min-h-screen overflow-y-auto bg-transparent px-4 pb-[140px] pt-6 sm:px-8 lg:pb-10">
         <h1 className="text-3xl font-bold text-slate-900">Billing</h1>
-        <div className="mt-8 max-w-lg rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6">
-          <p className="font-semibold text-emerald-100">BharatCloud subscription is active</p>
-          <p className="mt-2 text-sm text-emerald-200/90">
+        <div className="mt-8 max-w-lg rounded-2xl border border-emerald-200 bg-white p-6 shadow-sm">
+          <p className="font-semibold text-emerald-800">BharatCloud subscription is active</p>
+          <p className="mt-2 text-sm text-slate-600">
             Connect Google on Team &amp; backup to start your automatic archive.
           </p>
           <Link
             href="/dashboard/team"
-            className="mt-4 inline-block rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-6 py-3 text-sm font-semibold text-white"
+            className="mt-4 inline-block rounded-xl bg-[#00BAF2] px-6 py-3 text-sm font-semibold text-[#062033]"
           >
             Go to Team &amp; backup
           </Link>
@@ -113,7 +113,7 @@ export function BillingClient() {
   return (
     <div className="min-h-screen overflow-y-auto bg-transparent px-4 pb-[140px] pt-6 sm:px-8 lg:pb-10">
       <h1 className="text-3xl font-bold text-slate-900">Billing</h1>
-      <p className="mt-1 text-slate-500">Choose a plan — pay via UPI (monthly)</p>
+      <p className="mt-1 text-slate-600">Hosted on Hostinger. Storage on E2E Mumbai. Pay with Paytm only.</p>
       {simulateUpi ? (
         <p className="mt-3 max-w-2xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <strong>Demo / rehearsal mode:</strong> आज असली UPI पर पैसा नहीं जाएगा। Plan चुनें → नीचे{" "}
@@ -136,19 +136,19 @@ export function BillingClient() {
               onClick={() => setSelectedId(plan.id)}
               className={`relative rounded-2xl border p-5 text-left transition ${
                 isSelected
-                  ? "border-cyan-500/60 bg-cyan-500/10 ring-1 ring-cyan-500/40"
-                  : "border-white/10 bg-[#1E2639] hover:border-white/20"
+                  ? "border-[#00BAF2] bg-white ring-2 ring-[#00BAF2]"
+                  : "border-[#10243E]/10 bg-white hover:border-[#10243E]/30"
               }`}
             >
               {plan.tag ? (
-                <span className="absolute -top-2.5 left-4 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 px-2.5 py-0.5 text-[10px] font-bold text-white">
+                <span className="absolute -top-2.5 left-4 rounded-full bg-[#10243E] px-2.5 py-0.5 text-[10px] font-bold text-white">
                   {plan.tag}
                 </span>
               ) : null}
-              <p className="text-lg font-semibold text-white">{plan.name}</p>
-              <p className="mt-1 text-2xl font-bold text-cyan-300">₹{plan.price}</p>
-              <p className="mt-2 text-sm text-slate-400">{plan.users}</p>
-              <p className="text-sm text-slate-400">{plan.storage}</p>
+              <p className="text-lg font-semibold text-[#10243E]">{plan.name}</p>
+              <p className="mt-1 text-2xl font-bold text-[#0F766E]">₹{plan.price}</p>
+              <p className="mt-2 text-sm text-slate-600">{plan.users}</p>
+              <p className="text-sm text-slate-600">{plan.storage}</p>
             </button>
           );
         })}
@@ -156,59 +156,51 @@ export function BillingClient() {
 
       <ul className="mt-8 max-w-lg space-y-2">
         {PRO_FEATURES.map((f) => (
-          <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
+          <li key={f} className="flex items-start gap-2 text-sm text-[#10243E]">
+            <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#0F766E]" />
             {f}
           </li>
         ))}
       </ul>
 
-      <div className="mt-8 max-w-md rounded-2xl border border-white/10 bg-[#1E2639] p-6 text-center">
-        <p className="text-sm text-slate-400">
-          {simulateUpi ? "Rehearsal QR (₹1 demo — do not use for real pay)" : "Scan to pay"} —{" "}
-          <span className="text-slate-200">{selected.name}</span> ₹{selected.price}
+      <div className="mt-8 max-w-md rounded-2xl border border-[#10243E]/10 bg-white p-6 text-center shadow-sm">
+        <p className="text-sm text-slate-600">
+          {simulateUpi ? "Paytm rehearsal — no real charge" : "Paytm only"} —{" "}
+          <span className="font-medium text-[#10243E]">{selected.name}</span> ₹{selected.price}
         </p>
         {simulateUpi ? (
-          <div className="mx-auto mt-4 flex h-[220px] w-[220px] items-center justify-center rounded-xl border border-dashed border-slate-500 bg-slate-800/50 p-4 text-xs text-slate-300">
+          <div className="mx-auto mt-4 flex h-[220px] w-[220px] items-center justify-center rounded-xl border border-dashed border-slate-300 bg-[#F4EFE6] p-4 text-xs text-slate-600">
             Skip real UPI today. Tap the green button below — super admin approves the plan.
           </div>
         ) : (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={qrUrl}
-            alt="UPI QR"
+            alt="Paytm QR"
             className="mx-auto mt-4 rounded-xl bg-white p-2"
             width={220}
             height={220}
           />
         )}
-        <p className="mt-2 text-sm text-slate-300">{payeeName}</p>
-        <p className="mt-1 text-xs text-slate-500 break-all">{upiId}</p>
-        <p className="mt-2 text-[10px] text-slate-600">
-          IDFC FIRST Bank · tn=Bharat Cloud {selected.name}
+        <p className="mt-2 text-sm text-[#10243E]">{payeeName}</p>
+        <p className="mt-1 break-all text-xs text-slate-500">{upiId}</p>
+        <p className="mt-2 text-[10px] text-slate-500">
+          Paytm · E2E Mumbai storage · Hostinger
         </p>
       </div>
 
-      {!simulateUpi ? (
-        <div className="mt-6 flex max-w-md flex-col gap-3 sm:flex-row">
-          <a
-            href={upiLink}
-            className="flex flex-1 items-center justify-center rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 py-3 text-sm font-semibold text-white"
-          >
-            Pay with GPay
-          </a>
-          <a
-            href={upiLink}
-            className="flex flex-1 items-center justify-center rounded-xl border border-white/10 bg-[#1E2639] py-3 text-sm font-semibold text-slate-200"
-          >
-            Pay with PhonePe
-          </a>
-        </div>
+      {!simulateUpi && paytmLink ? (
+        <a
+          href={paytmLink}
+          className="mt-6 flex w-full max-w-md items-center justify-center rounded-xl bg-[#00BAF2] py-3 text-sm font-semibold text-[#062033]"
+        >
+          Pay with Paytm
+        </a>
       ) : null}
 
-      <div className="mt-8 max-w-md space-y-3 rounded-2xl border border-white/10 bg-[#1E2639] p-5">
-        <p className="text-sm font-medium text-slate-200">After UPI payment</p>
-        <p className="text-xs text-slate-400">
+      <div className="mt-8 max-w-md space-y-3 rounded-2xl border border-[#10243E]/10 bg-white p-5 shadow-sm">
+        <p className="text-sm font-medium text-[#10243E]">After Paytm payment</p>
+        <p className="text-xs text-slate-500">
           Screenshot bhejo (WhatsApp / Drive link paste karo). BharatCloud admin approve karega —
           plan active ho jayega.
         </p>
@@ -217,25 +209,25 @@ export function BillingClient() {
           value={proofUrl}
           onChange={(e) => setProofUrl(e.target.value)}
           placeholder="Screenshot link (Google Drive / imgur URL)"
-          className="w-full rounded-lg border border-white/10 bg-[#0A0E1A] px-3 py-2.5 text-sm text-slate-100"
+          className="w-full rounded-lg border border-slate-200 bg-[#F4EFE6] px-3 py-2.5 text-sm text-[#10243E]"
         />
         <input
           type="text"
           value={proofNote}
           onChange={(e) => setProofNote(e.target.value)}
-          placeholder="Optional note — UTR / time / phone used"
-          className="w-full rounded-lg border border-white/10 bg-[#0A0E1A] px-3 py-2.5 text-sm text-slate-100"
+          placeholder="Optional note — Paytm UTR / time"
+          className="w-full rounded-lg border border-slate-200 bg-[#F4EFE6] px-3 py-2.5 text-sm text-[#10243E]"
         />
       </div>
 
       <button
         type="button"
         onClick={confirmPaid}
-        className="mt-6 w-full max-w-md rounded-xl bg-emerald-600/90 py-3.5 text-sm font-semibold text-white"
+        className="mt-6 w-full max-w-md rounded-xl bg-[#10243E] py-3.5 text-sm font-semibold text-white"
       >
         {simulateUpi
-          ? `Request plan activation (₹${selected.price} UPI rehearsal)`
-          : `I have paid ₹${selected.price} — start backup setup`}
+          ? `Request plan activation (₹${selected.price} Paytm rehearsal)`
+          : `I paid with Paytm ₹${selected.price}`}
       </button>
 
       <Toast message={toast} />

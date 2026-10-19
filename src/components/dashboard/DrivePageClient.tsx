@@ -305,28 +305,28 @@ export function DrivePageClient({ userEmail }: { isAdmin?: boolean; userEmail: s
 
   return (
     <div className="min-h-screen bg-transparent px-4 py-6 sm:px-8 lg:px-10">
-      <header className="flex flex-col gap-4 border-b border-white/5 pb-6 sm:flex-row sm:items-start sm:justify-between">
+      <header className="flex flex-col gap-4 border-b border-[#10243E]/10 pb-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+          <h1 className="text-3xl font-bold tracking-tight text-[#10243E] sm:text-4xl">
             Drive
           </h1>
-          <p className="mt-1 text-slate-500">Your files, secure and organized</p>
+          <p className="mt-1 text-slate-600">Files on E2E Mumbai. Site on Hostinger.</p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-emerald-400">
+        <div className="flex items-center gap-2 text-xs text-[#0F766E]">
           <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
           All systems operational
         </div>
       </header>
 
       <div className="mt-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div className="flex flex-wrap gap-2 rounded-2xl bg-[#0F1420] p-1.5 backdrop-blur">
+        <div className="flex flex-wrap gap-2 rounded-2xl border border-[#10243E]/10 bg-white p-1.5 shadow-sm">
           <button
             type="button"
             onClick={() => setTab("google")}
             className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
               tab === "google"
-                ? "bg-gradient-to-r from-sky-600 to-cyan-500 text-white shadow-lg shadow-sky-500/25"
-                : "text-slate-400 hover:text-slate-200"
+                ? "bg-[#00BAF2] text-[#062033]"
+                : "text-slate-600 hover:text-[#10243E]"
             }`}
           >
             My Google Drive
@@ -336,8 +336,8 @@ export function DrivePageClient({ userEmail }: { isAdmin?: boolean; userEmail: s
             onClick={() => setTab("safe")}
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
               tab === "safe"
-                ? "bg-gradient-to-r from-sky-600 to-cyan-500 text-white shadow-lg shadow-sky-500/25"
-                : "text-slate-500 hover:text-slate-300"
+                ? "bg-[#00BAF2] text-[#062033]"
+                : "text-slate-600 hover:text-[#10243E]"
             }`}
           >
             <Shield className="h-4 w-4" />

@@ -112,6 +112,6 @@ export async function resolveGoogleAccountEmail(
 
   return {
     error:
-      "Could not read your Google work email. Sign in with the same address you use on BharatCloud (e.g. sunderbanihub@gorjrmcourier.com), allow all permissions, or remove GOOGLE_SCOPES on Vercel and redeploy.",
+      "Could not read your Google work email. Sign in with the same address you use on BharatCloud, allow all permissions, or remove GOOGLE_SCOPES on Vercel and redeploy.",
   };
 }

@@ -43,19 +43,19 @@ export function VaultPageClient({ userEmail }: { userEmail: string }) {
 
   return (
     <div className="min-h-screen overflow-y-auto bg-transparent pb-[140px] lg:pb-10">
-      <div className="border-b border-white/5 px-4 pb-4 pt-6 sm:px-8">
-        <h1 className="bg-gradient-to-r from-white to-cyan-200 bg-clip-text text-3xl font-bold text-transparent">
-          My Vault — Secured Backup
+      <div className="border-b border-[#10243E]/10 px-4 pb-4 pt-6 sm:px-8">
+        <h1 className="text-3xl font-bold text-[#10243E]">
+          My Vault — E2E backup
         </h1>
-        <p className="text-slate-500">Encrypted company vault · {userEmail}</p>
-        <div className="mt-6 flex flex-wrap gap-2 rounded-2xl bg-[#0F1420] p-1.5">
+        <p className="text-slate-600">Encrypted company vault on E2E · {userEmail}</p>
+        <div className="mt-6 flex flex-wrap gap-2 rounded-2xl border border-[#10243E]/10 bg-white p-1.5 shadow-sm">
           <button
             type="button"
             onClick={() => setTab("files")}
             className={`rounded-xl px-4 py-2 text-sm font-medium ${
               tab === "files"
-                ? "bg-gradient-to-r from-sky-600 to-cyan-500 text-white"
-                : "text-slate-400"
+                ? "bg-[#00BAF2] text-[#062033]"
+                : "text-slate-600"
             }`}
           >
             Files
@@ -65,8 +65,8 @@ export function VaultPageClient({ userEmail }: { userEmail: string }) {
             onClick={() => setTab("emails")}
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium ${
               tab === "emails"
-                ? "bg-gradient-to-r from-sky-600 to-cyan-500 text-white"
-                : "text-slate-400"
+                ? "bg-[#00BAF2] text-[#062033]"
+                : "text-slate-600"
             }`}
           >
             <Mail className="h-4 w-4" /> Emails
@@ -87,14 +87,14 @@ export function VaultPageClient({ userEmail }: { userEmail: string }) {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search emails by subject, sender..."
-              className="w-full rounded-2xl border border-white/10 bg-[#1E2639] py-2.5 pl-10 pr-4 text-sm text-white"
+              className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-[#10243E]"
             />
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-[#1E2639]">
+          <div className="mt-6 overflow-hidden rounded-2xl border border-[#10243E]/10 bg-white shadow-sm">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-slate-400">
+                <tr className="border-b border-slate-200 bg-[#F4EFE6] text-slate-600">
                   <th className="px-4 py-3 font-medium">Subject</th>
                   <th className="px-4 py-3 font-medium">From</th>
                   <th className="px-4 py-3 font-medium">Date</th>
@@ -111,7 +111,7 @@ export function VaultPageClient({ userEmail }: { userEmail: string }) {
                   filtered.map((e) => (
                     <tr
                       key={e.id}
-                      className="border-b border-white/5 text-slate-200 hover:bg-white/5"
+                      className="border-b border-slate-100 text-[#10243E] hover:bg-[#F4EFE6]"
                     >
                       <td className="px-4 py-3 font-bold">{e.subject || "(No subject)"}</td>
                       <td className="px-4 py-3 text-slate-400">{e.from_email}</td>
