@@ -3,8 +3,8 @@
 import { Check } from "lucide-react";
 import { useState } from "react";
 
-const UPI_VPA = process.env.NEXT_PUBLIC_BILLING_UPI_VPA || "Sahilrana1940@paytm";
-const UPI_LIVE = process.env.NEXT_PUBLIC_BILLING_UPI_LIVE === "1" || true;
+const VPA = process.env.NEXT_PUBLIC_BILLING_UPI_VPA || "Sahilrana1940@paytm";
+const IS_LIVE = process.env.NEXT_PUBLIC_BILLING_UPI_LIVE === "1" || true;
 
 const PLANS = [
   {
@@ -44,7 +44,7 @@ const FEATURES = [
 type PlanId = (typeof PLANS)[number]["id"];
 
 function upiLinkFor(price: number, planName: string) {
-  return `upi://pay?pa=${UPI_VPA}&pn=BharatCloud&am=${price}&cu=INR&tn=BharatCloud-${planName}`;
+  return `upi://pay?pa=${VPA}&pn=BharatCloud&am=${price}&cu=INR&tn=BharatCloud-${planName}`;
 }
 
 export default function BillingPage() {
@@ -58,7 +58,7 @@ export default function BillingPage() {
 
   function handleSelectPlan(id: PlanId) {
     setSelectedId(id);
-    if (UPI_LIVE) setModalOpen(true);
+    if (IS_LIVE) setModalOpen(true);
   }
 
   async function markPaid() {
@@ -78,12 +78,15 @@ export default function BillingPage() {
       <p className="mt-2 text-slate-600">
         Hosted on Hostinger. Storage on E2E Mumbai. Infra Rs1700 Fixed. Pay with Paytm only.
       </p>
-      <p className="mt-3 max-w-3xl rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
-        LIVE Mode: Pay securely via Paytm UPI to {UPI_VPA} - Hosted on Hostinger, Storage on E2E Mumbai (Rs1700 Fixed)
-      </p>
-      <p className="mt-3 max-w-3xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-        Rehearsal mode ON: No real UPI charge right now. Click any plan -&gt; Click I Have Paid below -&gt; Super Admin will approve in Pending Payments. To go LIVE: Add BILLING_UPI_LIVE=1 and BILLING_UPI_VPA=your@paytm on Vercel.
-      </p>
+      {IS_LIVE ? (
+        <div className="mt-3 max-w-3xl rounded-lg border border-green-200 bg-green-50 p-3 text-sm">
+          <span className="font-bold text-green-700">✓ LIVE Mode:</span> Pay securely via Paytm UPI to {VPA} - Hosted on Hostinger, Storage on E2E Mumbai (Rs1700 Fixed)
+        </div>
+      ) : (
+        <div className="mt-3 max-w-3xl rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm">
+          Rehearsal mode ON: No real UPI charge right now. Click any plan → I Have Paid → Super Admin approves. To go LIVE: Add BILLING_UPI_LIVE=1 on Vercel.
+        </div>
+      )}
 
       <div className="mt-8 grid max-w-4xl gap-4 sm:grid-cols-3">
         {PLANS.map((plan) => {
@@ -134,11 +137,11 @@ export default function BillingPage() {
         {note ? <p className="mt-3 text-sm text-slate-600">{note}</p> : null}
       </div>
 
-      {modalOpen && UPI_LIVE ? (
+      {modalOpen && IS_LIVE ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center">
             <p className="text-lg font-semibold">{selected.name}</p>
-            <p className="mt-1 text-sm text-slate-500">Pay {UPI_VPA}</p>
+            <p className="mt-1 text-sm text-slate-500">Pay {VPA}</p>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={qrUrl} alt="Paytm UPI QR" className="mx-auto mt-4" width={200} height={200} />
             <a href={upiLink} className="mt-4 flex w-full items-center justify-center rounded-xl bg-orange-500 py-3 text-sm font-bold text-white">
