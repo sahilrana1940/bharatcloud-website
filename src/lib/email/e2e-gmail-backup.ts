@@ -108,14 +108,37 @@ function missingColumn(message: string) {
   return message.match(/Could not find the '([^']+)' column/i)?.[1] || null;
 }
 
+/** Live progress is an integer percent. Drop or coerce values the table cannot store. */
+function adaptPayload(message: string, payload: Record<string, unknown>) {
+  const column = missingColumn(message);
+  if (column && column in payload) {
+    delete payload[column];
+    return true;
+  }
+
+  const quoted = message.match(/invalid input syntax for type integer: "((?:\\.|[^"\\])*)"/i)?.[1];
+  if (!quoted) return false;
+  const key = Object.keys(payload).find((name) => String(payload[name]) === quoted);
+  if (!key) return false;
+  if (key === "progress") {
+    payload.progress = 0;
+    return true;
+  }
+  const numeric = Number(payload[key]);
+  if (Number.isFinite(numeric)) {
+    payload[key] = Math.round(numeric);
+    return true;
+  }
+  delete payload[key];
+  return true;
+}
+
 async function insertRun(supabase: SupabaseClient, row: Record<string, unknown>) {
   const payload = { ...row };
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const result = await supabase.from("email_backup_runs").insert(payload).select("id").single();
     if (!result.error) return result;
-    const column = missingColumn(result.error.message);
-    if (!column || !(column in payload)) return result;
-    delete payload[column];
+    if (!adaptPayload(result.error.message, payload)) return result;
   }
   return supabase.from("email_backup_runs").insert(payload).select("id").single();
 }
@@ -129,9 +152,7 @@ async function patchRun(
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const { error } = await supabase.from("email_backup_runs").update(payload).eq("id", runId);
     if (!error) return;
-    const column = missingColumn(error.message);
-    if (!column || !(column in payload)) return;
-    delete payload[column];
+    if (!adaptPayload(error.message, payload)) return;
   }
 }
 
@@ -167,7 +188,7 @@ export async function runE2eGmailBackup(
     s3_bucket: bucket,
     s3_path: prefix,
     status: "running",
-    progress: `Archiving up to ${maxMessages} emails to ${bucket}/${prefix} (copy only — Gmail not deleted)…`,
+    progress: 0,
   });
 
   if (insertErr || !runRow?.id) {
@@ -194,14 +215,14 @@ export async function runE2eGmailBackup(
   if (!accessToken) {
     await patchRun(supabase, runId, {
       status: "error",
-      progress: "Connect Gmail first (Settings → Google).",
+      progress: 0,
     });
     return { ok: false, error: "Connect Gmail with mail access first.", runId };
   }
 
   const gmail = gmailClient(accessToken);
   if (!gmail) {
-    await patchRun(supabase, runId, { status: "error", progress: "Gmail client unavailable" });
+    await patchRun(supabase, runId, { status: "error", progress: 0 });
     return { ok: false, error: "Gmail client unavailable", runId };
   }
 
@@ -210,7 +231,7 @@ export async function runE2eGmailBackup(
     message: `Fetching up to ${maxMessages} emails (archive copy only)…`,
     total: maxMessages,
   });
-  await patchRun(supabase, runId, { progress: `Fetching up to ${maxMessages} emails…` });
+  await patchRun(supabase, runId, { progress: 0 });
 
   try {
     const list = await gmail.users.messages.list({
@@ -261,9 +282,9 @@ export async function runE2eGmailBackup(
       bytes += rawEmail.length;
 
       await patchRun(supabase, runId, {
-        progress: `Archiving ${uploaded}/${total} → ${bucket}/${prefix}`,
+        progress: total > 0 ? Math.round((uploaded / total) * 100) : 0,
         email_count: uploaded,
-        size_mb: bytes / (1024 * 1024),
+        size_mb: Math.round((bytes / (1024 * 1024)) * 100) / 100,
       });
     }
 
@@ -271,9 +292,9 @@ export async function runE2eGmailBackup(
     await patchRun(supabase, runId, {
       status: "completed",
       email_count: uploaded,
-      size_mb: sizeMb,
+      size_mb: Math.round(sizeMb * 100) / 100,
       s3_path: prefix,
-      progress: `Done — ${uploaded} emails archived in ${bucket} (Gmail unchanged)`,
+      progress: 100,
     });
 
     emit({
@@ -291,7 +312,7 @@ export async function runE2eGmailBackup(
       msg =
         "Gmail permission missing — reconnect Google and allow Gmail read/modify on the consent screen.";
     }
-    await patchRun(supabase, runId, { status: "error", progress: msg.slice(0, 240) });
+    await patchRun(supabase, runId, { status: "error", progress: 0 });
     emit({ phase: "error", message: msg });
     return { ok: false, error: msg, runId };
   }
