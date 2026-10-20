@@ -12,6 +12,20 @@ export async function companyHasPaidBackup(
   if (await isPaymentBypassEnabled()) return true;
   if (isDemoBillingDomain(companyDomain)) return true;
 
+  if (companyDomain) {
+    const { data: orgs } = await supabase
+      .from("organizations")
+      .select("plan, owner_email, name")
+      .limit(50);
+    const host = companyDomain.trim().toLowerCase();
+    const org = (orgs || []).find((row) => {
+      const owner = String(row.owner_email || "").toLowerCase();
+      const name = String(row.name || "").toLowerCase();
+      return owner.endsWith(`@${host}`) || name === host;
+    });
+    if (String(org?.plan || "").toLowerCase() === "free") return true;
+  }
+
   const { data: co } = await supabase
     .from("companies")
     .select("subscription_status, plan_name")

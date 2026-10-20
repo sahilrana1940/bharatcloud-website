@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { CompanyTenantCard } from "@/components/dashboard/CompanyTenantCard";
+import { SyncAllDevicesButton } from "@/components/dashboard/SyncAllDevicesButton";
 import { GoLiveRoleChecks } from "@/components/dashboard/GoLiveRoleChecks";
 import { ProPageHeader, ProStatCard, ProTableWrap } from "@/components/ui/pro/primitives";
 import { loadCompanyAdminStats } from "@/lib/company-admin/stats";
@@ -55,7 +56,7 @@ export default async function CompanyAdminDashboardPage() {
       adminEmail={stats.adminEmail}
       profile={profile}
       plannedStaffEmails={plannedStaff}
-      storageLabel={`${stats.storageGb.toFixed(1)} / ${stats.limitGb} GB`}
+      storageLabel={formatStorageLabel(stats.storageGb, stats.limitGb)}
       activeBackups={stats.activeBackups}
       members={stats.members}
       jobs={stats.jobs}
@@ -63,6 +64,11 @@ export default async function CompanyAdminDashboardPage() {
       emailBackupStorageMb={stats.emailBackupStorageMb}
     />
   );
+}
+
+function formatStorageLabel(storageGb: number, limitGb: number) {
+  const used = storageGb >= 0.1 ? `${storageGb.toFixed(1)} GB` : `${(storageGb * 1024).toFixed(1)} MB`;
+  return `${used} / ${limitGb} GB`;
 }
 
 function Shell({
@@ -105,6 +111,8 @@ function Shell({
       />
 
       <CompanyTenantCard domain={domain} adminEmail={adminEmail} profile={profile} />
+
+      <SyncAllDevicesButton />
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <ProStatCard
