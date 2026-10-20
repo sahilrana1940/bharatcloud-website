@@ -242,7 +242,10 @@ export default function HighCommandPage() {
                     <td className="px-3 py-3">{row.email}</td>
                     <td className="px-3 py-3">
                       {row.email.toLowerCase() === SUPER_ADMIN_EMAIL ? (
-                        <span className="rounded bg-amber-500 px-2 py-1 font-bold text-slate-950">SUPERADMIN</span>
+                        <span className="inline-flex items-center gap-2">
+                          <span className="rounded bg-amber-500 px-2 py-1 font-bold text-slate-950">SUPERADMIN</span>
+                          <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-slate-950">SA</span>
+                        </span>
                       ) : (
                         <span className="text-sky-300">{row.role}</span>
                       )}

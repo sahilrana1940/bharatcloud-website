@@ -133,7 +133,7 @@ export function AdminShell({
           </form>
           <div className="mt-4 rounded-xl border border-zinc-800 px-3 py-3">
             <p className="text-xs text-zinc-500">Super Admin</p>
-            <p className="text-sm text-white">admin@bharatcloud.in</p>
+            <p className="text-sm text-white">{SUPER_ADMIN_EMAIL}</p>
             <span className="mt-2 inline-flex rounded-full bg-[#115e59] px-2 py-0.5 text-[10px] font-bold tracking-wider text-white">
               SA
             </span>

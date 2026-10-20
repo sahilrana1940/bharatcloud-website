@@ -55,6 +55,19 @@ export function SuperAdminTenantsDashboard({ adminEmail }: { adminEmail: string 
             <Building2 className="h-4 w-4" />
             Members
           </Link>
+          <Link
+            href="/godmode"
+            className="inline-flex items-center gap-2 rounded-full border border-[#10243E]/20 bg-white px-4 py-2 text-sm font-semibold"
+          >
+            <Shield className="h-4 w-4" />
+            God Mode
+          </Link>
+          <Link
+            href="/super-admin/high-command"
+            className="inline-flex items-center gap-2 rounded-full bg-[#10243E] px-4 py-2 text-sm font-semibold text-white"
+          >
+            HIGH COMMAND
+          </Link>
         </div>
 
         {loading && <p className="text-slate-500">Loading Admins…</p>}
@@ -123,7 +136,7 @@ export function SuperAdminTenantsDashboard({ adminEmail }: { adminEmail: string 
 
         <p className="mt-6 flex items-center gap-2 text-xs text-slate-500">
           <Shield className="h-4 w-4" />
-          God Mode is closed on the public site. This view is only for {adminEmail}.
+          God Mode and HIGH COMMAND are open for {adminEmail}.
         </p>
       </main>
     </div>

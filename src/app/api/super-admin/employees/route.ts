@@ -74,8 +74,19 @@ export async function GET(req: NextRequest) {
 
   if (error) return NextResponse.json(listMemoryEmployees(), { headers: noStore });
 
+  const stale = (data || []).filter((row) => String(row.email).toLowerCase() === "admin@bharatcloud.in");
+  if (stale.length) {
+    await supabase.from("company_users").delete().in(
+      "id",
+      stale.map((row) => row.id),
+    );
+  }
+
   const rows = (data || [])
-    .filter((row) => String(row.email).toLowerCase() !== SUPER_ADMIN_EMAIL)
+    .filter((row) => {
+      const email = String(row.email).toLowerCase();
+      return email !== SUPER_ADMIN_EMAIL && email !== "admin@bharatcloud.in";
+    })
     .map(fromDb);
   return NextResponse.json([COMMAND_EMPLOYEE, ...rows], { headers: noStore });
 }
@@ -90,7 +101,7 @@ export async function POST(req: NextRequest) {
   if (!email || !email.includes("@") || !role) {
     return NextResponse.json({ error: "Name, email, and role are required" }, { status: 400, headers: noStore });
   }
-  if (email === SUPER_ADMIN_EMAIL) {
+  if (email === SUPER_ADMIN_EMAIL || email === "admin@bharatcloud.in") {
     return NextResponse.json({ error: "Super admin already exists" }, { status: 400, headers: noStore });
   }
 
