@@ -4,6 +4,7 @@ import { getBillingPlan } from "@/lib/billing/plans";
 import { shouldAutoApprovePayments } from "@/lib/billing/upi-live";
 import { demoPaymentInsert } from "@/lib/payments/store";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
+import { markWorkspacePaid } from "@/lib/workspace/provision-tenant";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
 export async function POST(req: Request) {
@@ -47,5 +48,13 @@ export async function POST(req: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  if (status === "approved") {
+    await markWorkspacePaid(supabase, {
+      ownerEmail: session.email,
+      paytmTxn: String(data?.id || ""),
+    });
+  }
+
   return NextResponse.json({ ok: true, payment: data, approved: status === "approved" });
 }

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getUserRole } from "@/lib/auth";
-import { isSuperAdminEmail } from "@/lib/brand";
+import { isPlatformSuperAdminEmail } from "@/lib/roles/platform-roles";
 import { WorkspaceShell } from "@/components/dashboard/WorkspaceShell";
 import { ThemeProvider } from "@/components/theme-provider";
 import type { SaasRole, WorkspaceRole } from "@/lib/workspace/session";
@@ -16,12 +16,12 @@ export default async function DashboardLayout({
   if (!session) {
     redirect("/login");
   }
-  if (isSuperAdminEmail(session.email)) {
-    redirect("/admin");
+  if (isPlatformSuperAdminEmail(session.email)) {
+    redirect("/dashboard");
   }
   const roleInfo = await getUserRole(session.email);
   if (roleInfo.role === "super_admin") {
-    redirect("/admin");
+    redirect("/dashboard");
   }
   const isOwner =
     roleInfo.role === "company_owner" || roleInfo.is_company_owner;

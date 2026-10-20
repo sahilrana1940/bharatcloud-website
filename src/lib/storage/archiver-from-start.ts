@@ -2,6 +2,7 @@ import { PutObjectCommand, type StorageClass } from "@aws-sdk/client-s3";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { insertFileArchiveRow } from "@/lib/archive/save-file-archive-row";
+import { e2eWorkspacePrefix } from "@/lib/roles/platform-roles";
 import { getS3Client } from "@/lib/s3/client";
 import { getArchiveBucket, isArchiveFromStart, isS3Configured } from "@/lib/s3/config";
 
@@ -18,8 +19,11 @@ export function archiveStorageClass(): StorageClass {
   return raw as StorageClass;
 }
 
-export function driveArchiveKey(orgId: string, fileName: string) {
+export function driveArchiveKey(orgId: string, fileName: string, domain?: string) {
   const safe = fileName.replace(/[/\\]/g, "_");
+  if (domain) {
+    return `${e2eWorkspacePrefix(domain)}archive/drive/${Date.now()}-${safe}`;
+  }
   return `archive/drive/${orgId}/${Date.now()}-${safe}`;
 }
 

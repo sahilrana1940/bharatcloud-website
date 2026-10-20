@@ -6,7 +6,8 @@ import {
   B2B_EMAIL_COOKIE,
   B2B_SESSION_COOKIE,
 } from "@/lib/b2b/session";
-import { attachSaasRoleCookies, defaultDashboardForRole, getUserRole } from "@/lib/auth";
+import { attachSaasRoleCookies, defaultDashboardForRole, getUserRole, type UserRoleInfo } from "@/lib/auth";
+import { provisionTenantAdmin } from "@/lib/workspace/provision-tenant";
 import { emailDomain } from "@/lib/google/client";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import {
@@ -169,18 +170,24 @@ export async function POST(req: Request) {
   const workspaceCompanyId = await resolveCompanyIdForEmail(ownerEmail);
   if (supabase) {
     await touchProfileLogin(supabase, ownerEmail, workspaceCompanyId);
+    await provisionTenantAdmin(supabase, {
+      ownerEmail,
+      companyId: workspaceCompanyId,
+      planPaid: false,
+    });
   }
-  const saas = await getUserRole(ownerEmail);
-  const workspaceAdmin =
-    saas.is_company_owner ||
-    saas.role === "company_owner" ||
-    ownerEmail.startsWith("admin@");
+  const adminRole: UserRoleInfo = {
+    role: "company_owner",
+    is_company_owner: true,
+    company_domain: domain,
+    email: ownerEmail,
+  };
 
   const res = NextResponse.json({
     ok: true,
     orgId,
     companyId: workspaceCompanyId,
-    redirectTo: defaultDashboardForRole(saas),
+    redirectTo: defaultDashboardForRole(adminRole),
   });
   res.cookies.set(B2B_SESSION_COOKIE, orgId, {
     httpOnly: true,
@@ -197,7 +204,7 @@ export async function POST(req: Request) {
   const wsOpts = workspaceCookieOptions();
   res.cookies.set(WS_COMPANY_COOKIE, workspaceCompanyId, wsOpts);
   res.cookies.set(WS_EMAIL_COOKIE, ownerEmail, wsOpts);
-  res.cookies.set(WS_ROLE_COOKIE, workspaceAdmin ? "admin" : "member", wsOpts);
-  attachSaasRoleCookies(res, saas);
+  res.cookies.set(WS_ROLE_COOKIE, "admin", wsOpts);
+  attachSaasRoleCookies(res, adminRole);
   return res;
 }

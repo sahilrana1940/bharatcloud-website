@@ -66,12 +66,6 @@ export default function HomePage() {
           <Link href="/login" className="text-slate-300 hover:text-white">
             Sign in
           </Link>
-          <Link
-            href="/admin/platform"
-            className="rounded-full border border-red-600 px-4 py-2 font-semibold text-red-500 shadow-[0_0_20px_#FF1A1A]"
-          >
-            God Mode
-          </Link>
         </nav>
       </header>
 
