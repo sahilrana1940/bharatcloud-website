@@ -1,179 +1,203 @@
+// app/page.tsx - BharatCloud - 3 Pages in ONE (Dark + Light Best Converting)
 import Link from "next/link";
-import { Archive, BadgeIndianRupee, Flag, Lock, Server, Wallet } from "lucide-react";
+import React from "react";
 
-const PLANS = [
-  { name: "5 IDs", price: "Rs 5,999", storage: "100 GB", popular: false },
-  { name: "20 IDs", price: "Rs 12,999", storage: "300 GB", popular: true },
-  { name: "50 IDs", price: "Rs 14,999", storage: "1 TB", popular: false },
-];
-
-const WHY = [
-  { icon: Flag, title: "Made in India 🇮🇳", body: "Data residency Mumbai E2E Only" },
-  { icon: Lock, title: "High Secure", body: "256-bit encrypted. DPDP Act 2023 ready" },
-  { icon: BadgeIndianRupee, title: "70% cheaper than Google Workspace", body: "Less than every backup" },
-  { icon: Archive, title: "Yearly Archive", body: "E2E Mumbai long term secure" },
-  { icon: Wallet, title: "Pay with Paytm UPI INR", body: "Instant UPI, wallets, and cards" },
-  { icon: Server, title: "Hostinger site stays safe", body: "Zero downtime reliable" },
-];
-
-const COMPARE = [
-  {
-    name: "BharatCloud",
-    price: "Rs 12,999/year",
-    note: "20 IDs · MOST VALUE",
-    ours: true,
-    points: [
-      "Made in India",
-      "High Secure 256-bit",
-      "Yearly Archive Mumbai E2E",
-      "Paytm UPI",
-      "Mumbai India",
-    ],
-  },
-  {
-    name: "Google Workspace",
-    price: "$1440/year",
-    note: "",
-    ours: false,
-    points: ["US hosting", "No archive", "Credit card only"],
-  },
-  {
-    name: "Dropbox",
-    price: "$1200/year",
-    note: "",
-    ours: false,
-    points: ["Premium pricing", "128-bit", "No compliance"],
-  },
-];
-
-export default function HomePage() {
+export default function BharatCloudLanding() {
   return (
-    <div className="min-h-screen bg-black text-white">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
+    <div className="font-sans antialiased">
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap'); body{font-family:'Inter',sans-serif}`}</style>
+
+      {/* NAV - DARK */}
+      <nav className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-8 py-4 bg-[#09090b]/90 backdrop-blur border-b border-zinc-800">
+        <div className="flex items-center gap-2 text-white font-bold text-xl">
+          <span className="text-2xl">☁️</span> BharatCloud
+        </div>
+        <div className="hidden md:flex items-center gap-8 text-sm text-zinc-400">
+          <a href="#features" className="hover:text-white">Products</a>
+          <a href="#why-india" className="hover:text-white">Solutions</a>
+          <a href="#pricing" className="hover:text-white text-white">Pricing</a>
+          <a href="#" className="hover:text-white">Docs</a>
+        </div>
         <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-red-600 text-sm font-black text-red-500 shadow-[0_0_20px_#FF1A1A]">
-            BC
-          </span>
-          <span className="text-sm font-semibold tracking-wide">BharatCloud</span>
+          <Link href="/login" className="hidden md:block px-4 py-2 text-sm border border-zinc-700 rounded-lg text-white">Log in</Link>
+          <Link href="/signup" className="px-4 py-2 text-sm bg-white text-black rounded-lg font-semibold">Get Started</Link>
         </div>
-        <nav className="flex items-center gap-4 text-sm">
-          <span className="rounded-full border border-emerald-500/40 px-3 py-1 text-xs font-semibold text-emerald-400">
-            Mumbai E2E
-          </span>
-          <Link href="/pricing" className="text-slate-300 hover:text-white">
-            Pricing
-          </Link>
-          <Link href="/login" className="text-slate-300 hover:text-white">
-            Sign in
-          </Link>
-        </nav>
-      </header>
+      </nav>
 
-      <main className="mx-auto max-w-6xl px-6 pb-20 pt-16">
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-red-500">Mumbai E2E Only</p>
-        <h1 className="mt-5 max-w-4xl text-[72px] font-semibold leading-none tracking-tight">
-          Mumbai me safe hai
-        </h1>
-        <p className="mt-6 max-w-xl text-lg text-slate-400">
-          Yearly archive on E2E Mumbai. Pay with Paytm. Site stays on Hostinger.
-        </p>
-
-        <div className="mt-16 grid gap-5 md:grid-cols-3">
-          {PLANS.map((plan) => (
-            <article
-              key={plan.name}
-              className={`rounded-2xl border bg-[#0A0A0A] p-6 ${
-                plan.popular
-                  ? "scale-105 border-red-600 shadow-[0_0_20px_#FF0000]"
-                  : "border-white/10"
-              }`}
-            >
-              {plan.popular ? (
-                <p className="text-xs font-black tracking-[0.2em] text-red-500">MOST POPULAR</p>
-              ) : (
-                <p className="text-xs font-semibold tracking-[0.16em] text-slate-500">YEARLY</p>
-              )}
-              <p className="mt-4 text-sm text-slate-400">{plan.name}</p>
-              <p className="mt-2 text-4xl font-semibold">{plan.price}</p>
-              <p className="mt-2 text-sm text-slate-500">{plan.storage} · per year</p>
-              <Link
-                href="/pricing"
-                className="mt-8 inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black"
-              >
-                View plan
-              </Link>
-            </article>
-          ))}
+      {/* PAGE 1 - HERO - DARK bg-[#09090b] */}
+      <section className="bg-[#09090b] text-white px-6 md:px-8 py-16 md:py-24 grid md:grid-cols-2 gap-12 items-center">
+        <div>
+          <div className="inline-block text-xs border border-zinc-800 px-3 py-1.5 rounded-full mb-6 text-zinc-300">
+            ✓ Trusted by Indian businesses
+          </div>
+          <h1 className="text-5xl md:text-6xl font-extrabold leading-[1.05] mb-6">Mumbai me<br />safe hai</h1>
+          <p className="text-zinc-300 text-lg md:text-xl mb-3">Secure, scalable cloud storage built for India.</p>
+          <p className="text-zinc-500 text-sm md:text-[15px] mb-8 max-w-[520px] leading-relaxed">
+            Secure • Scalable • Compliant storage with data residency in Mumbai. Built for startups, enterprises, and government partners.
+          </p>
+          <div className="flex gap-4 mb-12">
+            <Link href="/signup" className="bg-white text-black px-6 py-3 rounded-lg font-semibold text-sm">Start Free Trial</Link>
+            <a href="mailto:support@bharatcloud.com" className="border border-zinc-800 px-6 py-3 rounded-lg text-sm text-white">Talk to Sales</a>
+          </div>
+          <div className="flex gap-10 text-sm">
+            <div><div className="text-white font-bold text-lg">10k+ businesses</div><div className="text-zinc-500 text-xs">Active customers</div></div>
+            <div><div className="text-white font-bold text-lg">50PB+</div><div className="text-zinc-500 text-xs">Data secured</div></div>
+            <div><div className="text-white font-bold text-lg">99.99%</div><div className="text-zinc-500 text-xs">Uptime SLA</div></div>
+          </div>
         </div>
 
-        <section className="mt-24">
-          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Why BharatCloud? Made in India. Mumbai me safe hai
-          </h2>
-          <p className="mt-3 text-orange-400">Bharat ka data, Bharat me — 100% Secure</p>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {WHY.map((item) => (
-              <article key={item.title} className="rounded-xl border border-white/10 bg-[#1A1A1A] p-5">
-                <item.icon className="h-6 w-6 text-orange-400" />
-                <h3 className="mt-4 font-semibold">{item.title}</h3>
-                <p className="mt-2 text-sm text-slate-400">{item.body}</p>
-              </article>
-            ))}
+        {/* Hero Right - India Card */}
+        <div className="relative bg-[#121214] border border-zinc-800 rounded-2xl p-6 min-h-[520px] flex flex-col justify-between overflow-hidden">
+          <div className="absolute top-6 right-6 bg-[#1c1c1f] border border-zinc-800 px-3 py-2.5 rounded-lg text-xs shadow-xl">
+            <div className="font-semibold text-white">🔒 Encryption</div><div className="text-zinc-400 text-[11px]">AES-256 Encrypted</div>
           </div>
-        </section>
-
-        <section className="mt-24">
-          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Less than every backup — 70% cheaper
-          </h2>
-          <p className="mt-3 text-slate-400">Compare and save 70%+</p>
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {COMPARE.map((col) => (
-              <article
-                key={col.name}
-                className={`rounded-xl border p-5 ${
-                  col.ours ? "border-emerald-500/50 bg-[#1A1A1A]" : "border-white/10 bg-[#1A1A1A]"
-                }`}
-              >
-                <p className="text-sm text-slate-400">{col.name}</p>
-                <p className="mt-2 text-2xl font-semibold">{col.price}</p>
-                {col.note ? <p className="mt-1 text-xs font-bold text-emerald-400">{col.note}</p> : null}
-                <ul className="mt-4 space-y-2 text-sm">
-                  {col.points.map((point) => (
-                    <li key={point} className={col.ours ? "text-emerald-400" : "text-red-400"}>
-                      {col.ours ? "✓" : "✕"} {point}
-                    </li>
-                  ))}
-                </ul>
-              </article>
-            ))}
-          </div>
-
-          <div className="mt-8 rounded-xl border border-white/10 bg-[#1A1A1A] p-5">
-            <p className="text-sm font-semibold">Annual Cost Comparison</p>
-            <div className="mt-4 flex items-end gap-6">
-              <div className="flex flex-1 flex-col items-center gap-2">
-                <div className="h-10 w-full rounded-t bg-emerald-500" />
-                <span className="text-xs text-slate-400">BharatCloud</span>
-              </div>
-              <div className="flex flex-1 flex-col items-center gap-2">
-                <div className="h-36 w-full rounded-t bg-red-600" />
-                <span className="text-xs text-slate-400">Google Workspace</span>
-              </div>
-              <div className="flex flex-1 flex-col items-center gap-2">
-                <div className="h-28 w-full rounded-t bg-red-600" />
-                <span className="text-xs text-slate-400">Dropbox</span>
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-7xl mb-3 opacity-90">🗺️</div>
+              <div className="inline-flex items-center gap-2 bg-black border border-zinc-800 px-3 py-1.5 rounded-full text-xs">
+                <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span> Mumbai • Data Center
               </div>
             </div>
-            <p className="mt-4 text-sm text-slate-300">
-              You save 70%+ annually vs Google Workspace. Built for India.
-            </p>
           </div>
-        </section>
-      </main>
+          <div className="absolute bottom-24 right-6 bg-[#1c1c1f] border border-zinc-800 px-3 py-2.5 rounded-lg text-xs shadow-xl">
+            <div className="font-semibold text-white">🗄️ Storage Buckets</div><div className="text-zinc-400 text-[11px]">Auto-scaling • Low latency</div>
+          </div>
+          <div className="flex justify-start">
+            <div className="text-[11px] border border-zinc-800 px-3 py-1.5 rounded-full text-zinc-400 bg-[#1a1a1d]">SOC 2 • ISO 27001 • MeitY Compliant</div>
+          </div>
+        </div>
+      </section>
 
-      <footer className="border-t border-white/10 px-6 py-8 text-center text-xs tracking-[0.18em] text-slate-500">
-        ISO · DPDP · MUMBAI
+      {/* PAGE 2 - FEATURES - DARK */}
+      <section id="features" className="scroll-mt-20 bg-[#09090b] border-t border-zinc-800 px-6 md:px-8 py-20">
+        <div className="text-center max-w-3xl mx-auto mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">Features built for Bharat</h2>
+          <p className="text-zinc-400">Secure, compliant, and cost-effective cloud productivity for India — on your terms.</p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-5 max-w-6xl mx-auto">
+          <div className="bg-white text-black p-6 rounded-xl">
+            <div className="text-2xl mb-3">📍</div>
+            <div className="font-bold leading-tight">Made in India •<br />Mumbai • E2E Only</div>
+            <p className="text-sm text-zinc-600 mt-2 leading-relaxed">Data stays in Mumbai. End-to-end Indian infrastructure with full control and sovereignty.</p>
+          </div>
+          <div className="bg-white text-black p-6 rounded-xl">
+            <div className="text-2xl mb-3">🔒</div>
+            <div className="font-bold">256-bit encryption</div>
+            <p className="text-sm text-zinc-600 mt-2">Industry-grade AES-256 encryption for data at rest and in transit. Secure by default.</p>
+          </div>
+          <div className="bg-white text-black p-6 rounded-xl">
+            <div className="text-2xl mb-3">🛡️</div>
+            <div className="font-bold leading-tight">DPDP Act 2023<br />compliant</div>
+            <p className="text-sm text-zinc-600 mt-2">Aligned with India&apos;s Digital Personal Data Protection Act 2023. Privacy and consent-first design.</p>
+          </div>
+          <div className="bg-white text-black p-6 rounded-xl">
+            <div className="text-2xl mb-3">🏷️</div>
+            <div className="font-bold leading-tight">70% cheaper than<br />Google Workspace</div>
+            <p className="text-sm text-zinc-600 mt-2">Same productivity tools, fraction of the cost. Transparent pricing, no hidden fees.</p>
+          </div>
+          <div className="bg-white text-black p-6 rounded-xl">
+            <div className="text-2xl mb-3">📅</div>
+            <div className="font-bold">Yearly archive</div>
+            <p className="text-sm text-zinc-600 mt-2">Automated yearly data archiving for compliance and backups. Searchable and restorable anytime.</p>
+          </div>
+
+          {/* 6th SPECIAL - WHY INDIA */}
+          <div id="why-india" className="scroll-mt-24 bg-gradient-to-br from-orange-500 to-green-600 text-white p-6 rounded-xl">
+            <div className="font-bold text-[15px]">🇮🇳 Bharat ka data, Bharat me</div>
+            <p className="text-sm mt-2 leading-relaxed opacity-95">
+              US clouds ka data USA jata hai (CLOUD Act). BharatCloud ka data kabhi India se bahar nahi jata. Govt tenders, banks ke liye mandatory.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
+              <span className="bg-white/20 px-2 py-1 rounded-full">DPDP + MeitY Certified</span>
+              <span className="bg-white/20 px-2 py-1 rounded-full">Rupee billing</span>
+              <span className="bg-white/20 px-2 py-1 rounded-full">Indian support</span>
+            </div>
+          </div>
+        </div>
+        <p className="text-center text-zinc-500 text-xs mt-10">Built for Indian startups, enterprises, and government. Trusted. Secure. Scalable.</p>
+      </section>
+
+      {/* PAGE 3 - PRICING - LIGHT BEST CONVERTING */}
+      <section id="pricing" className="scroll-mt-20 bg-[#f8fafc] text-[#0f172a] px-6 md:px-8 py-20">
+        <div className="text-center max-w-3xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-extrabold">Simple, Transparent Pricing for Indian B2B</h2>
+          <p className="text-zinc-600 mt-3 text-sm md:text-[15px]">Mumbai me safe hai — Your data stays in Mumbai, India. Built for Indian businesses with local support, compliance & security.</p>
+          <div className="inline-block mt-5 border border-blue-200 text-blue-700 text-xs md:text-sm px-4 py-1.5 rounded-full bg-blue-50/50">
+            Based in Mumbai | India Data Residence | GST Compliant
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto mt-12 items-start">
+          {/* Starter */}
+          <div className="bg-white border border-zinc-200 rounded-2xl p-8 shadow-sm">
+            <h3 className="text-center text-lg font-medium">Starter</h3>
+            <div className="text-center mt-2">
+              <span className="text-5xl font-extrabold text-[#0f172a] tracking-tight">₹5,999</span>
+              <span className="text-sm text-zinc-500">/month + GST</span>
+            </div>
+            <p className="text-center text-sm text-zinc-600 mt-3">For small teams & startups</p>
+            <ul className="mt-6 space-y-2.5 text-[13px]">
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Up to 5 Users</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> 50 GB Secure Cloud Storage</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Basic Analytics & Reporting</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Email Support (Business Hours)</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Mumbai Data Center</li>
+            </ul>
+            <Link href="/signup" className="block w-full mt-8 bg-[#0f172a] text-white py-3 rounded-full font-semibold text-sm text-center">Get Started</Link>
+          </div>
+
+          {/* Growth - MOST POPULAR - BLUE BEST */}
+          <div className="bg-white border-2 border-[#2563eb] rounded-2xl p-8 shadow-xl relative">
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#2563eb] text-white px-6 py-1 text-xs font-bold tracking-wide rounded-full">MOST POPULAR</div>
+            <h3 className="text-center text-lg font-bold text-[#1e40af]">Growth</h3>
+            <div className="text-center mt-2">
+              <span className="text-5xl font-extrabold text-[#1e3a8a] tracking-tight">₹12,999</span>
+              <span className="text-sm text-zinc-500">/month + GST</span>
+            </div>
+            <p className="text-center text-sm text-zinc-600 mt-3">For growing businesses & SMEs</p>
+            <ul className="mt-6 space-y-2.5 text-[13px]">
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Up to 25 Users</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> 500 GB Secure Cloud Storage</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Advanced Analytics & Insights</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Priority 24/7 Support</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Custom Integrations & API Access</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Team Collaboration Tools</li>
+            </ul>
+            <Link href="/signup" className="block w-full mt-8 bg-[#0f172a] text-white py-3 rounded-full font-semibold text-sm text-center">Get Started</Link>
+          </div>
+
+          {/* Enterprise */}
+          <div className="bg-white border border-zinc-200 rounded-2xl p-8 shadow-sm">
+            <h3 className="text-center text-lg font-medium">Enterprise</h3>
+            <div className="text-center mt-2">
+              <span className="text-5xl font-extrabold text-[#0f172a] tracking-tight">₹14,999</span>
+              <span className="text-sm text-zinc-500">/month + GST</span>
+            </div>
+            <p className="text-center text-sm text-zinc-600 mt-3">For enterprises & large teams</p>
+            <ul className="mt-6 space-y-2.5 text-[13px]">
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Unlimited Users</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> 2 TB Secure Cloud Storage</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Dedicated Account Manager</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> SLA 99.9% Uptime Guarantee</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Advanced Security & SSO</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Custom Deployment & Onboarding</li>
+            </ul>
+            <Link href="/signup" className="block w-full mt-8 bg-[#0f172a] text-white py-3 rounded-full font-semibold text-sm text-center">Get Started</Link>
+          </div>
+        </div>
+
+        {/* Footer trust */}
+        <div className="max-w-6xl mx-auto mt-12 bg-[#f1f5f9] rounded-xl p-4">
+          <div className="flex flex-wrap justify-center gap-3 text-[11px] md:text-xs text-zinc-600">
+            <span>Trusted by 5000+ Indian Businesses</span><span>•</span><span>ISO 27001</span><span>•</span><span>MeitY Compliant</span><span>•</span><span>99.9% Uptime</span><span>•</span><span>24/7 Indian Support</span><span>•</span><span>Razorpay Secure Payments</span>
+          </div>
+          <div className="text-center text-[11px] text-zinc-500 mt-3">All plans include GST invoicing • Cancel anytime • 14-day free trial on all paid plans</div>
+        </div>
+      </section>
+
+      <footer className="bg-[#09090b] text-zinc-500 text-center py-8 text-xs border-t border-zinc-800">
+        © 2026 BharatCloud - Made in India, Made for Bharat. Mumbai me safe hai.
       </footer>
     </div>
   );
