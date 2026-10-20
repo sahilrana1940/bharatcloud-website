@@ -192,7 +192,8 @@ export function TeamPageClient({
             ) : null}
             {members.map((m) => {
               const used = m.storage_used_gb ?? m.drive_used_gb ?? 0;
-              const limit = m.drive_limit_gb ?? 15;
+              const rawLimit = m.drive_limit_gb ?? 0;
+              const limit = !rawLimit || rawLimit === 15 ? 100 : rawLimit;
               return (
                 <tr key={m.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-900">{m.email}</td>

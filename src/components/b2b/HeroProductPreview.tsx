@@ -75,7 +75,7 @@ export function HeroProductPreview() {
         className="absolute -right-2 top-8 hidden rounded-xl border border-orange-200 bg-white px-3 py-2 shadow-lg sm:block"
       >
         <p className="text-[10px] font-bold uppercase tracking-wide text-orange-600">UPI ready</p>
-        <p className="text-sm font-bold text-slate-800">₹999/mo</p>
+        <p className="text-sm font-bold text-slate-800">₹5,999/year</p>
       </motion.div>
     </motion.div>
   );

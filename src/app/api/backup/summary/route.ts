@@ -21,8 +21,6 @@ export async function GET() {
     });
   }
 
-  const email = session.email.toLowerCase();
-
   const { data: files, error: filesErr } = await supabase
     .from("company_archive_files")
     .select("original_size, compressed_size")
@@ -39,7 +37,7 @@ export async function GET() {
       savedPct: 0,
       driveStatus: "idle",
       usedGb: 0,
-      limitGb: 15,
+      limitGb: 100,
       jobStatus: null,
       filesDone: 0,
       migrationRequired: true,
@@ -75,7 +73,13 @@ export async function GET() {
       : 0;
 
   const archiveUsedGb = Number(member?.drive_used_gb ?? bytesCompressed / 1024 ** 3);
-  const productLimitGb = Number(member?.drive_limit_gb ?? 15);
+  const { data: companyRow } = await supabase
+    .from("companies")
+    .select("storage_limit_gb")
+    .eq("id", session.companyId)
+    .maybeSingle();
+  const orgLimit = Number(companyRow?.storage_limit_gb || 0);
+  const productLimitGb = orgLimit > 0 && orgLimit !== 15 ? orgLimit : 100;
 
   let googleDrive: {
     connected: boolean;
@@ -102,7 +106,7 @@ export async function GET() {
   }
 
   const sidebarUsedGb = googleDrive?.usedGb ?? archiveUsedGb;
-  const sidebarLimitGb = googleDrive?.limitGb ?? productLimitGb;
+  const sidebarLimitGb = productLimitGb;
 
   return NextResponse.json({
     filesArchived: scopedFiles.length,

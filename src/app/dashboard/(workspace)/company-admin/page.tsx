@@ -110,7 +110,7 @@ function Shell({
         description="Storage, backups, and team activity for your tenant."
       />
 
-      <CompanyTenantCard domain={domain} adminEmail={adminEmail} profile={profile} />
+      <CompanyTenantCard domain={domain} adminEmail={adminEmail} profile={profile} storageLabel={storageLabel} />
 
       <SyncAllDevicesButton />
 

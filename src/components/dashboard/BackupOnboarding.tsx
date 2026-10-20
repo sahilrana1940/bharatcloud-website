@@ -147,7 +147,7 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
             Upgrade to Pro
           </button>
           <p className="mt-3 text-xs text-slate-500">
-            Or pay via UPI on Billing — plans from ₹999/mo
+            Or pay via UPI on Billing — plans from ₹5,999/year inclusive
           </p>
         </div>
         <BackupValueStrip />

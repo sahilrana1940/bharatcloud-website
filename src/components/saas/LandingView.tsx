@@ -30,7 +30,7 @@ export function LandingView() {
 
         <div className="mt-12 grid gap-4 md:grid-cols-3">
           {STORAGE_PLANS.map((plan) => {
-            const popular = plan.yearlyInr === 12999;
+            const popular = plan.badge === "MOST POPULAR";
             return (
               <article
                 key={plan.id}

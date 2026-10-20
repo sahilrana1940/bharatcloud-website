@@ -10,7 +10,7 @@ export const DEMO_USERS: CompanyUserRow[] = [
     role: "admin",
     is_backup_enabled: true,
     drive_used_gb: 14.8,
-    drive_limit_gb: 15,
+    drive_limit_gb: 100,
   },
   {
     id: "u2",
@@ -19,7 +19,7 @@ export const DEMO_USERS: CompanyUserRow[] = [
     role: "member",
     is_backup_enabled: true,
     drive_used_gb: 8.2,
-    drive_limit_gb: 15,
+    drive_limit_gb: 100,
   },
   {
     id: "u3",
@@ -28,7 +28,7 @@ export const DEMO_USERS: CompanyUserRow[] = [
     role: "member",
     is_backup_enabled: true,
     drive_used_gb: 5.1,
-    drive_limit_gb: 15,
+    drive_limit_gb: 100,
   },
   {
     id: "u4",
@@ -37,7 +37,7 @@ export const DEMO_USERS: CompanyUserRow[] = [
     role: "member",
     is_backup_enabled: false,
     drive_used_gb: 12.0,
-    drive_limit_gb: 15,
+    drive_limit_gb: 100,
   },
   {
     id: "u5",
@@ -46,7 +46,7 @@ export const DEMO_USERS: CompanyUserRow[] = [
     role: "member",
     is_backup_enabled: true,
     drive_used_gb: 3.4,
-    drive_limit_gb: 15,
+    drive_limit_gb: 100,
   },
 ];
 

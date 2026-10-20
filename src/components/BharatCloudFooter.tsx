@@ -9,6 +9,7 @@ export function BharatCloudFooter() {
         <div>
           <p className="text-sm font-bold text-cyan-600">{BRAND_PRODUCT}</p>
           <p className="mt-2 max-w-md text-xs leading-relaxed text-slate-500">{BRAND_FOOTER}</p>
+          <p className="mt-2 text-xs text-slate-500">All plans inclusive of taxes | GST Not Applicable | Cancel anytime</p>
         </div>
         <div className="flex flex-wrap gap-4 text-xs text-slate-600">
           <Link href="/login" className="hover:text-cyan-600">Login</Link>

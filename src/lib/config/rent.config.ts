@@ -21,7 +21,7 @@ export function fiveIdRentQuote() {
   return {
     title: "Fixed ID Pricing - 2026",
     message: "No rent breakdown - Yearly pricing only - Paytm Only",
-    yearly: "₹5,999 / ₹12,999 / ₹14,999",
+    yearly: "₹5,999 / ₹24,999 / ₹39,999",
     hosting: "Hostinger + Mumbai E2E",
     monthlyInr: 395,
   };

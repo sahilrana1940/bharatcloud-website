@@ -1,4 +1,4 @@
-// BharatCloud Pricing - 5999/12999/14999 - 5/20/50 IDs
+// BharatCloud Pricing - 5999/24999/39999 yearly, inclusive, total storage
 export type StoragePlanId = "100gb" | "300gb" | "1tb";
 
 export type StoragePlan = {
@@ -13,9 +13,9 @@ export type StoragePlan = {
 }
 
 export const STORAGE_PLANS: StoragePlan[] = [
-  { id: "100gb", name: "100GB FIX", yearlyInr: 5999, storage: "100GB", storageLabel: "100GB FIX", maxIds: 5, label: "5 IDs FIX" },
-  { id: "300gb", name: "300GB MAX", yearlyInr: 12999, storage: "300GB", storageLabel: "300GB MAX", maxIds: 20, label: "20 IDs MAX", badge: "Popular" },
-  { id: "1tb", name: "1TB MAX", yearlyInr: 14999, storage: "1TB", storageLabel: "1TB MAX", maxIds: 50, label: "50 IDs MAX" },
+  { id: "100gb", name: "Starter", yearlyInr: 5999, storage: "100GB", storageLabel: "100GB Total Storage", maxIds: 5, label: "5 Users (Manual Approval)" },
+  { id: "300gb", name: "Growth", yearlyInr: 24999, storage: "500GB", storageLabel: "500GB Total Storage", maxIds: 25, label: "25 Users (Auto)", badge: "MOST POPULAR" },
+  { id: "1tb", name: "Enterprise", yearlyInr: 39999, storage: "2TB", storageLabel: "2TB Total Storage", maxIds: 0, label: "Unlimited (Auto)" },
 ]
 
 export function formatInr(n?: number): string {
@@ -37,7 +37,7 @@ export const PRICING_PLANS = STORAGE_PLANS
 export const PLANS = STORAGE_PLANS
 export const PRICING_CONFIG = {
   STARTER: { price: 5999, storage: "100GB", maxIds: 5 },
-  GROWTH: { price: 12999, storage: "300GB", maxIds: 20 },
-  SCALE: { price: 14999, storage: "1TB", maxIds: 50 },
+  GROWTH: { price: 24999, storage: "500GB", maxIds: 25 },
+  SCALE: { price: 39999, storage: "2TB", maxIds: 0 },
   PLANS: STORAGE_PLANS,
 }

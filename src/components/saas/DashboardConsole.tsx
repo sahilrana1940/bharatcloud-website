@@ -29,12 +29,12 @@ const PAYTM_LIVE_UPI =
 
 const PLAN = planById("100gb") ?? {
   id: "100gb",
-  name: "100GB FIX",
+  name: "Starter",
   yearlyInr: 5999,
   storage: "100GB",
-  storageLabel: "100GB FIX",
+  storageLabel: "100GB Total Storage",
   maxIds: 5,
-  label: "5 IDs FIX",
+  label: "5 Users (Manual Approval)",
 };
 const RENT_QUOTE = fiveIdRentQuote();
 const PENDING = forwardPendingInr();

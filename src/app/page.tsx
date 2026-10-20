@@ -124,7 +124,7 @@ export default function BharatCloudLanding() {
           <h2 className="text-3xl md:text-4xl font-extrabold">Simple, Transparent Pricing for Indian B2B</h2>
           <p className="text-zinc-600 mt-3 text-sm md:text-[15px]">Email backup and Drive on bharatcloud.drive. Your mail and files stay in Mumbai, India.</p>
           <div className="inline-block mt-5 border border-blue-200 text-blue-700 text-xs md:text-sm px-4 py-1.5 rounded-full bg-blue-50/50">
-            Based in Mumbai | India Data Residence | GST Compliant
+            Based in Mumbai | India Data Residence | Inclusive of all taxes
           </div>
         </div>
 
@@ -134,11 +134,14 @@ export default function BharatCloudLanding() {
             <h3 className="text-center text-lg font-medium">Starter</h3>
             <div className="text-center mt-2">
               <span className="text-5xl font-extrabold text-[#0f172a] tracking-tight">₹5,999</span>
-              <span className="text-sm text-zinc-500">/month + GST</span>
+              <span className="text-sm text-zinc-500">/year</span>
             </div>
+            <p className="text-center text-xs font-semibold text-emerald-700 mt-1">Inclusive of all taxes</p>
+            <p className="text-center mt-3"><span className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-800">Shared for Team</span></p>
             <p className="text-center text-sm text-zinc-600 mt-3">For small teams & startups</p>
             <ul className="mt-6 space-y-2.5 text-[13px]">
-              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Up to 5 Users</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> 100GB Total Storage</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> 5 Users (Manual Approval)</li>
               <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Email mail backup</li>
               <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> bharatcloud.drive files</li>
               <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Basic Analytics & Reporting</li>
@@ -153,13 +156,15 @@ export default function BharatCloudLanding() {
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#2563eb] text-white px-6 py-1 text-xs font-bold tracking-wide rounded-full">MOST POPULAR</div>
             <h3 className="text-center text-lg font-bold text-[#1e40af]">Growth</h3>
             <div className="text-center mt-2">
-              <span className="text-5xl font-extrabold text-[#1e3a8a] tracking-tight">₹12,999</span>
-              <span className="text-sm text-zinc-500">/month + GST</span>
+              <span className="text-5xl font-extrabold text-[#1e3a8a] tracking-tight">₹24,999</span>
+              <span className="text-sm text-zinc-500">/year</span>
             </div>
+            <p className="text-center text-xs font-semibold text-emerald-700 mt-1">Inclusive of all taxes</p>
+            <p className="text-center mt-3"><span className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-800">Shared for Team</span></p>
             <p className="text-center text-sm text-zinc-600 mt-3">For growing businesses & SMEs</p>
             <ul className="mt-6 space-y-2.5 text-[13px]">
-              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Up to 25 Users</li>
-              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> 500 GB Secure Cloud Storage</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> 500GB Total Storage</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> 25 Users (Auto)</li>
               <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Advanced Analytics & Insights</li>
               <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Priority 24/7 Support</li>
               <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Custom Integrations & API Access</li>
@@ -172,13 +177,15 @@ export default function BharatCloudLanding() {
           <div className="bg-white border border-zinc-200 rounded-2xl p-8 shadow-sm">
             <h3 className="text-center text-lg font-medium">Enterprise</h3>
             <div className="text-center mt-2">
-              <span className="text-5xl font-extrabold text-[#0f172a] tracking-tight">₹14,999</span>
-              <span className="text-sm text-zinc-500">/month + GST</span>
+              <span className="text-5xl font-extrabold text-[#0f172a] tracking-tight">₹39,999</span>
+              <span className="text-sm text-zinc-500">/year</span>
             </div>
+            <p className="text-center text-xs font-semibold text-emerald-700 mt-1">Inclusive of all taxes</p>
+            <p className="text-center mt-3"><span className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-800">Shared for Team</span></p>
             <p className="text-center text-sm text-zinc-600 mt-3">For enterprises & large teams</p>
             <ul className="mt-6 space-y-2.5 text-[13px]">
-              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Unlimited Users</li>
-              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> 2 TB Secure Cloud Storage</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> 2TB Total Storage</li>
+              <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Unlimited (Auto)</li>
               <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Dedicated Account Manager</li>
               <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> SLA 99.9% Uptime Guarantee</li>
               <li className="flex gap-2"><span className="text-[#2563eb]">✓</span> Advanced Security & SSO</li>
@@ -193,12 +200,13 @@ export default function BharatCloudLanding() {
           <div className="flex flex-wrap justify-center gap-3 text-[11px] md:text-xs text-zinc-600">
             <span>Trusted by 5000+ Indian Businesses</span><span>•</span><span>ISO 27001</span><span>•</span><span>MeitY Compliant</span><span>•</span><span>99.9% Uptime</span><span>•</span><span>24/7 Indian Support</span><span>•</span><span>Razorpay Secure Payments</span>
           </div>
-          <div className="text-center text-[11px] text-zinc-500 mt-3">All plans include GST invoicing • Cancel anytime • 14-day free trial on all paid plans</div>
+          <div className="text-center text-[11px] text-zinc-500 mt-3">All plans inclusive of taxes | GST Not Applicable | Cancel anytime</div>
         </div>
       </section>
 
       <footer className="bg-[#09090b] text-zinc-500 text-center py-8 text-xs border-t border-zinc-800">
         © 2026 BharatCloud Drive — email backup and Drive. Mumbai me safe hai.
+        <p className="mt-2">All plans inclusive of taxes | GST Not Applicable | Cancel anytime</p>
       </footer>
     </div>
   );

@@ -7,7 +7,6 @@ import { Suspense, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  GST_RATE,
   planById,
   type PlanId,
   withGst,
@@ -48,11 +47,11 @@ function CheckoutInner() {
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
           <div className="flex justify-between">
-            <span className="text-slate-500">Plan (monthly)</span>
+            <span className="text-slate-500">Plan (yearly, inclusive)</span>
             <span>₹{subtotal}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-500">GST ({Math.round(GST_RATE * 100)}%)</span>
+            <span className="text-slate-500">GST Not Applicable</span>
             <span>₹{gst}</span>
           </div>
           <div className="flex justify-between border-t border-slate-200 pt-4 text-base font-semibold dark:border-slate-700">
@@ -60,7 +59,7 @@ function CheckoutInner() {
             <span>₹{total}</span>
           </div>
           <p className="text-xs text-slate-500">
-            {plan.maxUsers} users · {plan.storageGb >= 1024 ? "1TB" : `${plan.storageGb}GB`} on E2E Mumbai · site on Hostinger
+            {plan.maxUsers ? `${plan.maxUsers} users` : "Unlimited users"} · {plan.storageGb >= 1024 ? `${plan.storageGb / 1024}TB` : `${plan.storageGb}GB`} Total Storage · inclusive of taxes
           </p>
           <p className="text-xs text-slate-500">Paytm only. Cards and netbanking are not accepted.</p>
           {error && <p className="text-sm text-red-500">{error}</p>}

@@ -1,7 +1,10 @@
-export type PlanId = "starter" | "standard" | "business";
+import { ADMIN, EMP, EXTRA, GST } from "@/lib/billing/plans";
+
+export type PlanId = "starter" | "growth" | "enterprise" | "standard" | "business";
 
 export const GB = 1024 ** 3;
-export const GST_RATE = 0.18;
+export { ADMIN, EMP, EXTRA, GST };
+export const GST_RATE = GST;
 
 export const PRICING_PLANS: Record<
   PlanId,
@@ -18,28 +21,44 @@ export const PRICING_PLANS: Record<
   starter: {
     id: "starter",
     name: "Starter",
-    priceInr: 999,
+    priceInr: 5999,
     maxUsers: 5,
     storageGb: 100,
     storageBytes: 100 * GB,
+  },
+  growth: {
+    id: "growth",
+    name: "Growth",
+    priceInr: 24999,
+    maxUsers: 25,
+    storageGb: 500,
+    storageBytes: 500 * GB,
     badge: "popular",
+  },
+  enterprise: {
+    id: "enterprise",
+    name: "Enterprise",
+    priceInr: 39999,
+    maxUsers: 0,
+    storageGb: 2048,
+    storageBytes: 2048 * GB,
   },
   standard: {
     id: "standard",
-    name: "Standard",
-    priceInr: 2199,
-    maxUsers: 10,
+    name: "Growth",
+    priceInr: 24999,
+    maxUsers: 25,
     storageGb: 500,
     storageBytes: 500 * GB,
+    badge: "popular",
   },
   business: {
     id: "business",
-    name: "Business",
-    priceInr: 3499,
-    maxUsers: 20,
-    storageGb: 1024,
-    storageBytes: 1024 * GB,
-    badge: "business",
+    name: "Enterprise",
+    priceInr: 39999,
+    maxUsers: 0,
+    storageGb: 2048,
+    storageBytes: 2048 * GB,
   },
 };
 
@@ -48,7 +67,7 @@ export function planById(id: string) {
 }
 
 export function withGst(amount: number) {
-  return Math.round(amount * (1 + GST_RATE));
+  return Math.round(amount * (1 + GST));
 }
 
 export function gstAmount(amount: number) {

@@ -6,7 +6,7 @@ export const BRAND_LEGACY_DOMAIN = "bharatcloud.store";
 export const BRAND_TAGLINE = `${BRAND_PRODUCT} for Business — by ${BRAND_PARENT}`;
 
 export const BRAND_FOOTER =
-  `🇮🇳 ${BRAND_TAGLINE} · 100% Made in India | Mumbai-region storage | Encrypted vault | 60s secure download`;
+  `🇮🇳 ${BRAND_TAGLINE} · 100% Made in India | Mumbai-region storage | Encrypted vault | 60s secure download | All plans inclusive of taxes | GST Not Applicable | Cancel anytime`;
 
 /** Primary platform super-admin login (also in default list). */
 export const SUPER_ADMIN_EMAIL = "support@bharatcloud.store";

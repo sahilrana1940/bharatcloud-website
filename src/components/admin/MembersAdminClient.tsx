@@ -27,7 +27,7 @@ export function MembersAdminClient() {
         id: "1",
         email: "you@company.com",
         domain: "Acme Pvt Ltd",
-        role: "20 IDs Rs12999",
+        role: "25 Users Rs24999",
         googleConnectStatus: "Active",
         createdAt: new Date().toISOString(),
       },

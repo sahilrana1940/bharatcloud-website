@@ -14,28 +14,33 @@ export const WORKSPACE_PLANS: Record<
     planName: "starter",
   },
   growth: {
-    amountPaise: 1_299_900,
-    label: "BharatCloud GROWTH",
+    amountPaise: 2_499_900,
+    label: "BharatCloud GROWTH yearly inclusive",
     planName: "growth",
   },
   scale: {
-    amountPaise: 1_499_900,
-    label: "BharatCloud SCALE",
+    amountPaise: 3_999_900,
+    label: "BharatCloud ENTERPRISE yearly inclusive",
+    planName: "scale",
+  },
+  enterprise: {
+    amountPaise: 3_999_900,
+    label: "BharatCloud ENTERPRISE yearly inclusive",
     planName: "scale",
   },
   standard: {
-    amountPaise: 1_299_900,
-    label: "BharatCloud GROWTH",
+    amountPaise: 2_499_900,
+    label: "BharatCloud GROWTH yearly inclusive",
     planName: "growth",
   },
   business: {
-    amountPaise: 1_499_900,
-    label: "BharatCloud SCALE",
+    amountPaise: 3_999_900,
+    label: "BharatCloud ENTERPRISE yearly inclusive",
     planName: "scale",
   },
   pro: {
-    amountPaise: 99_900,
-    label: "BharatCloud Starter (legacy pro alias)",
+    amountPaise: 599_900,
+    label: "BharatCloud STARTER yearly inclusive",
     planName: "starter",
   },
 };
@@ -43,7 +48,7 @@ export const WORKSPACE_PLANS: Record<
 for (const p of BILLING_PLANS) {
   WORKSPACE_PLANS[p.id] = {
     amountPaise: p.price * 100,
-    label: `BharatCloud ${p.name} (monthly)`,
+    label: `BharatCloud ${p.name} yearly inclusive`,
     planName: p.id,
   };
 }

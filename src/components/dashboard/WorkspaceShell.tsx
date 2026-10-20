@@ -65,7 +65,7 @@ export function WorkspaceShell({
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [usedGb, setUsedGb] = useState(0);
-  const [limitGb, setLimitGb] = useState(15);
+  const [limitGb, setLimitGb] = useState(100);
   const [quotaLabel, setQuotaLabel] = useState("Drive storage");
 
   const sessionSlice = useMemo(

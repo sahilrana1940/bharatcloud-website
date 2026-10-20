@@ -25,12 +25,12 @@ export function quoteUpgrade(yearlyInr: number, newYearlyInr: number, daysUsed: 
 
 export const UPGRADE_EXAMPLE = {
   daysUsed: 90,
-  fromPlanLabel: "100GB",
-  toPlanLabel: "300GB",
+  fromPlanLabel: "100GB Total Storage",
+  toPlanLabel: "500GB Total Storage",
   fromYearlyInr: 5999,
-  toYearlyInr: 12999,
-  remainingInr: 4499,
-  payInr: 8500,
+  toYearlyInr: 24999,
+  remainingInr: 4520,
+  payInr: 20479,
 } as const;
 
 export const OFFER_DAYS_LEFT = 27;

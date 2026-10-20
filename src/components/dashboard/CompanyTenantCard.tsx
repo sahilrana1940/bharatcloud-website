@@ -8,10 +8,12 @@ export function CompanyTenantCard({
   domain,
   adminEmail,
   profile,
+  storageLabel,
 }: {
   domain: string;
   adminEmail: string;
   profile: TenantProfile | null;
+  storageLabel?: string;
 }) {
   return (
     <GlassPanel className="mb-8 p-6">
@@ -27,6 +29,9 @@ export function CompanyTenantCard({
           <p className="mt-2 text-sm text-slate-600">
             Owner / admin login:{" "}
             <span className="font-medium text-slate-800">{adminEmail}</span>
+          </p>
+          <p className="mt-2 text-sm font-semibold text-slate-800">
+            Storage {storageLabel || "0 / 100GB"}
           </p>
         </div>
         {profile && (

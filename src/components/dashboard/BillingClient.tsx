@@ -146,7 +146,8 @@ export function BillingClient() {
                 </span>
               ) : null}
               <p className="text-lg font-semibold text-[#10243E]">{plan.name}</p>
-              <p className="mt-1 text-2xl font-bold text-[#0F766E]">₹{plan.price}</p>
+              <p className="mt-1 text-2xl font-bold text-[#0F766E]">₹{plan.price}<span className="text-sm font-medium text-slate-500">/year</span></p>
+              <p className="text-xs font-semibold text-emerald-700">Inclusive of all taxes</p>
               <p className="mt-2 text-sm text-slate-600">{plan.users}</p>
               <p className="text-sm text-slate-600">{plan.storage}</p>
             </button>
