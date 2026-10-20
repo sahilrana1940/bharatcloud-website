@@ -1,77 +1,50 @@
 import { NextResponse } from "next/server";
 
-import { getValidGoogleAccessToken } from "@/lib/google/access-token";
-import { adminClient } from "@/lib/google/client";
+import { loadTenantCompany } from "@/lib/tenant";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
-import { DEMO_USERS } from "@/lib/workspace/demo-data";
+import { syncCompanyDirectory } from "@/lib/workspace/company-directory";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
-import { upsertProfileInvite } from "@/lib/workspace/workspace-profiles";
 
+/** Owner: sync directory + handoff staff into company_users (Add User). */
 export async function POST() {
   const auth = await requireWorkspace(true);
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
 
+  const company = await loadTenantCompany(session.companyId);
+  if (!company) {
+    return NextResponse.json({ error: "Company not found" }, { status: 404 });
+  }
+
   const supabase = await getSupabaseOrNull();
   if (!supabase) {
-    return NextResponse.json({ users: DEMO_USERS, synced: DEMO_USERS.length });
+    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
 
-  const accessToken = await getValidGoogleAccessToken(
-    supabase,
-    session.companyId,
-    session.email,
+  const { synced } = await syncCompanyDirectory(session.companyId, company.domain);
+
+  await supabase.from("company_users").upsert(
+    {
+      company_id: session.companyId,
+      email: session.email.toLowerCase(),
+      role: "admin",
+      saas_role: "company_owner",
+      is_company_owner: true,
+      is_backup_enabled: true,
+      display_name: session.email.split("@")[0],
+    },
+    { onConflict: "company_id,email" },
   );
 
-  if (!accessToken) {
-    return NextResponse.json(
-      { error: "Reconnect Google for admin account" },
-      { status: 400 },
-    );
-  }
-
-  const { data: company } = await supabase
-    .from("companies")
-    .select("domain")
-    .eq("id", session.companyId)
-    .single();
-
-  const admin = adminClient(accessToken);
-  if (!admin || !company) {
-    return NextResponse.json({ error: "Admin SDK unavailable" }, { status: 503 });
-  }
-
-  const list = await admin.users.list({
-    domain: company.domain,
-    maxResults: 200,
-  });
-
-  const users = list.data.users || [];
-  let synced = 0;
-  for (const u of users) {
-    const email = u.primaryEmail?.toLowerCase();
-    if (!email) continue;
-    const role = email === session.email ? "admin" : "member";
-    await supabase.from("company_users").upsert(
-      {
-        company_id: session.companyId,
-        email,
-        role: u.isAdmin ? "admin" : role,
-      },
-      { onConflict: "company_id,email" },
-    );
-    await upsertProfileInvite(supabase, {
-      companyId: session.companyId,
-      email,
-      invitedBy: session.email,
-    });
-    synced += 1;
-  }
-
-  const { data: all } = await supabase
+  const { data: users } = await supabase
     .from("company_users")
     .select("*")
-    .eq("company_id", session.companyId);
+    .eq("company_id", session.companyId)
+    .order("email");
 
-  return NextResponse.json({ users: all || [], synced });
+  return NextResponse.json({
+    users: users || [],
+    synced: synced + 1,
+    vault: "E2E Mumbai — bharatcloudfinal2",
+  });
 }

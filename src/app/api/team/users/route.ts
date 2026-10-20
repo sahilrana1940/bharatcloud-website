@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 
 import { isS3Configured } from "@/lib/s3/config";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
+import { syncCompanyDirectory } from "@/lib/workspace/company-directory";
 import { DEMO_USERS } from "@/lib/workspace/demo-data";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { isWorkspaceOwner } from "@/lib/workspace/nav";
+import { resolveCompanyDomain } from "@/lib/workspace/company";
 
 function mapDemoUsers() {
   return DEMO_USERS.map((u) => ({
@@ -17,9 +19,35 @@ function mapDemoUsers() {
   }));
 }
 
-function getTeamMembers<T>(rows: T[]): T[] {
-  if (!isS3Configured()) return [];
-  return rows;
+async function ensureOwnerInTeam(
+  supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseOrNull>>>,
+  companyId: string,
+  email: string,
+  ownerView: boolean,
+) {
+  if (!ownerView) return;
+  const normalized = email.toLowerCase();
+  const { count } = await supabase
+    .from("company_users")
+    .select("*", { count: "exact", head: true })
+    .eq("company_id", companyId);
+
+  if ((count || 0) > 0) return;
+
+  const domain = await resolveCompanyDomain(companyId, normalized);
+  await syncCompanyDirectory(companyId, domain);
+  await supabase.from("company_users").upsert(
+    {
+      company_id: companyId,
+      email: normalized,
+      role: "admin",
+      saas_role: "company_owner",
+      is_company_owner: true,
+      is_backup_enabled: true,
+      display_name: normalized.split("@")[0],
+    },
+    { onConflict: "company_id,email" },
+  );
 }
 
 export async function GET() {
@@ -30,8 +58,8 @@ export async function GET() {
   const supabase = await getSupabaseOrNull();
   if (!supabase) {
     return NextResponse.json({
-      users: getTeamMembers(mapDemoUsers()),
-      archivePending: getTeamMembers([1]).length === 0,
+      users: mapDemoUsers(),
+      archivePending: !isS3Configured(),
       session: {
         email: session.email,
         role: session.role,
@@ -40,23 +68,29 @@ export async function GET() {
     });
   }
 
-  const { data: fromView, error: viewError } = await supabase
-    .from("team_members")
-    .select("*")
-    .eq("company_id", session.companyId)
-    .order("email");
-
   const ownerView = isWorkspaceOwner({
     role: session.role,
     saasRole: session.saasRole,
     isCompanyOwner: session.isCompanyOwner,
   });
 
+  await ensureOwnerInTeam(supabase, session.companyId, session.email, ownerView);
+
+  const { data: fromView, error: viewError } = await supabase
+    .from("team_members")
+    .select("*")
+    .eq("company_id", session.companyId)
+    .order("email");
+
   if (!viewError && fromView?.length) {
     const users = ownerView
       ? fromView
       : fromView.filter((u) => u.email?.toLowerCase() === session.email.toLowerCase());
-    return NextResponse.json({ users: getTeamMembers(users), archivePending: getTeamMembers([1]).length === 0, session });
+    return NextResponse.json({
+      users,
+      archivePending: !isS3Configured(),
+      session,
+    });
   }
 
   const { data, error } = await supabase
@@ -79,5 +113,23 @@ export async function GET() {
     users = users.filter((u) => u.email?.toLowerCase() === session.email.toLowerCase());
   }
 
-  return NextResponse.json({ users: getTeamMembers(users), archivePending: getTeamMembers([1]).length === 0, session });
+  if (!users.length && ownerView) {
+    await ensureOwnerInTeam(supabase, session.companyId, session.email, true);
+    const { data: retry } = await supabase
+      .from("company_users")
+      .select("*")
+      .eq("company_id", session.companyId)
+      .order("email");
+    users = (retry || []).map((u) => ({
+      ...u,
+      name: u.display_name || u.email.split("@")[0],
+      storage_used_gb: u.drive_used_gb,
+    }));
+  }
+
+  return NextResponse.json({
+    users,
+    archivePending: !isS3Configured(),
+    session,
+  });
 }

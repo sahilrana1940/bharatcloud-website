@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { loadTenantCompany } from "@/lib/tenant";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
-import { listDiscoveredEmails } from "@/lib/workspace/company-directory";
+import { listDiscoveredEmails, syncCompanyDirectory } from "@/lib/workspace/company-directory";
 
 /** Owner: refresh @domain team list from directory + DB (no manual invite). */
 export async function POST() {
@@ -15,6 +15,7 @@ export async function POST() {
     return NextResponse.json({ error: "Company not found" }, { status: 404 });
   }
 
+  const { synced } = await syncCompanyDirectory(session.companyId, company.domain);
   const emails = await listDiscoveredEmails(session.companyId, company.domain);
-  return NextResponse.json({ ok: true, count: emails.length, emails });
+  return NextResponse.json({ ok: true, count: emails.length, synced, emails });
 }
