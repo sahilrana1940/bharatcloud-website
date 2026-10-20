@@ -181,8 +181,7 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
   if (!s3Ok) {
     return (
       <div className="mt-6 rounded border border-yellow-200 bg-yellow-50 p-4 text-sm text-amber-950">
-        <p>Archive storage pending setup. Admin needs to configure E2E bucket on Vercel env.</p>
-        <p className="mt-1 text-xs">For dev: Add mock fallback - show 0 team members, disable Sync All Drives button</p>
+        <p>Archive storage pending setup. Admin needs to configure the E2E bucket on Vercel.</p>
       </div>
     );
   }

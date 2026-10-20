@@ -18,8 +18,7 @@ function mapDemoUsers() {
 }
 
 function getTeamMembers<T>(rows: T[]): T[] {
-  const archiveReady = Boolean(process.env.ARCHIVE_S3_BUCKET?.trim()) || isS3Configured();
-  if (!archiveReady) return [];
+  if (!isS3Configured()) return [];
   return rows;
 }
 

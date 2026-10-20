@@ -10,11 +10,15 @@ export function getS3Env() {
     "us-east-1";
   const accessKeyId =
     process.env.WASABI_ACCESS_KEY?.trim() ||
+    process.env.E2E_ACCESS_KEY?.trim() ||
     process.env.E2E_S3_ACCESS_KEY?.trim() ||
+    process.env.E2E_S3_ACCESS_KEY_ID?.trim() ||
     "";
   const secretAccessKey =
     process.env.WASABI_SECRET_KEY?.trim() ||
+    process.env.E2E_SECRET_KEY?.trim() ||
     process.env.E2E_S3_SECRET_KEY?.trim() ||
+    process.env.E2E_S3_SECRET_ACCESS_KEY?.trim() ||
     "";
   const b2bBucket =
     process.env.WASABI_B2B_BUCKET?.trim() ||
