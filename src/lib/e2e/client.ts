@@ -1,11 +1,14 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { S3Client } from "@aws-sdk/client-s3";
 
 import { calculateBill, E2E_RATES } from "@/lib/admin/platform-costs";
+import { uploadAsArchiver } from "@/lib/storage/archiver-from-start";
 
 export { calculateBill, E2E_RATES };
 
-const HOT_BUCKET = "bharatcloud-hot";
-const COLD_BUCKET = "bharatcloud-cold";
+const ARCHIVE_BUCKET =
+  process.env.ARCHIVE_S3_BUCKET?.trim() ||
+  process.env.E2E_S3_B2B_BUCKET?.trim() ||
+  "bharatcloudfinal2";
 
 export function getE2EClient(): S3Client | null {
   const accessKeyId = (
@@ -30,24 +33,17 @@ export function getE2EClient(): S3Client | null {
   });
 }
 
-export function bucketForKey(key: string): string {
-  return key.includes("/archive/") ? COLD_BUCKET : HOT_BUCKET;
+export function bucketForKey(_key: string): string {
+  return ARCHIVE_BUCKET;
 }
 
-export async function uploadToE2E(file: File, key: string): Promise<{ bucket: string; key: string }> {
-  const client = getE2EClient();
-  if (!client) {
+/** Upload always lands in bharatcloudfinal2 as GLACIER-class archive from day 1. */
+export async function uploadToE2E(
+  file: File,
+  orgId: string,
+): Promise<{ bucket: string; key: string }> {
+  if (!getE2EClient()) {
     throw new Error("E2E credentials missing. Set E2E_ACCESS_KEY and E2E_SECRET_KEY.");
   }
-  const bucket = bucketForKey(key);
-  const body = Buffer.from(await file.arrayBuffer());
-  await client.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Body: body,
-      ContentType: file.type || "application/octet-stream",
-    }),
-  );
-  return { bucket, key };
+  return uploadAsArchiver(file, orgId, null, "drive");
 }

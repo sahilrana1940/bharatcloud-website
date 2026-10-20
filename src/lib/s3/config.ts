@@ -23,11 +23,11 @@ export function getS3Env() {
   const b2bBucket =
     process.env.WASABI_B2B_BUCKET?.trim() ||
     process.env.E2E_S3_B2B_BUCKET?.trim() ||
-    "bharatcloud-vault";
+    "bharatcloudfinal2";
   const archiveBucket =
     process.env.ARCHIVE_S3_BUCKET?.trim() ||
     process.env.WASABI_ARCHIVE_BUCKET?.trim() ||
-    "bharatcloud-archiver";
+    "bharatcloudfinal2";
 
   return { endpoint, region, accessKeyId, secretAccessKey, b2bBucket, archiveBucket };
 }
@@ -39,4 +39,10 @@ export function getArchiveBucket() {
 export function isS3Configured(): boolean {
   const { endpoint, accessKeyId, secretAccessKey } = getS3Env();
   return Boolean(endpoint && accessKeyId && secretAccessKey);
+}
+
+/** When set, every object upload uses archive class + archiver key layout from day 0. */
+export function isArchiveFromStart(): boolean {
+  const mode = process.env.STORAGE_MODE?.trim().toUpperCase();
+  return mode === "ARCHIVE_FROM_START" || mode === "ARCHIVER_FROM_START";
 }

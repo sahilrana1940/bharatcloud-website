@@ -3,10 +3,13 @@ import { NextResponse } from "next/server";
 import {
   countBackedUpEmails,
   listEmailBackupRuns,
+  listFileArchives,
+  orgArchiveStorageTotals,
   orgEmailBackupTotals,
   runE2eGmailBackup,
   EMAIL_BACKUP_S3_BUCKET,
 } from "@/lib/email/e2e-gmail-backup";
+import { archiveStorageClass } from "@/lib/storage/archiver-from-start";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { isWorkspaceOwner } from "@/lib/workspace/nav";
@@ -59,15 +62,27 @@ export async function GET(req: Request) {
     (r) => (r as { status?: string }).status === "running",
   ) as { progress?: string; status?: string } | undefined;
 
+  const { archives, tableMissing: archivesMissing } = await listFileArchives(
+    supabase,
+    session.companyId,
+  );
+  const storageTotals = await orgArchiveStorageTotals(supabase, session.companyId);
+
   return NextResponse.json({
     bucket: EMAIL_BACKUP_S3_BUCKET,
+    storageClass: archiveStorageClass(),
     backedUpCount,
     targetCount: 10000,
     runs,
+    archives,
+    archivesMissing,
+    totalArchiveGb: storageTotals.totalMb / 1024,
     tableMissing,
     progress: active?.progress || "",
     status: active?.status || "idle",
     orgTotals,
+    fromStart: true,
+    retentionYears: 7,
   });
 }
 
@@ -112,6 +127,6 @@ export async function POST(req: Request) {
     sizeMb: result.sizeMb,
     bucket: EMAIL_BACKUP_S3_BUCKET,
     s3Path: result.s3Path,
-    progress: `Uploaded ${result.emailCount} emails to ${EMAIL_BACKUP_S3_BUCKET}/${result.s3Path}`,
+    progress: `Archived ${result.emailCount} emails to ${EMAIL_BACKUP_S3_BUCKET}/${result.s3Path} (Gmail unchanged)`,
   });
 }

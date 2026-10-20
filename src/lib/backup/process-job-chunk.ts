@@ -4,7 +4,9 @@ import { compressForArchive } from "@/lib/backup/compress-media";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { fetchDriveFilesListPage } from "@/lib/google/drive-api";
 import { driveClient } from "@/lib/google/client";
+import { insertFileArchiveRow } from "@/lib/archive/save-file-archive-row";
 import { archiveObjectKey, uploadToArchive } from "@/lib/s3/archive";
+import { ARCHIVER_BUCKET, archiveStorageClass } from "@/lib/storage/archiver-from-start";
 import { sha256Buffer } from "@/lib/workspace/company-directory";
 
 const FILES_PER_TICK = 8;
@@ -122,9 +124,21 @@ export async function processBackupJobChunk(
 
       if (!archiveKey) {
         archiveKey = archiveObjectKey(companyId, compressed.outName);
-        const up = await uploadToArchive(archiveKey, compressed.body, compressed.contentType);
+        const up = await uploadToArchive(archiveKey, compressed.body, compressed.contentType, {
+          originalName: compressed.outName,
+        });
         if (!up.ok) throw new Error(up.error);
         compressedSize = compressed.body.length;
+        await insertFileArchiveRow(supabase, {
+          org_id: companyId,
+          file_name: compressed.outName,
+          s3_bucket: ARCHIVER_BUCKET,
+          s3_key: archiveKey,
+          storage_class: String(archiveStorageClass()),
+          source: "drive",
+          size_mb: compressedSize / (1024 * 1024),
+          is_from_start: true,
+        });
       }
 
       await supabase.from("company_archive_files").insert({

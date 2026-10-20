@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { presignedArchiveGetUrl } from "@/lib/s3/archive";
+import { logArchiveRestore } from "@/lib/archive/save-file-archive-row";
 import { EMAIL_BACKUP_S3_BUCKET } from "@/lib/email/e2e-gmail-backup";
+import { getArchiveObjectUrl } from "@/lib/s3/archive";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
-/** POST — presigned download links for a completed backup run prefix. */
+/** POST — restore presigned URL from bharatcloudfinal2 archive + audit log. */
 export async function POST(req: Request) {
   const auth = await requireWorkspace();
   if (auth instanceof NextResponse) return auth;
@@ -18,42 +19,82 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const runId = typeof body?.runId === "string" ? body.runId : "";
-  if (!runId) {
-    return NextResponse.json({ error: "runId required" }, { status: 400 });
+  const archiveId = typeof body?.archiveId === "string" ? body.archiveId : "";
+
+  let s3Key = typeof body?.s3Key === "string" ? body.s3Key : "";
+  let bucket = EMAIL_BACKUP_S3_BUCKET;
+  let fileArchiveId: string | null = archiveId || null;
+
+  if (archiveId) {
+    const { data: row } = await supabase
+      .from("file_archives")
+      .select("*")
+      .eq("id", archiveId)
+      .eq("org_id", session.companyId)
+      .maybeSingle();
+    if (!row) {
+      return NextResponse.json({ error: "Archive not found" }, { status: 404 });
+    }
+    s3Key = row.s3_key as string;
+    bucket = (row.s3_bucket as string) || bucket;
+    fileArchiveId = row.id as string;
+  } else if (runId) {
+    const { data: run, error } = await supabase
+      .from("email_backup_runs")
+      .select("*")
+      .eq("id", runId)
+      .maybeSingle();
+
+    if (error || !run) {
+      return NextResponse.json({ error: "Archive run not found" }, { status: 404 });
+    }
+
+    if (
+      run.user_email?.toLowerCase() !== session.email.toLowerCase() &&
+      run.org_id !== session.companyId
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    bucket = (run.s3_bucket as string) || bucket;
+    const prefix = (run.s3_path as string) || "";
+
+    const { data: first } = await supabase
+      .from("file_archives")
+      .select("id, s3_key")
+      .eq("org_id", session.companyId)
+      .like("s3_key", `${prefix}%`)
+      .order("archived_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (first?.s3_key) {
+      s3Key = first.s3_key as string;
+      fileArchiveId = first.id as string;
+    } else {
+      s3Key = prefix.endsWith("/") ? `${prefix}sample.eml` : `${prefix}/sample.eml`;
+    }
   }
 
-  const { data: run, error } = await supabase
-    .from("email_backup_runs")
-    .select("*")
-    .eq("id", runId)
-    .maybeSingle();
-
-  if (error || !run) {
-    return NextResponse.json({ error: "Backup run not found" }, { status: 404 });
+  if (!s3Key) {
+    return NextResponse.json({ error: "runId or archiveId required" }, { status: 400 });
   }
 
-  if (
-    run.user_email?.toLowerCase() !== session.email.toLowerCase() &&
-    run.org_id !== session.companyId
-  ) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const downloadUrl = await getArchiveObjectUrl(s3Key, bucket);
 
-  const prefix = (run.s3_path as string) || "";
-  const sampleKey = prefix.endsWith("/")
-    ? `${prefix}restore-manifest.txt`
-    : `${prefix}/restore-manifest.txt`;
-
-  const manifestUrl = await presignedArchiveGetUrl(sampleKey, 3600);
+  await logArchiveRestore(supabase, {
+    org_id: session.companyId,
+    file_archive_id: fileArchiveId,
+    s3_key: s3Key,
+    restored_by: session.email,
+  });
 
   return NextResponse.json({
     ok: true,
-    message:
-      "Restore from E2E Mumbai (.eml in your vault). Hostinger app + Paytm plan — contact support for bulk restore.",
-    bucket: run.s3_bucket || EMAIL_BACKUP_S3_BUCKET,
-    s3Path: prefix,
-    emailCount: run.email_count,
-    manifestUrl,
-    hint: `Objects live under s3://${run.s3_bucket || EMAIL_BACKUP_S3_BUCKET}/${prefix}*.eml`,
+    message: "Restore link from E2E Mumbai archive (GLACIER class). Gmail originals unchanged.",
+    bucket,
+    s3Key,
+    downloadUrl,
+    hint: `Object: s3://${bucket}/${s3Key}`,
   });
 }

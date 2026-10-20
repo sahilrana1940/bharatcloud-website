@@ -8,7 +8,8 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-import { getS3Env, isS3Configured } from "@/lib/s3/config";
+import { putArchiverObject } from "@/lib/storage/archiver-from-start";
+import { getArchiveBucket, getS3Env, isS3Configured } from "@/lib/s3/config";
 
 export const B2B_VAULT_BUCKET = getS3Env().b2bBucket;
 
@@ -44,19 +45,24 @@ export async function ensureFolder(
 }
 
 export async function uploadFile(
-  client: S3Client,
+  _client: S3Client,
   key: string,
   body: Buffer,
   contentType?: string,
 ) {
-  await client.send(
-    new PutObjectCommand({
-      Bucket: B2B_VAULT_BUCKET,
-      Key: key,
-      Body: body,
-      ContentType: contentType,
-    }),
-  );
+  const archiveKey = key.startsWith("archive/") ? key : `archive/drive/${key}`;
+  const up = await putArchiverObject({
+    key: archiveKey,
+    body,
+    contentType: contentType || "application/octet-stream",
+    bucket: getArchiveBucket(),
+    metadata: {
+      archivedAt: new Date().toISOString(),
+      type: "archiver-start",
+      retention: "7-years",
+    },
+  });
+  if (!up.ok) throw new Error(up.error);
 }
 
 export async function listCompanyFiles(

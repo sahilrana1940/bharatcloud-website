@@ -1,14 +1,16 @@
-import { PutObjectCommand } from "@aws-sdk/client-s3";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { resolveArchiveCompanyId } from "@/lib/archive/resolve-archive-company";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { gmailClient } from "@/lib/google/client";
-import { getS3Client } from "@/lib/s3/client";
+import {
+  ARCHIVER_BUCKET,
+  archiveGmailEml,
+  emailArchivePrefix,
+} from "@/lib/storage/archiver-from-start";
 import { isS3Configured } from "@/lib/s3/config";
 
-export const EMAIL_BACKUP_S3_BUCKET =
-  process.env.ARCHIVE_S3_BUCKET?.trim() || "bharatcloudfinal2";
+export const EMAIL_BACKUP_S3_BUCKET = ARCHIVER_BUCKET;
 
 const DEFAULT_MAX = 100;
 const MAX_CAP = 1000;
@@ -21,18 +23,6 @@ export type E2eEmailBackupProgress = {
   uploaded: number;
   total: number;
 };
-
-function yearFromDate(d = new Date()) {
-  return d.getUTCFullYear();
-}
-
-function emlKey(orgId: string, year: number, messageId: string) {
-  return `email-backup/${orgId}/${year}/${messageId}.eml`;
-}
-
-function runPrefix(orgId: string, year: number) {
-  return `email-backup/${orgId}/${year}/`;
-}
 
 export async function listEmailBackupRuns(
   supabase: SupabaseClient,
@@ -52,6 +42,35 @@ export async function listEmailBackupRuns(
     return { runs: [] as Record<string, unknown>[], tableMissing: true };
   }
   return { runs: data || [], tableMissing: false };
+}
+
+export async function listFileArchives(
+  supabase: SupabaseClient,
+  orgId: string,
+  limit = 50,
+) {
+  const { data, error } = await supabase
+    .from("file_archives")
+    .select("*")
+    .eq("org_id", orgId)
+    .order("archived_at", { ascending: false })
+    .limit(limit);
+
+  if (error && /does not exist|schema cache/i.test(error.message)) {
+    return { archives: [] as Record<string, unknown>[], tableMissing: true };
+  }
+  return { archives: data || [], tableMissing: false };
+}
+
+export async function orgArchiveStorageTotals(supabase: SupabaseClient, orgId: string) {
+  const { data } = await supabase
+    .from("file_archives")
+    .select("size_mb")
+    .eq("org_id", orgId);
+
+  const rows = data || [];
+  const totalMb = rows.reduce((n, r) => n + (Number(r.size_mb) || 0), 0);
+  return { totalMb, fileCount: rows.length };
 }
 
 export async function countBackedUpEmails(
@@ -112,14 +131,11 @@ export async function runE2eGmailBackup(
     };
   }
 
-  const client = getS3Client();
-  if (!client) return { ok: false, error: "S3 client unavailable" };
-
   const email = opts.email.toLowerCase();
   const orgId = await resolveArchiveCompanyId(supabase, opts.companyId, email);
   const maxMessages = Math.min(MAX_CAP, Math.max(1, opts.maxMessages ?? DEFAULT_MAX));
-  const year = yearFromDate();
-  const prefix = runPrefix(orgId, year);
+  const now = new Date();
+  const prefix = emailArchivePrefix(orgId, now);
   const bucket = EMAIL_BACKUP_S3_BUCKET;
 
   const { data: runRow, error: insertErr } = await supabase
@@ -130,7 +146,7 @@ export async function runE2eGmailBackup(
       s3_bucket: bucket,
       s3_path: prefix,
       status: "running",
-      progress: `Fetching up to ${maxMessages} emails…`,
+      progress: `Archiving up to ${maxMessages} emails (copy only — Gmail not deleted)…`,
     })
     .select("id")
     .single();
@@ -138,7 +154,7 @@ export async function runE2eGmailBackup(
   if (insertErr || !runRow?.id) {
     return {
       ok: false,
-      error: insertErr?.message || "Could not create backup run (apply migration 027).",
+      error: insertErr?.message || "Could not create archive run (apply migration 027).",
     };
   }
 
@@ -170,7 +186,11 @@ export async function runE2eGmailBackup(
     return { ok: false, error: "Gmail client unavailable", runId };
   }
 
-  emit({ phase: "fetching", message: `Fetching up to ${maxMessages} emails…`, total: maxMessages });
+  emit({
+    phase: "fetching",
+    message: `Fetching up to ${maxMessages} emails (archive copy only)…`,
+    total: maxMessages,
+  });
   await patchRun(supabase, runId, { progress: `Fetching up to ${maxMessages} emails…` });
 
   try {
@@ -198,34 +218,31 @@ export async function runE2eGmailBackup(
       if (!rawB64) continue;
 
       const rawEmail = Buffer.from(rawB64, "base64url");
-      const key = emlKey(orgId, year, id);
 
       emit({
         phase: i === 0 ? "fetching" : "uploading",
         message:
           i < 3
             ? `Fetching ${total} emails…`
-            : `Uploading to ${bucket}/${prefix} (${uploaded + 1}/${total})`,
+            : `Archiving to ${bucket}/${prefix} (${uploaded + 1}/${total})`,
         fetched: i + 1,
         uploaded,
         total,
       });
 
-      await client.send(
-        new PutObjectCommand({
-          Bucket: bucket,
-          Key: key,
-          Body: rawEmail,
-          ContentType: "message/rfc822",
-          StorageClass: "STANDARD",
-        }),
-      );
+      const archived = await archiveGmailEml({
+        orgId,
+        messageId: id,
+        body: rawEmail,
+        supabase,
+      });
+      if (!archived.ok) throw new Error(archived.error);
 
       uploaded += 1;
       bytes += rawEmail.length;
 
       await patchRun(supabase, runId, {
-        progress: `Uploading ${uploaded}/${total} → ${bucket}/${prefix}`,
+        progress: `Archiving ${uploaded}/${total} → ${bucket}/${prefix}`,
         email_count: uploaded,
         size_mb: bytes / (1024 * 1024),
       });
@@ -237,12 +254,12 @@ export async function runE2eGmailBackup(
       email_count: uploaded,
       size_mb: sizeMb,
       s3_path: prefix,
-      progress: `Done — ${uploaded} emails in ${bucket}`,
+      progress: `Done — ${uploaded} emails archived in ${bucket} (Gmail unchanged)`,
     });
 
     emit({
       phase: "done",
-      message: `Backed up ${uploaded} emails to E2E Mumbai (${bucket}).`,
+      message: `Archived ${uploaded} emails on E2E Mumbai (${bucket}). Gmail not modified.`,
       fetched: total,
       uploaded,
       total,
@@ -250,7 +267,7 @@ export async function runE2eGmailBackup(
 
     return { ok: true, runId, emailCount: uploaded, sizeMb, s3Path: prefix };
   } catch (e) {
-    let msg = e instanceof Error ? e.message : "Gmail backup failed";
+    let msg = e instanceof Error ? e.message : "Gmail archive failed";
     if (/insufficient.*scope|403|Forbidden/i.test(msg)) {
       msg =
         "Gmail permission missing — reconnect Google and allow Gmail read/modify on the consent screen.";

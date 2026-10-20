@@ -79,8 +79,7 @@ export async function saveTeamMail(
 
   const original = toFile(mail.raw, `${safeObjectId(messageId)}.eml`);
   const reduced = await achieverReduce(original);
-  const key = `teams/${teamId}/${safeObjectId(messageId)}.eml`;
-  const uploaded = await uploadToE2E(reduced.file, key);
+  const uploaded = await uploadToE2E(reduced.file, teamId);
   const originalMb = bytesToMb(original.size);
   const sizeMb = bytesToMb(reduced.file.size);
   const savedMb = Math.max(0, Math.round((originalMb - sizeMb) * 1000) / 1000);

@@ -13,13 +13,13 @@ export type WorkspaceNavItem = {
 /** Icons resolved in WorkspaceShell — keep href/label/for here only. */
 export const WORKSPACE_NAV: WorkspaceNavItem[] = [
   { href: "/dashboard/employee", label: "Employee home", icon: "Cloud", for: "employee" },
-  { href: "/dashboard/drive", label: "My Drive", icon: "HardDrive", for: "employee" },
+  { href: "/dashboard/drive", label: "My Archive Drive", icon: "HardDrive", for: "employee" },
   { href: "/dashboard/employee/upload", label: "Upload video", icon: "Upload", for: "employee" },
   { href: "/dashboard/employee/vault", label: "Search vault", icon: "Search", for: "employee" },
   { href: "/dashboard/employee/mail", label: "My mail archive", icon: "Mail", for: "employee" },
   {
     href: "/dashboard/email-backup",
-    label: "Email Backup",
+    label: "Archive Drive",
     icon: "Mail",
     for: "employee",
     requiresGmail: true,
@@ -31,7 +31,7 @@ export const WORKSPACE_NAV: WorkspaceNavItem[] = [
   { href: "/dashboard/emails", label: "Search company mail", icon: "Mail", for: "owner" },
   {
     href: "/dashboard/email-backup",
-    label: "Email Backup",
+    label: "Archive Drive",
     icon: "Mail",
     for: "owner",
     requiresGmail: true,
