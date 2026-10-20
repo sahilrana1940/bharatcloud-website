@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { isS3Configured } from "@/lib/s3/config";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
@@ -76,22 +76,10 @@ export async function GET() {
 
   await ensureOwnerInTeam(supabase, session.companyId, session.email, ownerView);
 
-  const { data: fromView, error: viewError } = await supabase
-    .from("team_members")
-    .select("*")
-    .eq("company_id", session.companyId)
-    .order("email");
-
-  if (!viewError && fromView?.length) {
-    const users = ownerView
-      ? fromView
-      : fromView.filter((u) => u.email?.toLowerCase() === session.email.toLowerCase());
-    return NextResponse.json({
-      users,
-      archivePending: !isS3Configured(),
-      session,
-    });
-  }
+  const domain = await resolveCompanyDomain(session.companyId, session.email);
+  const { data: domainTeam } = domain
+    ? await supabase.from("team_members").select("email, role, status, company_domain").eq("company_domain", domain)
+    : { data: [] as Array<{ email: string; role?: string; status?: string }> };
 
   const { data, error } = await supabase
     .from("company_users")
@@ -108,6 +96,23 @@ export async function GET() {
     name: u.display_name || u.email.split("@")[0],
     storage_used_gb: u.drive_used_gb,
   }));
+
+  const seen = new Set(users.map((u) => String(u.email || "").toLowerCase()));
+  for (const row of domainTeam || []) {
+    const email = String(row.email || "").toLowerCase();
+    if (!email || seen.has(email)) continue;
+    seen.add(email);
+    users.push({
+      id: email,
+      email,
+      name: email.split("@")[0],
+      role: row.role || "member",
+      drive_used_gb: 0,
+      storage_used_gb: 0,
+      drive_sync_status: row.status || "idle",
+      is_backup_enabled: true,
+    });
+  }
 
   if (!ownerView) {
     users = users.filter((u) => u.email?.toLowerCase() === session.email.toLowerCase());
@@ -132,4 +137,75 @@ export async function GET() {
     archivePending: !isS3Configured(),
     session,
   });
+}
+
+export async function POST(req: NextRequest) {
+  const auth = await requireWorkspace(true);
+  if (auth instanceof NextResponse) return auth;
+  const { session } = auth;
+
+  if (
+    !isWorkspaceOwner({
+      role: session.role,
+      saasRole: session.saasRole,
+      isCompanyOwner: session.isCompanyOwner,
+    })
+  ) {
+    return NextResponse.json({ error: "Owner only" }, { status: 403 });
+  }
+
+  const body = await req.json().catch(() => ({}));
+  const email = String(body.email || "").trim().toLowerCase();
+  if (!email.includes("@")) {
+    return NextResponse.json({ error: "Enter a team email" }, { status: 400 });
+  }
+
+  const supabase = await getSupabaseOrNull();
+  if (!supabase) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+
+  const domain = await resolveCompanyDomain(session.companyId, session.email);
+  const host = email.split("@")[1] || "";
+  if (domain && host !== domain) {
+    return NextResponse.json({ error: `Email must be @${domain}` }, { status: 400 });
+  }
+
+  const saved = await upsertMember(supabase, {
+    company_id: session.companyId,
+    email,
+    role: "member",
+    saas_role: "employee",
+    is_company_owner: false,
+    is_backup_enabled: true,
+    display_name: email.split("@")[0],
+    drive_used_gb: 0,
+    drive_limit_gb: 100,
+  });
+  if (saved) return NextResponse.json({ error: saved }, { status: 500 });
+
+  await supabase.from("team_members").upsert(
+    {
+      email,
+      company_domain: domain || host,
+      role: "member",
+      status: "active",
+    },
+    { onConflict: "email" },
+  );
+
+  return NextResponse.json({ ok: true, email, backup: true });
+}
+
+async function upsertMember(
+  supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseOrNull>>>,
+  row: Record<string, unknown>,
+) {
+  const payload = { ...row };
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const { error } = await supabase.from("company_users").upsert(payload, { onConflict: "company_id,email" });
+    if (!error) return null;
+    const missing = error.message.match(/Could not find the '([^']+)' column/i);
+    if (!missing) return error.message;
+    delete payload[missing[1]];
+  }
+  return "Could not add team member";
 }

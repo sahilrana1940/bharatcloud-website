@@ -23,7 +23,7 @@ export async function companyHasPaidBackup(
       const name = String(row.name || "").toLowerCase();
       return owner.endsWith(`@${host}`) || name === host;
     });
-    if (String(org?.plan || "").toLowerCase() === "free") return true;
+    if (String(org?.plan || "").trim()) return true;
   }
 
   const { data: co } = await supabase

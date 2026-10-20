@@ -7,7 +7,7 @@ import {
   fetchGoogleTokenRow,
   isGoogleTokenRowConnected,
 } from "@/lib/google/token-row";
-import { processBackupJobChunk } from "@/lib/backup/process-job-chunk";
+import { runEmailArchiveForUser } from "@/lib/archive/run-email-archive";
 import { loadTenantCompany } from "@/lib/tenant";
 import { emailMatchesDomain } from "@/lib/workspace/company-directory";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
@@ -65,55 +65,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Active subscription required" }, { status: 402 });
   }
 
-  const tok = await fetchGoogleTokenRow(supabase, session.companyId, email);
-  if (!isGoogleTokenRowConnected(tok)) {
-    return NextResponse.json(
-      {
-        error: `${email} must connect Google Drive in Settings first`,
-        connectUrl: "/settings",
-      },
-      { status: 400 },
-    );
-  }
-
   await supabase.from("company_users").upsert(
     {
       company_id: session.companyId,
       email,
       role: "member",
-      saas_role: "employee",
-      is_company_owner: false,
       is_backup_enabled: true,
     },
     { onConflict: "company_id,email" },
   );
 
-  const { data: running } = await supabase
-    .from("company_backup_jobs")
-    .select("id")
-    .eq("company_id", session.companyId)
-    .eq("owner_email", email)
-    .in("status", ["queued", "running"])
-    .limit(1)
-    .maybeSingle();
-
-  let jobId = running?.id as string | undefined;
-  if (!jobId) {
-    const { data: job, error } = await supabase
-      .from("company_backup_jobs")
-      .insert({
-        company_id: session.companyId,
-        owner_email: email,
-        status: "queued",
-      })
-      .select("id")
-      .single();
-    if (error || !job) {
-      return NextResponse.json({ error: error?.message || "Could not start job" }, { status: 500 });
-    }
-    jobId = job.id as string;
+  const archiveCompanyId = company.id;
+  const tok = await fetchGoogleTokenRow(supabase, archiveCompanyId, email);
+  if (!isGoogleTokenRowConnected(tok)) {
+    return NextResponse.json(
+      {
+        error: `${email} is on the team with backup on. Connect Google for that mailbox once, then backup can run.`,
+        connectUrl: "/settings",
+        added: true,
+      },
+      { status: 400 },
+    );
   }
 
-  const first = await processBackupJobChunk(supabase, jobId);
-  return NextResponse.json({ ok: true, jobId, email, ...first });
+  const archived = await runEmailArchiveForUser(supabase, {
+    companyId: archiveCompanyId,
+    email,
+    domain: company.domain,
+  });
+  if (!archived.success) {
+    return NextResponse.json({ error: archived.error }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true, email, filesDone: archived.count, progress: archived.progress });
 }

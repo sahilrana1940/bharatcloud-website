@@ -32,6 +32,8 @@ export function TeamPageClient({
   const [proActive, setProActive] = useState<boolean | null>(null);
   const [archivePending, setArchivePending] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [addEmail, setAddEmail] = useState("");
+  const [adding, setAdding] = useState(false);
   const load = useCallback(async () => {
     const res = await fetch("/api/team/users");
     const j = await res.json();
@@ -107,9 +109,26 @@ export function TeamPageClient({
   }
 
   async function addUsers() {
-    const res = await fetch("/api/team/sync", { method: "POST" });
+    const email = addEmail.trim().toLowerCase();
+    if (!email.includes("@")) {
+      notify("Enter a team email");
+      return;
+    }
+    setAdding(true);
+    const res = await fetch("/api/team/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
     const j = await res.json();
-    notify(res.ok ? `Added/synced ${j.synced} users` : j.error || "Failed");
+    setAdding(false);
+    if (!res.ok) {
+      notify(j.error || "Could not add member");
+      return;
+    }
+    setAddEmail("");
+    notify(`${email} added. Starting mail backup…`);
+    await enableBackup(email);
     load();
   }
 
@@ -146,12 +165,20 @@ export function TeamPageClient({
               >
                 <RefreshCw className="h-4 w-4" /> Sync All Drives
               </button>
+              <input
+                type="email"
+                value={addEmail}
+                onChange={(e) => setAddEmail(e.target.value)}
+                placeholder="staff@company.com"
+                className="h-10 rounded-xl border border-cyan-200 bg-white px-3 text-sm text-slate-800"
+              />
               <button
                 type="button"
                 onClick={addUsers}
-                className="flex items-center gap-2 rounded-xl border border-cyan-200 bg-white px-4 py-2.5 text-sm font-medium text-cyan-700 shadow-sm hover:bg-cyan-50"
+                disabled={adding}
+                className="flex items-center gap-2 rounded-xl border border-cyan-200 bg-white px-4 py-2.5 text-sm font-medium text-cyan-700 shadow-sm hover:bg-cyan-50 disabled:opacity-60"
               >
-                <UserPlus className="h-4 w-4" /> Add User
+                <UserPlus className="h-4 w-4" /> {adding ? "Adding…" : "Add member"}
               </button>
             </>
           ) : null}
