@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { insertFileArchiveRow } from "@/lib/archive/save-file-archive-row";
 import { e2eWorkspacePrefix } from "@/lib/roles/platform-roles";
 import { getS3Client } from "@/lib/s3/client";
-import { getArchiveBucket, isArchiveFromStart, isS3Configured } from "@/lib/s3/config";
+import { getE2EBucket, isArchiveFromStart, isS3Configured } from "@/lib/s3/config";
 
 export const ARCHIVER_BUCKET =
   process.env.ARCHIVE_S3_BUCKET?.trim() ||
@@ -74,7 +74,7 @@ export async function putArchiverObject(opts: {
   const client = getS3Client();
   if (!client) return { ok: false, error: "S3 client unavailable" };
 
-  const bucket = opts.bucket || getArchiveBucket() || ARCHIVER_BUCKET;
+  const bucket = opts.bucket || getE2EBucket() || ARCHIVER_BUCKET;
   const storageClass = isArchiveFromStart() ? archiveStorageClass() : undefined;
   const attempts: Array<{ StorageClass?: StorageClass; Metadata?: Record<string, string> }> = [
     {
@@ -97,8 +97,9 @@ export async function putArchiverObject(opts: {
         }),
       );
       return { ok: true, bucket, key: opts.key };
-    } catch (e) {
-      lastError = e instanceof Error ? e.message : "Archive upload failed";
+    } catch (err) {
+      console.error(JSON.stringify(err, null, 2));
+      lastError = err instanceof Error ? err.message : "Archive upload failed";
       if (!/access denied/i.test(lastError)) break;
     }
   }

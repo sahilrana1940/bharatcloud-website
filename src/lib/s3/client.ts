@@ -5,18 +5,45 @@ import {
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
+  type S3ClientConfig,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { putArchiverObject } from "@/lib/storage/archiver-from-start";
-import { getArchiveBucket, getS3Env, isS3Configured, s3CompatibleClientOptions } from "@/lib/s3/config";
+import { getE2EBucket, getE2ECredentials, getE2EEndpoint, getS3Env } from "@/lib/s3/config";
 
 export const B2B_VAULT_BUCKET = getS3Env().b2bBucket;
 
+function omitChecksumHeaders(client: S3Client) {
+  client.middlewareStack.add(
+    (next) => async (args) => {
+      const request = args.request as { headers?: Record<string, string> };
+      const headers = request.headers;
+      if (headers) {
+        for (const name of Object.keys(headers)) {
+          if (name.toLowerCase().includes("checksum")) delete headers[name];
+        }
+      }
+      return next(args);
+    },
+    { step: "build", priority: "low", name: "omitE2eChecksumHeaders", override: true },
+  );
+}
+
 export function getS3Client(): S3Client | null {
-  if (!isS3Configured()) return null;
-  const { endpoint, region, accessKeyId, secretAccessKey } = getS3Env();
-  return new S3Client(s3CompatibleClientOptions({ endpoint, region, accessKeyId, secretAccessKey }));
+  const endpoint = getE2EEndpoint();
+  const { accessKeyId, secretAccessKey } = getE2ECredentials();
+  if (!endpoint || !accessKeyId || !secretAccessKey) return null;
+
+  const client = new S3Client({
+    forcePathStyle: true,
+    endpoint,
+    region: "us-east-1",
+    credentials: { accessKeyId, secretAccessKey },
+    apiVersion: "2006-03-01",
+  } as S3ClientConfig);
+  omitChecksumHeaders(client);
+  return client;
 }
 
 export function companyPrefix(companyId: string) {
@@ -47,7 +74,7 @@ export async function uploadFile(
     key: archiveKey,
     body,
     contentType: contentType || "application/octet-stream",
-    bucket: getArchiveBucket(),
+    bucket: getE2EBucket(),
     metadata: {
       archivedAt: new Date().toISOString(),
       type: "archiver-start",

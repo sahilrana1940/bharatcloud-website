@@ -36,24 +36,34 @@ export function getArchiveBucket() {
   return getS3Env().archiveBucket;
 }
 
-/** E2E/Wasabi reject the default AWS CRC checksum headers with Access Denied. */
-export function s3CompatibleClientOptions(env: {
-  endpoint: string;
-  region: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-}) {
-  return {
-    endpoint: env.endpoint,
-    region: env.region,
-    forcePathStyle: true as const,
-    requestChecksumCalculation: "WHEN_REQUIRED" as const,
-    responseChecksumValidation: "WHEN_REQUIRED" as const,
-    credentials: {
-      accessKeyId: env.accessKeyId,
-      secretAccessKey: env.secretAccessKey,
-    },
-  };
+/** Live Vercel names are E2E_S3_* ; E2E_BUCKET / E2E_ENDPOINT are accepted when set. */
+export function getE2EBucket() {
+  return (
+    process.env.E2E_BUCKET?.trim() ||
+    process.env.E2E_S3_B2B_BUCKET?.trim() ||
+    process.env.ARCHIVE_S3_BUCKET?.trim() ||
+    "bharatcloudfinal2"
+  );
+}
+
+export function getE2EEndpoint() {
+  return (process.env.E2E_ENDPOINT || process.env.E2E_S3_ENDPOINT || "").trim();
+}
+
+export function getE2ECredentials() {
+  const accessKeyId = (
+    process.env.E2E_ACCESS_KEY ||
+    process.env.E2E_S3_ACCESS_KEY ||
+    process.env.E2E_S3_ACCESS_KEY_ID ||
+    ""
+  ).trim();
+  const secretAccessKey = (
+    process.env.E2E_SECRET_KEY ||
+    process.env.E2E_S3_SECRET_KEY ||
+    process.env.E2E_S3_SECRET_ACCESS_KEY ||
+    ""
+  ).trim();
+  return { accessKeyId, secretAccessKey };
 }
 
 export function isS3Configured(): boolean {
