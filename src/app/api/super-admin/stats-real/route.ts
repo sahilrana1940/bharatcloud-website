@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   const logs = listCommandLogs();
   let storageUsed = 0;
-  let storageTotal = 0;
+  const storageTotal = 0;
   let tenants = REAL_STATS.tenants;
   const supabase = getSupabaseAdmin();
   if (supabase) {
