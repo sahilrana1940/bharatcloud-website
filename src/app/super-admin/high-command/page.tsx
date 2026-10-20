@@ -129,8 +129,8 @@ export default function HighCommandPage() {
         </div>
         <p className="text-xs tracking-widest text-amber-200">CLASSIFICATION RESTRICTED</p>
         <p className="text-xs text-sky-200">IST {time}</p>
-        <span className="rounded border border-amber-400 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-300">
-          ADM {SUPER_ADMIN_EMAIL}
+        <span className="rounded border border-amber-400 bg-amber-500 px-3 py-1.5 text-[11px] font-bold tracking-wide text-slate-950">
+          support@bharatcloud.store = SUPERADMIN
         </span>
         <form action="/api/auth/logout" method="post">
           <button type="submit" className="rounded border border-rose-400 px-3 py-1 text-[10px] font-bold tracking-widest text-rose-300 hover:bg-rose-500 hover:text-white">
@@ -165,7 +165,7 @@ export default function HighCommandPage() {
         </aside>
         <main className="min-w-0 flex-1 p-6">
           <h1 className="text-xl font-bold tracking-wide text-amber-400">Admin Employee Management</h1>
-          <p className="mt-1 text-xs text-sky-300">Add and delete only for {SUPER_ADMIN_EMAIL}</p>
+          <p className="mt-2 text-sm font-bold tracking-wide text-amber-300">support@bharatcloud.store = SUPERADMIN</p>
           {error ? <p className="mt-3 text-sm text-rose-400">{error}</p> : null}
           {note ? <p className="mt-3 text-sm text-amber-300">{note}</p> : null}
 
@@ -238,9 +238,15 @@ export default function HighCommandPage() {
                 {employees.map((row) => (
                   <tr key={row.id} className="border-t border-sky-500/20">
                     <td className="px-3 py-3">{row.id}</td>
-                    <td className="px-3 py-3">{row.name}</td>
+                    <td className="px-3 py-3">{row.email.toLowerCase() === SUPER_ADMIN_EMAIL ? "support@bharatcloud.store" : row.name}</td>
                     <td className="px-3 py-3">{row.email}</td>
-                    <td className="px-3 py-3 text-sky-300">{row.role}</td>
+                    <td className="px-3 py-3">
+                      {row.email.toLowerCase() === SUPER_ADMIN_EMAIL ? (
+                        <span className="rounded bg-amber-500 px-2 py-1 font-bold text-slate-950">SUPERADMIN</span>
+                      ) : (
+                        <span className="text-sky-300">{row.role}</span>
+                      )}
+                    </td>
                     <td className="px-3 py-3">{row.lastAction}</td>
                     <td className="px-3 py-3 text-amber-400">{row.status}</td>
                     <td className="px-3 py-3">
