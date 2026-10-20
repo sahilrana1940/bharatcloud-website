@@ -13,7 +13,7 @@ type Stats = {
 };
 
 type Workspace = {
-  id: number;
+  id: string;
   name: string;
   email: string;
   plan: string;
@@ -24,37 +24,22 @@ type Workspace = {
 type Tier = { name: string; used: string; limit: string };
 type Approval = { user: string; type: string; status: string; date: string };
 
-const FALLBACK_STATS: Stats = {
-  totalWorkspaces: 50,
-  storageUsed: 90,
-  gmailPending: 3,
-  drivePending: 2,
+const EMPTY_STATS: Stats = {
+  totalWorkspaces: 0,
+  storageUsed: 0,
+  gmailPending: 0,
+  drivePending: 0,
   backupCount: 0,
   infraCost: 1700,
 };
 
-const FALLBACK_WORKSPACES: Workspace[] = [
-  {
-    id: 1,
-    name: "Acme Pvt Ltd",
-    email: "you@company.com",
-    plan: "20 IDs Rs12999",
-    status: "Active",
-    storage: "300GB",
-  },
-];
-
-const FALLBACK_TIERS: Tier[] = [{ name: "Tier 1 Mumbai E2E", used: "90GB", limit: "300GB" }];
-const FALLBACK_APPROVALS: Approval[] = [
-  { user: "test@gmail.com", type: "Gmail", status: "Pending", date: "Today" },
-];
-
 export default function GodModePage() {
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<Stats>(FALLBACK_STATS);
-  const [workspaces, setWorkspaces] = useState<Workspace[]>(FALLBACK_WORKSPACES);
-  const [tiers, setTiers] = useState<Tier[]>(FALLBACK_TIERS);
-  const [approvals, setApprovals] = useState<Approval[]>(FALLBACK_APPROVALS);
+  const [stats, setStats] = useState<Stats>(EMPTY_STATS);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [tiers, setTiers] = useState<Tier[]>([]);
+  const [approvals, setApprovals] = useState<Approval[]>([]);
+  const [emptyNote, setEmptyNote] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -62,10 +47,10 @@ export default function GodModePage() {
       setLoading(true);
       try {
         const [statsRes, workRes, storeRes, approveRes] = await Promise.all([
-          fetch("/api/godmode"),
-          fetch("/api/godmode/workspaces"),
-          fetch("/api/godmode/storage"),
-          fetch("/api/godmode/approvals"),
+          fetch("/api/godmode", { cache: "no-store" }),
+          fetch("/api/godmode/workspaces", { cache: "no-store" }),
+          fetch("/api/godmode/storage", { cache: "no-store" }),
+          fetch("/api/godmode/approvals", { cache: "no-store" }),
         ]);
         if (!statsRes.ok || !workRes.ok || !storeRes.ok || !approveRes.ok) {
           throw new Error("godmode api");
@@ -75,16 +60,20 @@ export default function GodModePage() {
         const storeJson = (await storeRes.json()) as { tiers?: Tier[] };
         const approveJson = (await approveRes.json()) as { approvals?: Approval[] };
         if (cancelled) return;
-        setStats({ ...FALLBACK_STATS, ...statsJson, infraCost: statsJson.infraCost || 1700 });
-        setWorkspaces(workJson.workspaces?.length ? workJson.workspaces : FALLBACK_WORKSPACES);
-        setTiers(storeJson.tiers?.length ? storeJson.tiers : FALLBACK_TIERS);
-        setApprovals(approveJson.approvals?.length ? approveJson.approvals : FALLBACK_APPROVALS);
+        setStats({ ...EMPTY_STATS, ...statsJson, infraCost: statsJson.infraCost || 1700 });
+        setWorkspaces(workJson.workspaces || []);
+        setTiers(storeJson.tiers || []);
+        setApprovals(approveJson.approvals || []);
+        if (!(workJson.workspaces || []).length && !(approveJson.approvals || []).length) {
+          setEmptyNote("No data yet - Real from Razorpay/E2E");
+        }
       } catch {
         if (cancelled) return;
-        setStats(FALLBACK_STATS);
-        setWorkspaces(FALLBACK_WORKSPACES);
-        setTiers(FALLBACK_TIERS);
-        setApprovals(FALLBACK_APPROVALS);
+        setStats(EMPTY_STATS);
+        setWorkspaces([]);
+        setTiers([]);
+        setApprovals([]);
+        setEmptyNote("No data yet - Real from Razorpay/E2E");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -99,12 +88,13 @@ export default function GodModePage() {
     <div className="min-h-screen bg-black px-6 py-8 text-white">
       <header className="flex items-center justify-between rounded-2xl border-2 border-[#FF3B30] px-5 py-4 shadow-[0_0_20px_#FF3B30]">
         <h1 className="text-2xl font-black text-[#FF3B30]">BHARATCLOUD SUPER ADMIN</h1>
-        <Link href="/admin/platform" className="text-sm text-[#00D4FF]">
+        <Link href="/super-admin" className="text-sm text-[#00D4FF]">
           Command center
         </Link>
       </header>
 
-      {loading ? <p className="mt-6 font-mono text-[#00FF88]">Loading God Mode…</p> : null}
+      {loading ? <p className="mt-6 font-mono text-[#00FF88]">Loading real counts…</p> : null}
+      {emptyNote ? <p className="mt-4 text-sm text-slate-400">{emptyNote}</p> : null}
 
       <section className="mt-6 grid gap-4 md:grid-cols-3">
         <Card color="#00D4FF" label="WORKSPACES" value={String(stats.totalWorkspaces)} />
@@ -140,7 +130,12 @@ export default function GodModePage() {
                 {tier.used} / {tier.limit}
               </p>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                <div className="h-full w-[30%] bg-[#00FF88]" />
+                <div
+                  className="h-full bg-[#00FF88]"
+                  style={{
+                    width: `${Math.min(100, (parseFloat(tier.used) / Math.max(parseFloat(tier.limit), 1)) * 100)}%`,
+                  }}
+                />
               </div>
             </article>
           ))}

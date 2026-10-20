@@ -1,70 +1,108 @@
 "use client";
-import { useState } from "react";
 
-export default function SuperAdmin() {
-  const [active, setActive] = useState("Dashboard");
-  
-  const menu = [
-    "Dashboard","All Workspaces","All Members","Storage Tiers",
-    "Gmail Connect Approvals","Drive Approvals","Central Drive",
-    "Backup Admin","Platform Storage","Infra Billing Rs1700 Fixed","Settings"
+import { useEffect, useState } from "react";
+
+type Stats = {
+  tenants: number;
+  users: number;
+  storageGb: number;
+  revenue: number;
+  backups: number;
+  pending: number;
+  message: string | null;
+  infra: { vm: number; storage: number; bandwidth: number; total: number };
+};
+
+const FIXES = ["LOGS", "CACHE", "STORAGE", "INFRA"] as const;
+
+export default function SuperAdminOverview() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [fixResult, setFixResult] = useState("");
+  const [running, setRunning] = useState("");
+
+  useEffect(() => {
+    fetch("/api/super-admin/stats-real", { cache: "no-store" })
+      .then(async (res) => {
+        if (res.status === 403) throw new Error("Forbidden — support@bharatcloud.store only");
+        if (!res.ok) throw new Error("Stats request failed");
+        return res.json();
+      })
+      .then(setStats)
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function runFix(fix: (typeof FIXES)[number]) {
+    setRunning(fix);
+    setFixResult("");
+    try {
+      const res = await fetch("/api/super-admin/fix", {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fix }),
+      });
+      const data = await res.json();
+      if (res.status === 403) {
+        setFixResult("Forbidden — support@bharatcloud.store only");
+        return;
+      }
+      setFixResult(JSON.stringify(data));
+    } catch {
+      setFixResult("Fix request failed");
+    } finally {
+      setRunning("");
+    }
+  }
+
+  const cards = [
+    { label: "Tenants", value: stats?.tenants ?? 0 },
+    { label: "Users", value: stats?.users ?? 0 },
+    { label: "Storage GB", value: stats?.storageGb ?? 0 },
+    { label: "Revenue INR", value: stats?.revenue ?? 0 },
+    { label: "Backups", value: stats?.backups ?? 0 },
+    { label: "Pending payments", value: stats?.pending ?? 0 },
   ];
 
   return (
-    <div className="flex min-h-screen bg-[#0A0A0A] text-white">
-      {/* SIDEBAR */}
-      <div className="w-64 bg-[#141414] border-r border-white/10 p-4">
-        <h2 className="font-bold text-orange-400 mb-6">BHARATCLOUD SUPER ADMIN</h2>
-        {menu.map(item => (
-          <div 
-            key={item}
-            onClick={() => setActive(item)}
-            className={`p-3 mb-1 rounded cursor-pointer ${active===item ? 'bg-[#1F1F1F] border-l-2 border-[#22C55E] text-white' : 'text-white/60 hover:bg-[#1A1A1A]'}`}
-          >
-            {item}
+    <div>
+      <h1 className="text-2xl font-semibold tracking-tight text-white">Overview</h1>
+      <p className="mt-1 text-sm text-zinc-500">Live counts from Supabase, Razorpay payments, and E2E storage.</p>
+      {loading ? <p className="mt-4 text-sm text-zinc-500">Loading real counts…</p> : null}
+      {error ? <p className="mt-4 text-sm text-red-400">{error}</p> : null}
+      {stats?.message ? <p className="mt-4 text-sm text-zinc-400">{stats.message}</p> : null}
+
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {cards.map((card) => (
+          <div key={card.label} className="rounded-xl border border-zinc-800 bg-zinc-950 px-5 py-6">
+            <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">{card.label}</p>
+            <p className="mt-3 text-4xl font-semibold tabular-nums text-white">{loading ? "—" : card.value}</p>
           </div>
         ))}
       </div>
 
-      {/* MAIN */}
-      <div className="flex-1 p-6">
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-[#1F1F1F] border-t-2 border-[#22C55E] p-6 rounded-xl">
-            <p className="text-white/60 text-sm">Total Workspace</p>
-            <h3 className="text-4xl font-bold mt-2">50</h3>
-          </div>
-          <div className="bg-[#1F1F1F] border-t-2 border-[#FF4D4D] p-6 rounded-xl">
-            <p className="text-white/60 text-sm">Storage Used</p>
-            <h3 className="text-4xl font-bold mt-2">90</h3>
-          </div>
-          <div className="bg-[#1F1F1F] border-t-2 border-[#FB923C] p-6 rounded-xl">
-            <p className="text-white/60 text-sm">Gmail Pending</p>
-            <h3 className="text-4xl font-bold mt-2">3</h3>
-          </div>
-          <div className="bg-[#1F1F1F] border-t-2 border-[#38BDF8] p-6 rounded-xl">
-            <p className="text-white/60 text-sm">Drive Pending</p>
-            <h3 className="text-4xl font-bold mt-2">2</h3>
-          </div>
-          <div className="bg-[#1F1F1F] border-t-2 border-[#A855F7] p-6 rounded-xl">
-            <p className="text-white/60 text-sm">Backup Count</p>
-            <h3 className="text-4xl font-bold mt-2">0</h3>
-          </div>
-          <div className="bg-[#1F1F1F] border-t-2 border-[#22C55E] p-6 rounded-xl font-mono">
-            <p className="text-white/60 text-sm">Infra Cost</p>
-            <h3 className="text-2xl font-bold mt-2 text-[#22C55E]">Rs1700 Fixed</h3>
-            <p className="text-xs text-white/40">Mumbai E2E Only</p>
-          </div>
+      <section className="mt-10 rounded-xl border border-zinc-800 bg-zinc-950 p-5">
+        <h2 className="text-sm font-semibold text-white">Bug fix</h2>
+        <p className="mt-1 text-xs text-zinc-500">Runs a real check. Nothing here invents tenants or revenue.</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {FIXES.map((fix) => (
+            <button
+              key={fix}
+              type="button"
+              onClick={() => runFix(fix)}
+              disabled={running === fix}
+              className="rounded-lg border border-zinc-700 px-4 py-2 text-xs font-semibold tracking-wide text-white hover:bg-white hover:text-black disabled:opacity-50"
+            >
+              {running === fix ? "Running…" : fix}
+            </button>
+          ))}
         </div>
-
-        <div className="mt-8 bg-[#1F1F1F] rounded-xl p-6 border border-white/10">
-          <h4 className="font-bold">{active}</h4>
-          <p className="text-white/60 mt-2 text-sm">
-            {active==="All Workspaces" ? "Acme Pvt Ltd - 20 IDs - Active - 300GB | Jammu CA - 5 IDs" : 
-             active==="All Members" ? "0 members - No workspaces yet (mock fallback)" :
-             "Data loading with mock fallback - No infinite Loading..."}
-          </p>
-        </div>
-      </div>
+        {fixResult ? (
+          <pre className="mt-4 overflow-x-auto rounded-lg bg-black p-3 text-xs text-zinc-400">{fixResult}</pre>
+        ) : null}
+      </section>
     </div>
   );
 }
