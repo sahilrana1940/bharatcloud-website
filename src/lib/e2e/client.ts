@@ -1,6 +1,7 @@
 import { S3Client } from "@aws-sdk/client-s3";
 
 import { calculateBill, E2E_RATES } from "@/lib/admin/platform-costs";
+import { s3CompatibleClientOptions } from "@/lib/s3/config";
 import { uploadAsArchiver } from "@/lib/storage/archiver-from-start";
 
 export { calculateBill, E2E_RATES };
@@ -25,12 +26,14 @@ export function getE2EClient(): S3Client | null {
   ).trim();
   if (!accessKeyId || !secretAccessKey) return null;
 
-  return new S3Client({
-    endpoint: (process.env.E2E_S3_ENDPOINT || "https://mumbai.e2e.cloud").trim(),
-    region: (process.env.E2E_S3_REGION || "mumbai").trim(),
-    forcePathStyle: true,
-    credentials: { accessKeyId, secretAccessKey },
-  });
+  return new S3Client(
+    s3CompatibleClientOptions({
+      endpoint: (process.env.E2E_S3_ENDPOINT || "https://mumbai.e2e.cloud").trim(),
+      region: (process.env.E2E_S3_REGION || "mumbai").trim(),
+      accessKeyId,
+      secretAccessKey,
+    }),
+  );
 }
 
 export function bucketForKey(_key: string): string {

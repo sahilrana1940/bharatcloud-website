@@ -76,23 +76,33 @@ export async function putArchiverObject(opts: {
 
   const bucket = opts.bucket || getArchiveBucket() || ARCHIVER_BUCKET;
   const storageClass = isArchiveFromStart() ? archiveStorageClass() : undefined;
+  const attempts: Array<{ StorageClass?: StorageClass; Metadata?: Record<string, string> }> = [
+    {
+      ...(storageClass ? { StorageClass: storageClass } : {}),
+      ...(opts.metadata ? { Metadata: opts.metadata } : {}),
+    },
+    {},
+  ];
 
-  try {
-    await client.send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: opts.key,
-        Body: opts.body,
-        ContentType: opts.contentType,
-        ...(storageClass ? { StorageClass: storageClass } : {}),
-        ...(opts.metadata ? { Metadata: opts.metadata } : {}),
-      }),
-    );
-    return { ok: true, bucket, key: opts.key };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Archive upload failed";
-    return { ok: false, error: msg };
+  let lastError = "Archive upload failed";
+  for (const extra of attempts) {
+    try {
+      await client.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: opts.key,
+          Body: opts.body,
+          ContentType: opts.contentType,
+          ...extra,
+        }),
+      );
+      return { ok: true, bucket, key: opts.key };
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : "Archive upload failed";
+      if (!/access denied/i.test(lastError)) break;
+    }
   }
+  return { ok: false, error: lastError };
 }
 
 export async function uploadAsArchiver(

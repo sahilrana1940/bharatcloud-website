@@ -9,22 +9,14 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { putArchiverObject } from "@/lib/storage/archiver-from-start";
-import { getArchiveBucket, getS3Env, isS3Configured } from "@/lib/s3/config";
+import { getArchiveBucket, getS3Env, isS3Configured, s3CompatibleClientOptions } from "@/lib/s3/config";
 
 export const B2B_VAULT_BUCKET = getS3Env().b2bBucket;
 
 export function getS3Client(): S3Client | null {
   if (!isS3Configured()) return null;
   const { endpoint, region, accessKeyId, secretAccessKey } = getS3Env();
-  return new S3Client({
-    endpoint,
-    region,
-    forcePathStyle: true,
-    credentials: {
-      accessKeyId,
-      secretAccessKey,
-    },
-  });
+  return new S3Client(s3CompatibleClientOptions({ endpoint, region, accessKeyId, secretAccessKey }));
 }
 
 export function companyPrefix(companyId: string) {

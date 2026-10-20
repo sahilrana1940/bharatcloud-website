@@ -36,6 +36,26 @@ export function getArchiveBucket() {
   return getS3Env().archiveBucket;
 }
 
+/** E2E/Wasabi reject the default AWS CRC checksum headers with Access Denied. */
+export function s3CompatibleClientOptions(env: {
+  endpoint: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+}) {
+  return {
+    endpoint: env.endpoint,
+    region: env.region,
+    forcePathStyle: true as const,
+    requestChecksumCalculation: "WHEN_REQUIRED" as const,
+    responseChecksumValidation: "WHEN_REQUIRED" as const,
+    credentials: {
+      accessKeyId: env.accessKeyId,
+      secretAccessKey: env.secretAccessKey,
+    },
+  };
+}
+
 export function isS3Configured(): boolean {
   const { endpoint, accessKeyId, secretAccessKey } = getS3Env();
   return Boolean(endpoint && accessKeyId && secretAccessKey);
