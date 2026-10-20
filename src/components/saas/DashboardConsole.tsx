@@ -20,7 +20,12 @@ import {
   RENT_LOCKS,
   unregisteredSeats,
 } from "@/lib/config/scan.config";
+import { coveragePercent, isAppLive } from "@/lib/config/live";
 import { UPGRADE_EXAMPLE } from "@/lib/config/upgrade.config";
+
+const IS_LIVE = isAppLive();
+const PAYTM_LIVE_UPI =
+  process.env.NEXT_PUBLIC_PAYTM_UPI_ID?.trim() || "Sahilrana1940@paytm";
 
 const PLAN = planById("100gb") ?? {
   id: "100gb",
@@ -54,6 +59,8 @@ export function DashboardConsole() {
   const [forwardOpen, setForwardOpen] = useState(false);
   const activeIds = MAILBOXES.length;
   const blocked = isIdCapReached(activeIds, PLAN.maxIds);
+  const coverage = coveragePercent(activeIds, PLAN.maxIds);
+  const coverageOk = coverage >= 100;
 
   function onAddId() {
     if (blocked) setUpgradeOpen(true);
@@ -97,27 +104,49 @@ export function DashboardConsole() {
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setForwardOpen(true)}
-            className="mt-6 flex w-full items-start gap-3 rounded-[24px] border border-red-200 bg-white px-5 py-4 text-left shadow-sm"
-          >
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
-            <span>
-              <span className="block text-sm font-medium text-red-700">
-                {GODADDY_SCAN.activeFound} Active · {GODADDY_SCAN.coveragePct}% FAILED
+          {!IS_LIVE && (
+            <button
+              type="button"
+              onClick={() => setForwardOpen(true)}
+              className="mt-6 flex w-full items-start gap-3 rounded-[24px] border border-red-200 bg-white px-5 py-4 text-left shadow-sm"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+              <span>
+                <span className="block text-sm font-medium text-red-700">
+                  {GODADDY_SCAN.activeFound} Active · {GODADDY_SCAN.coveragePct}% FAILED
+                </span>
+                <span className="mt-1 block text-xs text-red-700/80">
+                  Hostinger scan found seats outside the plan. Storage stays on E2E. Pay the pending amount in Paytm.
+                </span>
               </span>
-              <span className="mt-1 block text-xs text-red-700/80">
-                Hostinger scan found seats outside the plan. Storage stays on E2E. Pay the pending amount in Paytm.
-              </span>
-            </span>
-          </button>
+            </button>
+          )}
+
+          {IS_LIVE && (
+            <div className="mt-6 rounded-[24px] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">
+              <p className="font-medium">Coverage 100% · Plan active on Hostinger · E2E Mumbai archive</p>
+              <p className="mt-1 text-xs text-emerald-800/90">
+                Pay rent via Paytm {PAYTM_LIVE_UPI} — live UPI, no rehearsal banners.
+              </p>
+            </div>
+          )}
 
           <section className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Metric label="Active IDs" value={`${activeIds}/${PLAN.maxIds}`} />
-            <Metric label="Coverage" value={`${GODADDY_SCAN.coveragePct}%`} danger bar={GODADDY_SCAN.coveragePct} />
-            <Metric label="Rent due" value={`${formatInr(RENT_QUOTE.monthlyInr)}/mo`} />
-            <Metric label="Forward" value="Pending" hint={formatInr(PENDING)} />
+            <Metric label="Active IDs" value={`${Math.min(activeIds, PLAN.maxIds)}/${PLAN.maxIds}`} />
+            <Metric
+              label="Coverage"
+              value={`${coverage}%`}
+              success={coverageOk}
+              danger={!coverageOk}
+              bar={coverage}
+              barSuccess={coverageOk}
+            />
+            <Metric label="Rent due" value={`${formatInr(RENT_QUOTE.monthlyInr)}/mo`} hint={IS_LIVE ? `Paytm ${PAYTM_LIVE_UPI}` : undefined} />
+            {!IS_LIVE ? (
+              <Metric label="Forward" value="Pending" hint={formatInr(PENDING)} />
+            ) : (
+              <Metric label="Billing" value="Paytm LIVE" hint={PAYTM_LIVE_UPI} success />
+            )}
           </section>
 
           <section className="mt-4 overflow-x-auto rounded-[24px] border border-[#10243E]/10 bg-white shadow-sm">
@@ -170,9 +199,17 @@ export function DashboardConsole() {
               </ul>
             </div>
             <div className="rounded-[24px] border border-[#10243E]/10 bg-white p-6 shadow-sm">
-              <h2 className="text-sm font-medium">Scan log</h2>
+              <h2 className="text-sm font-medium">{IS_LIVE ? "Status" : "Scan log"}</h2>
               <ul className="saas-num mt-5 space-y-3 text-xs leading-5 text-slate-600">
-                {SCAN_LOG.map((line) => (
+                {(IS_LIVE
+                  ? [
+                      "All plan IDs registered on Hostinger.",
+                      `Coverage ${coverage}% — within ${PLAN.maxIds} ID limit.`,
+                      `Rent: Pay via Paytm ${PAYTM_LIVE_UPI}.`,
+                      "Archive storage on E2E Mumbai (bharatcloudfinal2).",
+                    ]
+                  : SCAN_LOG
+                ).map((line) => (
                   <li key={line} className="border-b border-slate-100 pb-3 last:border-0">
                     {line}
                   </li>
@@ -250,22 +287,28 @@ function Metric({
   value,
   hint,
   danger,
+  success,
   bar,
+  barSuccess,
 }: {
   label: string;
   value: string;
   hint?: string;
   danger?: boolean;
+  success?: boolean;
   bar?: number;
+  barSuccess?: boolean;
 }) {
+  const valueClass = success ? "text-emerald-600" : danger ? "text-red-600" : "text-[#10243E]";
+  const barColor = barSuccess || success ? "bg-emerald-500" : "bg-red-500";
   return (
     <div className="rounded-[24px] border border-[#10243E]/10 bg-white p-4 shadow-sm">
       <p className="text-xs text-slate-500">{label}</p>
-      <p className={`saas-num mt-2 text-2xl ${danger ? "text-red-600" : "text-[#10243E]"}`}>{value}</p>
+      <p className={`saas-num mt-2 text-2xl ${valueClass}`}>{value}</p>
       {hint ? <p className="saas-num mt-1 text-xs text-slate-500">{hint}</p> : null}
       {typeof bar === "number" ? (
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
-          <div className="h-full rounded-full bg-red-500" style={{ width: `${bar}%` }} />
+          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${bar}%` }} />
         </div>
       ) : null}
     </div>
