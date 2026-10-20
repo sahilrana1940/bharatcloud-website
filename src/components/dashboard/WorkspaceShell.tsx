@@ -22,7 +22,7 @@ import {
   Building2,
   Mail,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BrandMark } from "@/components/brand/BrandMark";
 import { isWorkspaceOwner, workspaceNavFor } from "@/lib/workspace/nav";
@@ -67,6 +67,15 @@ export function WorkspaceShell({
   const [usedGb, setUsedGb] = useState(0);
   const [limitGb, setLimitGb] = useState(100);
   const [quotaLabel, setQuotaLabel] = useState("Drive storage");
+  const orgStorage = useRef(false);
+  const [orgCard, setOrgCard] = useState<{
+    email: string;
+    id: string;
+    owner: string;
+    planLabel: string;
+    totalStorageGb: number;
+    usedStorageGb: number;
+  } | null>(null);
 
   const sessionSlice = useMemo(
     () => ({ role, saasRole, isCompanyOwner }),
@@ -82,6 +91,20 @@ export function WorkspaceShell({
   const ownerView = isWorkspaceOwner(sessionSlice);
 
   useEffect(() => {
+    fetch("/api/workspace/org-card", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((card) => {
+        if (!card?.email) return;
+        orgStorage.current = true;
+        setOrgCard(card);
+        setUsedGb(Number(card.usedStorageGb) || 0);
+        setLimitGb(Number(card.totalStorageGb) || 100);
+        setQuotaLabel("Storage");
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     fetch("/api/team/google-status", { credentials: "include" })
       .then((r) => r.json())
       .then((j) => setGmailConnected(Boolean(j.connected)))
@@ -92,6 +115,7 @@ export function WorkspaceShell({
     fetch("/api/backup/summary")
       .then((r) => r.json())
       .then((s) => {
+        if (orgStorage.current) return;
         if (s.googleDrive?.connected) {
           setQuotaLabel("Google Drive");
           if (s.googleDrive.usedGb != null) setUsedGb(Number(s.googleDrive.usedGb));
@@ -172,6 +196,7 @@ export function WorkspaceShell({
           usedGb={usedGb}
           limitGb={limitGb}
           pct={pct}
+          orgCard={orgCard}
         />
       </aside>
 
@@ -200,6 +225,7 @@ export function WorkspaceShell({
               usedGb={usedGb}
               limitGb={limitGb}
               pct={pct}
+              orgCard={orgCard}
             />
           </aside>
         </div>
@@ -227,6 +253,7 @@ function UserCard({
   usedGb,
   limitGb,
   pct,
+  orgCard,
 }: {
   userEmail: string;
   companyId?: string;
@@ -234,6 +261,14 @@ function UserCard({
   usedGb: number;
   limitGb: number;
   pct: number;
+  orgCard?: {
+    email: string;
+    id: string;
+    owner: string;
+    planLabel: string;
+    totalStorageGb: number;
+    usedStorageGb: number;
+  } | null;
 }) {
   return (
     <div className="mt-auto rounded-2xl border border-white/10 bg-white/10 p-4">
@@ -243,7 +278,16 @@ function UserCard({
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-medium text-white">{userEmail.split("@")[0]}</p>
-          <p className="truncate text-[10px] text-white/60">{userEmail}</p>
+          <p className="truncate text-[10px] text-white/60">{orgCard?.email || userEmail}</p>
+          {orgCard ? (
+            <div className="mt-2 space-y-0.5 text-[10px] leading-4 text-white/70">
+              <p>id: {orgCard.id}</p>
+              <p className="truncate">owner: {orgCard.owner}</p>
+              <p>plan: {orgCard.planLabel}</p>
+              <p>total_storage: {orgCard.totalStorageGb} GB</p>
+              <p>used_storage: {orgCard.usedStorageGb} GB</p>
+            </div>
+          ) : null}
           {companyId && (
             <p className="truncate text-[9px] text-white/40" title={companyId}>
               Co. {companyId.startsWith("demo-") ? "demo" : companyId.slice(0, 8)}…

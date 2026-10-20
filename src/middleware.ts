@@ -90,11 +90,19 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  const userRole = req.cookies.get("user_role")?.value || null;
+  if (
+    pathname.startsWith("/dashboard/admin") &&
+    (userRole === "employee" || (!userRole && role === "employee"))
+  ) {
+    return NextResponse.redirect(new URL("/dashboard/employee", req.url));
+  }
+
   if (
     role === "company_owner" &&
     (pathname === "/dashboard/employee" || pathname.startsWith("/dashboard/employee/"))
   ) {
-    return NextResponse.redirect(new URL("/dashboard/owner", req.url));
+    return NextResponse.redirect(new URL("/dashboard/admin", req.url));
   }
 
   if (pathname.startsWith("/dashboard") || pathname.startsWith("/settings")) {

@@ -22,6 +22,7 @@ import {
   PLATFORM_OPERATOR_COMPANY_ID,
   PLATFORM_OPERATOR_ORG_ID,
 } from "@/lib/platform/operator";
+import { resolveDashboardRole } from "@/lib/workspace/dashboard-role";
 import { resolveCompanyIdForEmail } from "@/lib/workspace/resolve-company";
 import { touchProfileLogin } from "@/lib/workspace/workspace-profiles";
 
@@ -120,12 +121,18 @@ export async function POST(req: Request) {
     await touchProfileLogin(supabase, ownerEmail, workspaceCompanyId);
   }
   const saas = await getUserRole(ownerEmail);
+  const dashboard = platformSuperAdmin
+    ? { role: "admin" as const, target: "/dashboard" }
+    : await resolveDashboardRole(supabase, ownerEmail);
+  const redirectTo = platformSuperAdmin ? defaultDashboardForRole(saas) : dashboard.target;
 
   const res = NextResponse.json({
     ok: true,
     orgId,
     companyId: workspaceCompanyId,
-    redirectTo: defaultDashboardForRole(saas),
+    redirectTo,
+    role: dashboard.role,
+    email: ownerEmail,
     saasRole: saas.role,
   });
   res.cookies.set(B2B_SESSION_COOKIE, orgId!, {
@@ -143,12 +150,14 @@ export async function POST(req: Request) {
   const wsOpts = workspaceCookieOptions();
   res.cookies.set(WS_COMPANY_COOKIE, workspaceCompanyId, wsOpts);
   res.cookies.set(WS_EMAIL_COOKIE, ownerEmail, wsOpts);
-  const workspaceAdmin =
-    !platformSuperAdmin &&
-    (saas.is_company_owner ||
-      saas.role === "company_owner" ||
-      ownerEmail.startsWith("admin@"));
+  const workspaceAdmin = !platformSuperAdmin && dashboard.role === "admin";
   res.cookies.set(WS_ROLE_COOKIE, workspaceAdmin ? "admin" : "member", wsOpts);
+  res.cookies.set("user_role", dashboard.role, {
+    httpOnly: false,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 14,
+  });
   if (platformSuperAdmin) {
     res.cookies.set(SUPER_ADMIN_COOKIE, "1", {
       httpOnly: true,
@@ -158,5 +167,9 @@ export async function POST(req: Request) {
     });
   }
   attachSaasRoleCookies(res, saas);
+  if (workspaceAdmin) {
+    res.cookies.set("bc_saas_role", "company_owner", wsOpts);
+    res.cookies.set("bc_is_company_owner", "1", wsOpts);
+  }
   return res;
 }

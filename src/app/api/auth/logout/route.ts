@@ -30,6 +30,7 @@ export async function POST(req: Request) {
     SUPER_ADMIN_COOKIE,
     PAYMENT_BYPASS_COOKIE,
     "bc_vault_unlocked",
+    "user_role",
   ]) {
     res.cookies.set(name, "", CLEAR);
   }

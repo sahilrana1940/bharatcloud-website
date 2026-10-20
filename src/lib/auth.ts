@@ -83,7 +83,7 @@ export async function getUserRole(email?: string | null): Promise<UserRoleInfo> 
 
 export function defaultDashboardForRole(info: UserRoleInfo): string {
   if (info.role === "super_admin") return "/dashboard";
-  if (info.role === "company_owner" || info.is_company_owner) return "/dashboard/owner";
+  if (info.role === "company_owner" || info.is_company_owner) return "/dashboard/admin";
   return "/dashboard/employee";
 }
 

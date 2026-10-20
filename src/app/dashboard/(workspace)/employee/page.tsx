@@ -7,6 +7,7 @@ import { Archive, CloudUpload, Mail, Search, Upload } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { EmployeeWorkspaceBanner } from "@/components/dashboard/EmployeeWorkspaceBanner";
+import { RoleDashboardGate } from "@/components/dashboard/RoleDashboardGate";
 
 export default function EmployeeDashboardPage() {
   const router = useRouter();
@@ -64,6 +65,7 @@ export default function EmployeeDashboardPage() {
 
   return (
     <div className="px-4 py-10 sm:px-8">
+      <RoleDashboardGate expect="employee" />
       <div className="mx-auto max-w-3xl">
         <EmployeeWorkspaceBanner />
         <p className="text-sm font-semibold uppercase tracking-widest text-cyan-600">{greeting}</p>

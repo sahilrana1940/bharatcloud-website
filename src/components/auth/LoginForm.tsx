@@ -1,14 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function LoginForm() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -29,7 +27,13 @@ export function LoginForm() {
       setError(j.error || "Login failed");
       return;
     }
-    router.push(typeof j.redirectTo === "string" ? j.redirectTo : "/dashboard");
+
+    const signedInEmail = String(j.email || email).trim().toLowerCase();
+    const role = j.role === "employee" ? "employee" : "admin";
+    const target = typeof j.redirectTo === "string" ? j.redirectTo : role === "admin" ? "/dashboard/admin" : "/dashboard/employee";
+    window.localStorage.setItem("user_role", role);
+    window.localStorage.setItem("user_email", signedInEmail);
+    window.location.href = target;
   }
 
   function googleLogin() {
