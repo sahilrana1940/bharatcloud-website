@@ -104,7 +104,8 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
         Never lose emails when Google 120GB is full
       </h1>
       <p className="mt-2 max-w-2xl text-sm text-slate-600">
-        Full Gmail snapshots land in E2E Mumbai ({bucket}) as .eml files — outside Google quota.
+        Site on Hostinger · archive on E2E Mumbai ({bucket}) · plan billing via Paytm. Gmail
+        snapshots save as .eml outside Google quota.
       </p>
 
       <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -212,9 +213,11 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
           <Settings className="h-4 w-4" /> Settings
         </h2>
         <ul className="mt-3 space-y-2 text-sm text-slate-600">
-          <li>Auto backup daily at 2 AM IST (Vercel cron)</li>
-          <li>Keep 1 year archive on E2E Mumbai</li>
-          <li>Cost: Included in plan (100GB/user + unlimited email archive)</li>
+          <li>Auto backup daily at 2 AM IST (Hostinger scheduled job)</li>
+          <li>Keep 1 year archive on E2E Mumbai — not on Google Drive</li>
+          <li>
+            Cost: Included in your Paytm plan (100GB/user + unlimited email archive on E2E)
+          </li>
         </ul>
       </section>
     </div>

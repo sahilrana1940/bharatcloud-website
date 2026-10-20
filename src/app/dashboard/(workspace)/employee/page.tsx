@@ -41,7 +41,7 @@ export default function EmployeeDashboardPage() {
       }
       if (res.status === 402) {
         window.alert(
-          "Payment required for Drive backup. Complete Paytm billing, or set PAYMENT_BYPASS=1 on Vercel.",
+          "Payment required for Drive backup. Complete Paytm billing under Billing in this workspace.",
         );
         return;
       }
@@ -84,7 +84,7 @@ export default function EmployeeDashboardPage() {
               <div>
                 <p className="font-semibold text-slate-900">Email Backup</p>
                 <p className="text-sm text-slate-600">
-                  {emailBackedUp.toLocaleString()} / 10,000 backed up to E2E Mumbai
+                  {emailBackedUp.toLocaleString()} / 10,000 on E2E Mumbai (Hostinger · Paytm plan)
                 </p>
               </div>
             </div>

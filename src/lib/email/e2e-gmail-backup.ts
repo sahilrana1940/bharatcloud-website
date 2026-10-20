@@ -106,7 +106,10 @@ export async function runE2eGmailBackup(
   | { ok: false; error: string; runId?: string }
 > {
   if (!isS3Configured()) {
-    return { ok: false, error: "E2E S3 not configured (E2E_S3_* / WASABI_* env)." };
+    return {
+      ok: false,
+      error: "E2E Mumbai storage not configured — set E2E_S3_ENDPOINT and E2E keys on Hostinger.",
+    };
   }
 
   const client = getS3Client();

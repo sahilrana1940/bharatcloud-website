@@ -49,7 +49,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     message:
-      "Restore uses .eml files in your E2E bucket. Download messages from the vault or contact support for bulk restore.",
+      "Restore from E2E Mumbai (.eml in your vault). Hostinger app + Paytm plan — contact support for bulk restore.",
     bucket: run.s3_bucket || EMAIL_BACKUP_S3_BUCKET,
     s3Path: prefix,
     emailCount: run.email_count,
