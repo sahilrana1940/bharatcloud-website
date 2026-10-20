@@ -72,8 +72,21 @@ export function WorkspaceShell({
     () => ({ role, saasRole, isCompanyOwner }),
     [role, saasRole, isCompanyOwner],
   );
-  const navItems = useMemo(() => workspaceNavFor(sessionSlice), [sessionSlice]);
+  const [gmailConnected, setGmailConnected] = useState(false);
+  const baseNavItems = useMemo(() => workspaceNavFor(sessionSlice), [sessionSlice]);
+  const navItems = useMemo(
+    () =>
+      baseNavItems.filter((item) => !item.requiresGmail || gmailConnected),
+    [baseNavItems, gmailConnected],
+  );
   const ownerView = isWorkspaceOwner(sessionSlice);
+
+  useEffect(() => {
+    fetch("/api/team/google-status", { credentials: "include" })
+      .then((r) => r.json())
+      .then((j) => setGmailConnected(Boolean(j.connected)))
+      .catch(() => setGmailConnected(false));
+  }, []);
 
   useEffect(() => {
     fetch("/api/backup/summary")

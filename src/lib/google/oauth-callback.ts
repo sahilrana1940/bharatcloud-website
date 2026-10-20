@@ -2,7 +2,7 @@ import type { OAuth2Client } from "google-auth-library";
 import { google } from "googleapis";
 
 import { emailDomain } from "@/lib/google/client";
-import { getGoogleOAuthConfig } from "@/lib/google/config";
+import { getGoogleOAuthConfig, normalizeGoogleEnvValue } from "@/lib/google/config";
 import { getGoogleDriveOAuthRedirectUri } from "@/lib/google/drive-oauth";
 
 /** Request URL (fallback when env redirect is not set). */
@@ -16,7 +16,7 @@ export function oauthCallbackRedirectUri(req: Request): string {
  * Using the request host here causes redirect_uri_mismatch when www vs apex differ.
  */
 export function oauthRedirectUriForDriveExchange(req: Request): string {
-  if (process.env.GOOGLE_REDIRECT_URI?.trim()) {
+  if (normalizeGoogleEnvValue(process.env.GOOGLE_REDIRECT_URI)) {
     return getGoogleDriveOAuthRedirectUri();
   }
   return oauthCallbackRedirectUri(req);
@@ -25,8 +25,8 @@ export function oauthRedirectUriForDriveExchange(req: Request): string {
 export function oauthRedirectUriForWorkspaceExchange(req: Request): string {
   const { redirectUri } = getGoogleOAuthConfig();
   if (
-    process.env.GOOGLE_REDIRECT_URI?.trim() ||
-    process.env.GOOGLE_OAUTH_REDIRECT_URI?.trim()
+    normalizeGoogleEnvValue(process.env.GOOGLE_REDIRECT_URI) ||
+    normalizeGoogleEnvValue(process.env.GOOGLE_OAUTH_REDIRECT_URI)
   ) {
     return redirectUri;
   }

@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { CloudUpload, Search, Upload } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CloudUpload, Mail, Search, Upload } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { EmployeeWorkspaceBanner } from "@/components/dashboard/EmployeeWorkspaceBanner";
@@ -11,6 +11,15 @@ import { EmployeeWorkspaceBanner } from "@/components/dashboard/EmployeeWorkspac
 export default function EmployeeDashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [emailBackedUp, setEmailBackedUp] = useState(0);
+  const [emailBackupBusy, setEmailBackupBusy] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/email/backup", { credentials: "include" })
+      .then((r) => r.json())
+      .then((j) => setEmailBackedUp(Number(j.backedUpCount) || 0))
+      .catch(() => {});
+  }, []);
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
@@ -67,6 +76,47 @@ export default function EmployeeDashboardPage() {
           <CloudUpload className="h-8 w-8" />
           {loading ? "Starting…" : "Start my backup"}
         </motion.button>
+
+        <article className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-cyan-500" />
+              <div>
+                <p className="font-semibold text-slate-900">Email Backup</p>
+                <p className="text-sm text-slate-600">
+                  {emailBackedUp.toLocaleString()} / 10,000 backed up to E2E Mumbai
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={emailBackupBusy}
+              onClick={async () => {
+                setEmailBackupBusy(true);
+                try {
+                  const res = await fetch("/api/email/backup", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ maxMessages: 100 }),
+                  });
+                  const j = await res.json().catch(() => ({}));
+                  if (res.ok) {
+                    setEmailBackedUp((n) => n + (Number(j.emailCount) || 0));
+                    router.push("/dashboard/email-backup");
+                  } else {
+                    window.alert(j.error || "Email backup failed");
+                  }
+                } finally {
+                  setEmailBackupBusy(false);
+                }
+              }}
+              className="rounded-xl bg-[#00BAF2] px-4 py-2 text-sm font-bold text-[#062033] disabled:opacity-60"
+            >
+              {emailBackupBusy ? "Backing up…" : "Backup Now"}
+            </button>
+          </div>
+        </article>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
           <Link

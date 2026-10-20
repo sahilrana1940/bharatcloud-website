@@ -8,7 +8,7 @@ import { loadCompanyAdminStats } from "@/lib/company-admin/stats";
 import { getTenantHandoffStaff, getTenantProfile } from "@/lib/tenant-profile";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { getWorkspaceSession, WS_COMPANY_COOKIE } from "@/lib/workspace/session";
-import { Building2, CloudUpload, Users } from "lucide-react";
+import { Building2, CloudUpload, Mail, Users } from "lucide-react";
 
 export default async function CompanyAdminDashboardPage() {
   const session = await getWorkspaceSession();
@@ -36,6 +36,8 @@ export default async function CompanyAdminDashboardPage() {
         activeBackups={0}
         members={0}
         jobs={[]}
+        emailBackupEmails={0}
+        emailBackupStorageMb={0}
       />
     );
   }
@@ -57,6 +59,8 @@ export default async function CompanyAdminDashboardPage() {
       activeBackups={stats.activeBackups}
       members={stats.members}
       jobs={stats.jobs}
+      emailBackupEmails={stats.emailBackupEmails}
+      emailBackupStorageMb={stats.emailBackupStorageMb}
     />
   );
 }
@@ -71,6 +75,8 @@ function Shell({
   activeBackups,
   members,
   jobs,
+  emailBackupEmails,
+  emailBackupStorageMb,
 }: {
   companyId: string;
   domain: string;
@@ -87,6 +93,8 @@ function Shell({
     files_total: number;
     updated_at: string;
   }>;
+  emailBackupEmails: number;
+  emailBackupStorageMb: number;
 }) {
   return (
     <div className="px-4 py-8 sm:px-8">
@@ -98,7 +106,7 @@ function Shell({
 
       <CompanyTenantCard domain={domain} adminEmail={adminEmail} profile={profile} />
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <ProStatCard
           label="Storage"
           value={storageLabel}
@@ -108,6 +116,16 @@ function Shell({
           label="Active backups"
           value={String(activeBackups)}
           icon={<CloudUpload className="h-4 w-4 text-cyan-600" />}
+        />
+        <ProStatCard
+          label="Email backups (org)"
+          value={`${emailBackupEmails} emails`}
+          icon={<Mail className="h-4 w-4 text-cyan-600" />}
+        />
+        <ProStatCard
+          label="E2E email archive"
+          value={`${emailBackupStorageMb.toFixed(1)} MB`}
+          icon={<Mail className="h-4 w-4 text-cyan-600" />}
         />
         <ProStatCard
           label="Members"

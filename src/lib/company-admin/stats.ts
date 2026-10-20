@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { orgEmailBackupTotals } from "@/lib/email/e2e-gmail-backup";
 import { emailDomain } from "@/lib/google/client";
 import { isCompanyOwnerEmail } from "@/lib/workspace/company-membership";
 import { normalizeDomain, syncCompanyDirectory } from "@/lib/workspace/company-directory";
@@ -21,6 +22,9 @@ export type CompanyAdminStats = {
     files_total: number;
     updated_at: string;
   }>;
+  emailBackupRuns: number;
+  emailBackupEmails: number;
+  emailBackupStorageMb: number;
 };
 
 async function resolveCompany(
@@ -177,6 +181,8 @@ export async function loadCompanyAdminStats(
     .order("updated_at", { ascending: false })
     .limit(8);
 
+  const emailTotals = await orgEmailBackupTotals(supabase, resolvedId);
+
   return {
     companyId: resolvedId,
     domain: company.domain as string,
@@ -187,5 +193,8 @@ export async function loadCompanyAdminStats(
     activeBackups: activeBackups || 0,
     profilesRepaired,
     jobs: jobs || [],
+    emailBackupRuns: emailTotals.runCount,
+    emailBackupEmails: emailTotals.totalEmails,
+    emailBackupStorageMb: emailTotals.totalMb,
   };
 }

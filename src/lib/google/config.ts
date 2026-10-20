@@ -4,13 +4,29 @@ function appOrigin() {
   return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "http://localhost:3000";
 }
 
+/**
+ * Google rejects client ids that differ by whitespace. A trailing newline in
+ * GOOGLE_CLIENT_ID is sent as `%0A` and Google returns `invalid_client`.
+ * Also drop one layer of wrapping quotes and a trailing literal `\n` / `\r`.
+ */
+export function normalizeGoogleEnvValue(value: string | undefined): string {
+  let v = (value ?? "").trim();
+  if (
+    (v.startsWith('"') && v.endsWith('"') && v.length >= 2) ||
+    (v.startsWith("'") && v.endsWith("'") && v.length >= 2)
+  ) {
+    v = v.slice(1, -1).trim();
+  }
+  return v.replace(/\\n$/g, "").replace(/\\r$/g, "").trim();
+}
+
 /** Team login / full backup OAuth (separate redirect from Drive settings flow). */
 export function getGoogleOAuthConfig() {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const driveRedirect = process.env.GOOGLE_REDIRECT_URI?.trim() || "";
+  const clientId = normalizeGoogleEnvValue(process.env.GOOGLE_CLIENT_ID);
+  const clientSecret = normalizeGoogleEnvValue(process.env.GOOGLE_CLIENT_SECRET);
+  const driveRedirect = normalizeGoogleEnvValue(process.env.GOOGLE_REDIRECT_URI);
   const redirectUri =
-    process.env.GOOGLE_OAUTH_REDIRECT_URI?.trim() ||
+    normalizeGoogleEnvValue(process.env.GOOGLE_OAUTH_REDIRECT_URI) ||
     (driveRedirect.includes("/drive/callback")
       ? `${appOrigin()}/api/auth/google/callback`
       : driveRedirect || `${appOrigin()}/api/auth/google/callback`);
@@ -20,6 +36,7 @@ export function getGoogleOAuthConfig() {
 
 const GMAIL_SCOPE_URLS = [
   "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/gmail.modify",
   "https://www.googleapis.com/auth/gmail.metadata",
 ];
 

@@ -6,6 +6,8 @@ export type WorkspaceNavItem = {
   icon: string;
   /** Who sees this link in the sidebar */
   for: "owner" | "employee" | "all";
+  /** Hidden until Google/Gmail OAuth is connected */
+  requiresGmail?: boolean;
 };
 
 /** Icons resolved in WorkspaceShell — keep href/label/for here only. */
@@ -15,11 +17,25 @@ export const WORKSPACE_NAV: WorkspaceNavItem[] = [
   { href: "/dashboard/employee/upload", label: "Upload video", icon: "Upload", for: "employee" },
   { href: "/dashboard/employee/vault", label: "Search vault", icon: "Search", for: "employee" },
   { href: "/dashboard/employee/mail", label: "My mail archive", icon: "Mail", for: "employee" },
+  {
+    href: "/dashboard/email-backup",
+    label: "Email Backup",
+    icon: "Mail",
+    for: "employee",
+    requiresGmail: true,
+  },
   { href: "/dashboard/owner", label: "Owner hub", icon: "LayoutDashboard", for: "owner" },
   { href: "/dashboard/company-admin", label: "Company admin", icon: "Building", for: "owner" },
   { href: "/dashboard/drive", label: "Drive", icon: "HardDrive", for: "owner" },
   { href: "/dashboard/vault", label: "My Vault", icon: "Shield", for: "owner" },
   { href: "/dashboard/emails", label: "Search company mail", icon: "Mail", for: "owner" },
+  {
+    href: "/dashboard/email-backup",
+    label: "Email Backup",
+    icon: "Mail",
+    for: "owner",
+    requiresGmail: true,
+  },
   { href: "/dashboard/shared", label: "Shared", icon: "Share2", for: "owner" },
   { href: "/dashboard/recent", label: "Recent", icon: "Clock", for: "owner" },
   { href: "/dashboard/trash", label: "Trash", icon: "Trash2", for: "owner" },

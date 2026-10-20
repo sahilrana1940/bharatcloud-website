@@ -1,6 +1,10 @@
 import { google } from "googleapis";
 
-import { getGoogleOAuthConfig, resolveGoogleOAuthScopeList } from "@/lib/google/config";
+import {
+  getGoogleOAuthConfig,
+  normalizeGoogleEnvValue,
+  resolveGoogleOAuthScopeList,
+} from "@/lib/google/config";
 
 export const GOOGLE_DRIVE_OAUTH_SCOPE =
   "https://www.googleapis.com/auth/drive.readonly";
@@ -27,7 +31,7 @@ function appOrigin() {
 
 /** Redirect URI for 1-click Drive OAuth (`GOOGLE_REDIRECT_URI` or default drive callback). */
 export function getGoogleDriveOAuthRedirectUri(): string {
-  const fromEnv = process.env.GOOGLE_REDIRECT_URI?.trim();
+  const fromEnv = normalizeGoogleEnvValue(process.env.GOOGLE_REDIRECT_URI);
   if (fromEnv) return fromEnv;
   return `${appOrigin()}/api/auth/google/drive/callback`;
 }
