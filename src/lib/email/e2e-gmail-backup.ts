@@ -104,12 +104,35 @@ export async function orgEmailBackupTotals(supabase: SupabaseClient, orgId: stri
   };
 }
 
+function missingColumn(message: string) {
+  return message.match(/Could not find the '([^']+)' column/i)?.[1] || null;
+}
+
+async function insertRun(supabase: SupabaseClient, row: Record<string, unknown>) {
+  const payload = { ...row };
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const result = await supabase.from("email_backup_runs").insert(payload).select("id").single();
+    if (!result.error) return result;
+    const column = missingColumn(result.error.message);
+    if (!column || !(column in payload)) return result;
+    delete payload[column];
+  }
+  return supabase.from("email_backup_runs").insert(payload).select("id").single();
+}
+
 async function patchRun(
   supabase: SupabaseClient,
   runId: string,
   patch: Record<string, unknown>,
 ) {
-  await supabase.from("email_backup_runs").update(patch).eq("id", runId);
+  const payload = { ...patch };
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const { error } = await supabase.from("email_backup_runs").update(payload).eq("id", runId);
+    if (!error) return;
+    const column = missingColumn(error.message);
+    if (!column || !(column in payload)) return;
+    delete payload[column];
+  }
 }
 
 export async function runE2eGmailBackup(
@@ -138,18 +161,14 @@ export async function runE2eGmailBackup(
   const prefix = emailArchivePrefix(orgId, now);
   const bucket = EMAIL_BACKUP_S3_BUCKET;
 
-  const { data: runRow, error: insertErr } = await supabase
-    .from("email_backup_runs")
-    .insert({
-      org_id: orgId,
-      user_email: email,
-      s3_bucket: bucket,
-      s3_path: prefix,
-      status: "running",
-      progress: `Archiving up to ${maxMessages} emails (copy only — Gmail not deleted)…`,
-    })
-    .select("id")
-    .single();
+  const { data: runRow, error: insertErr } = await insertRun(supabase, {
+    org_id: orgId,
+    user_email: email,
+    s3_bucket: bucket,
+    s3_path: prefix,
+    status: "running",
+    progress: `Archiving up to ${maxMessages} emails to ${bucket}/${prefix} (copy only — Gmail not deleted)…`,
+  });
 
   if (insertErr || !runRow?.id) {
     return {

@@ -43,6 +43,16 @@ export async function upsertEmailBackupRow(
       s3_path: row.s3_path,
       has_attachment: row.has_attachment ?? false,
     },
+    {
+      company_id: row.company_id,
+      owner_email: row.owner_email,
+      gmail_id: row.gmail_id,
+      subject: row.subject,
+      from_email: row.from_email,
+      date: row.date,
+      body_text: row.body_text,
+      has_attachment: row.has_attachment ?? false,
+    },
   ];
 
   let lastMsg = "";
