@@ -132,6 +132,11 @@ export default function HighCommandPage() {
         <span className="rounded border border-amber-400 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-300">
           ADM {SUPER_ADMIN_EMAIL}
         </span>
+        <form action="/api/auth/logout" method="post">
+          <button type="submit" className="rounded border border-rose-400 px-3 py-1 text-[10px] font-bold tracking-widest text-rose-300 hover:bg-rose-500 hover:text-white">
+            LOG OUT
+          </button>
+        </form>
       </header>
       <div className="flex min-h-[calc(100vh-120px)]">
         <aside className="flex w-56 shrink-0 flex-col border-r border-sky-500/20 bg-[#0f172a] p-4">

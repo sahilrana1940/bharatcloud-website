@@ -126,7 +126,12 @@ export function AdminShell({
               );
             })}
           </nav>
-          <div className="mt-auto rounded-xl border border-zinc-800 px-3 py-3">
+          <form action="/api/auth/logout" method="post" className="mt-4">
+            <button type="submit" className="w-full rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white hover:text-black">
+              Log out
+            </button>
+          </form>
+          <div className="mt-4 rounded-xl border border-zinc-800 px-3 py-3">
             <p className="text-xs text-zinc-500">Super Admin</p>
             <p className="text-sm text-white">admin@bharatcloud.in</p>
             <span className="mt-2 inline-flex rounded-full bg-[#115e59] px-2 py-0.5 text-[10px] font-bold tracking-wider text-white">
@@ -137,7 +142,14 @@ export function AdminShell({
         <div className="min-w-0 flex-1">
           <header className="flex items-center justify-between border-b border-zinc-800 px-6 py-4 md:px-10">
             <p className="text-sm font-semibold text-white">BharatCloud Super Admin</p>
-            <p className="text-xs text-emerald-400">Live • IST {time}</p>
+            <div className="flex items-center gap-3">
+              <p className="text-xs text-emerald-400">Live • IST {time}</p>
+              <form action="/api/auth/logout" method="post">
+                <button type="submit" className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white hover:text-black">
+                  Log out
+                </button>
+              </form>
+            </div>
           </header>
           <main className="px-6 py-8 md:px-10">{children}</main>
           <footer className="border-t border-zinc-800 px-6 py-4 text-center text-[11px] tracking-wide text-zinc-500 md:px-10">
