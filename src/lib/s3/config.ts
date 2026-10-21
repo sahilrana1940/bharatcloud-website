@@ -1,8 +1,9 @@
 /** S3-compatible object storage (Wasabi, E2E, MinIO, etc.) */
 export function getS3Env() {
   const endpoint =
-    process.env.WASABI_ENDPOINT?.trim() ||
+    process.env.E2E_ENDPOINT?.trim() ||
     process.env.E2E_S3_ENDPOINT?.trim() ||
+    process.env.WASABI_ENDPOINT?.trim() ||
     "";
   const region =
     process.env.WASABI_REGION?.trim() ||
@@ -21,13 +22,17 @@ export function getS3Env() {
     process.env.E2E_S3_SECRET_ACCESS_KEY?.trim() ||
     "";
   const b2bBucket =
+    process.env.E2E_BUCKET?.trim() ||
     process.env.WASABI_B2B_BUCKET?.trim() ||
     process.env.E2E_S3_B2B_BUCKET?.trim() ||
-    "bharatcloudfinal2";
+    process.env.ARCHIVE_S3_BUCKET?.trim() ||
+    "";
   const archiveBucket =
+    process.env.E2E_BUCKET?.trim() ||
     process.env.ARCHIVE_S3_BUCKET?.trim() ||
     process.env.WASABI_ARCHIVE_BUCKET?.trim() ||
-    "bharatcloudfinal2";
+    process.env.E2E_S3_B2B_BUCKET?.trim() ||
+    "";
 
   return { endpoint, region, accessKeyId, secretAccessKey, b2bBucket, archiveBucket };
 }
@@ -36,13 +41,13 @@ export function getArchiveBucket() {
   return getS3Env().archiveBucket;
 }
 
-/** Live Vercel names are E2E_S3_* ; E2E_BUCKET / E2E_ENDPOINT are accepted when set. */
+/** Bucket name from env. E2E_BUCKET wins; older Vercel names are fallbacks. */
 export function getE2EBucket() {
   return (
     process.env.E2E_BUCKET?.trim() ||
     process.env.E2E_S3_B2B_BUCKET?.trim() ||
     process.env.ARCHIVE_S3_BUCKET?.trim() ||
-    "bharatcloudfinal2"
+    ""
   );
 }
 

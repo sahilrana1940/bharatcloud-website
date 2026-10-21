@@ -7,9 +7,10 @@ import { getS3Client } from "@/lib/s3/client";
 import { getE2EBucket, isArchiveFromStart, isS3Configured } from "@/lib/s3/config";
 
 export const ARCHIVER_BUCKET =
-  process.env.ARCHIVE_S3_BUCKET?.trim() ||
+  process.env.E2E_BUCKET?.trim() ||
   process.env.E2E_S3_B2B_BUCKET?.trim() ||
-  "bharatcloudfinal2";
+  process.env.ARCHIVE_S3_BUCKET?.trim() ||
+  "";
 
 export function archiveStorageClass(): StorageClass {
   const raw =
@@ -75,6 +76,7 @@ export async function putArchiverObject(opts: {
   if (!client) return { ok: false, error: "S3 client unavailable" };
 
   const bucket = opts.bucket || getE2EBucket() || ARCHIVER_BUCKET;
+  if (!bucket) return { ok: false, error: "E2E_BUCKET is not set" };
   const storageClass = isArchiveFromStart() ? archiveStorageClass() : undefined;
   const attempts: Array<{ StorageClass?: StorageClass; Metadata?: Record<string, string> }> = [
     {

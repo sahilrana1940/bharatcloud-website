@@ -107,13 +107,21 @@ export async function POST(req: Request) {
     /* empty body ok */
   }
 
-  const result = await runE2eGmailBackup(supabase, {
-    companyId: session.companyId,
-    email: session.email,
-    maxMessages,
-  });
+  let result: Awaited<ReturnType<typeof runE2eGmailBackup>>;
+  try {
+    result = await runE2eGmailBackup(supabase, {
+      companyId: session.companyId,
+      email: session.email,
+      maxMessages,
+    });
+  } catch (err) {
+    console.error(JSON.stringify(err, null, 2));
+    const message = err instanceof Error ? err.message : "Archive failed";
+    return NextResponse.json({ success: false, error: message }, { status: 400 });
+  }
 
   if (!result.ok) {
+    console.error(JSON.stringify({ route: "POST /api/email/backup", ...result }, null, 2));
     return NextResponse.json(
       { success: false, error: result.error, runId: result.runId },
       { status: 400 },
