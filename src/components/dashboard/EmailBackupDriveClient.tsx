@@ -109,13 +109,9 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
         setProgress("");
         return;
       }
-      resumeOffset.current = 0;
-      setProgress(
-        result.total > 0
-          ? `Archived ${result.archived}/${result.total}`
-          : "Gmail mailbox has 0 messages.",
-      );
-      setProgressPct(100);
+      resumeOffset.current = result.hasMore ? result.offset : 0;
+      setProgress(result.total > 0 ? `Archived ${result.offset}/${result.total}` : "Gmail mailbox has 0 messages.");
+      setProgressPct(result.total > 0 ? Math.min(100, Math.round((result.offset / result.total) * 100)) : 100);
       await load();
     } finally {
       setBusy(false);
@@ -233,7 +229,11 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
             <p className="mt-2 text-sm text-slate-600">{progress || "Archiving…"}</p>
           </div>
         )}
-        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        {error && (
+          <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+            {error}
+          </p>
+        )}
         {canRetry && !busy && (
           <button
             type="button"

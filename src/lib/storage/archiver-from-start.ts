@@ -145,6 +145,7 @@ async function putObjectWithRetry(
             ? String((err as { name?: string }).name || "")
             : "";
       lastError = err instanceof Error ? err.message : "Archive upload failed";
+      console.error(lastError);
       console.error(
         "[e2e-upload] put failed",
         JSON.stringify({ attempt, code, message: lastError, bucket: input.Bucket, key: input.Key }),
@@ -204,17 +205,18 @@ export async function archiveGmailEml(opts: {
   });
   if (!up.ok) return up;
 
-  await insertFileArchiveRow(opts.supabase, {
+  const indexed = await insertFileArchiveRow(opts.supabase, {
     org_id: opts.orgId,
     user_email: opts.userEmail,
     file_name: `${opts.messageId}.eml`,
     s3_bucket: up.bucket,
     s3_key: up.key,
-    storage_class: String(archiveStorageClass()),
+    storage_class: "GLACIER",
     source: "gmail",
     size_mb: opts.body.length / (1024 * 1024),
     is_from_start: true,
   });
+  if (!indexed.ok) return { ok: false, error: indexed.error };
 
   return { ok: true, key: up.key, bucket: up.bucket };
 }

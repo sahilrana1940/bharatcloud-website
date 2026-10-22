@@ -21,50 +21,51 @@ type BatchResponse = {
   tokenExpired?: boolean;
 };
 
-/** One request archives at most 25 messages. The caller walks offset until hasMore is false. */
+/** One click archives one page of 25 messages. The next click continues from offset. */
 export async function archiveMailboxInBatches(
   onProgress: (progress: ArchiveBatchProgress) => void,
   startOffset = 0,
 ): Promise<
-  | { ok: true; archived: number; total: number; offset: number }
+  | { ok: true; archived: number; total: number; offset: number; hasMore: boolean }
   | { ok: false; error: string; archived: number; offset: number; tokenExpired?: boolean }
 > {
-  let offset = startOffset;
-  let total = 0;
-  let batch = 0;
-
-  for (let page = 0; page < 400; page += 1) {
-    batch += 1;
-    const sent = await postBatch(offset, batch);
-    if (!sent.ok) {
-      return { ok: false, error: sent.error, archived: offset, offset, tokenExpired: sent.tokenExpired };
-    }
-    if (sent.body.gmailCountError || sent.body.tokenExpired) {
-      return {
-        ok: false,
-        error: sent.body.gmailCountError || "Gmail mailbox count failed",
-        archived: offset,
-        offset,
-        tokenExpired: sent.body.tokenExpired,
-      };
-    }
-    const mailboxTotal = Number(sent.body.messagesTotal ?? sent.body.resultSizeEstimate);
-    if (!Number.isFinite(mailboxTotal)) {
-      return { ok: false, error: "Gmail mailbox count failed", archived: offset, offset };
-    }
-
-    const step = Number(sent.body.archived ?? sent.body.processed ?? sent.body.emailCount) || 0;
-    offset = Number(sent.body.nextOffset ?? offset + step);
-    total = mailboxTotal;
-    const label = mailboxTotal === 0 ? "Gmail mailbox has 0 messages." : `Archiving ${offset}/${mailboxTotal}...`;
-    onProgress({ archived: offset, total, batch, label, offset });
-
-    if (sent.body.hasMore === false || sent.body.done || step === 0) {
-      return { ok: true, archived: offset, total, offset };
-    }
+  const sent = await postBatch(startOffset, Math.floor(startOffset / 25) + 1);
+  if (!sent.ok) {
+    return { ok: false, error: sent.error, archived: startOffset, offset: startOffset, tokenExpired: sent.tokenExpired };
+  }
+  if (sent.body.gmailCountError || sent.body.tokenExpired) {
+    return {
+      ok: false,
+      error: sent.body.gmailCountError || sent.body.error || "Gmail mailbox count failed",
+      archived: startOffset,
+      offset: startOffset,
+      tokenExpired: sent.body.tokenExpired,
+    };
+  }
+  if (sent.body.error) {
+    return { ok: false, error: sent.body.error, archived: startOffset, offset: startOffset };
   }
 
-  return { ok: true, archived: offset, total, offset };
+  const mailboxTotal = Number(sent.body.messagesTotal ?? sent.body.resultSizeEstimate);
+  if (!Number.isFinite(mailboxTotal)) {
+    return { ok: false, error: "Gmail mailbox count failed", archived: startOffset, offset: startOffset };
+  }
+
+  const uploaded = Number(sent.body.uploaded ?? sent.body.emailCount) || 0;
+  const step = Number(sent.body.archived ?? sent.body.processed ?? sent.body.emailCount) || 0;
+  const offset = Number(sent.body.nextOffset ?? startOffset + step);
+  const hasMore = Boolean(sent.body.hasMore) && sent.body.done !== true;
+  const label =
+    mailboxTotal === 0
+      ? "Gmail mailbox has 0 messages."
+      : hasMore
+        ? `Archived ${offset}/${mailboxTotal}. Click Archive Now for the next 25.`
+        : `Archived ${offset}/${mailboxTotal}`;
+  onProgress({ archived: offset, total: mailboxTotal, batch: 1, label, offset });
+  if (uploaded === 0 && step === 0 && mailboxTotal > 0) {
+    return { ok: false, error: sent.body.error || "E2E upload saved 0 emails", archived: startOffset, offset: startOffset };
+  }
+  return { ok: true, archived: offset, total: mailboxTotal, offset, hasMore };
 }
 
 async function postBatch(

@@ -19,54 +19,48 @@ const droppedColumns = new Set<string>();
 export async function insertFileArchiveRow(
   _supabase: SupabaseClient | null | undefined,
   row: FileArchiveRow,
-): Promise<void> {
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const admin = getSupabaseAdmin();
   if (!admin) {
-    console.log(
-      "[file_archives] insert error",
-      JSON.stringify({ message: "SUPABASE_SERVICE_ROLE_KEY is not set" }),
-    );
-    return;
+    const message = "SUPABASE_SERVICE_ROLE_KEY is not set";
+    console.error(message);
+    return { ok: false, error: message };
+  }
+  if (row.source === "gmail" && !row.user_email) {
+    const message = "file_archives.user_email is required";
+    console.error(message);
+    return { ok: false, error: message };
   }
 
   const sizeMb = row.size_mb ?? 0;
-  const sizeBytes = Math.round(sizeMb * 1024 * 1024);
+  const sizeBytes = Math.max(0, Math.round(sizeMb * 1024 * 1024));
   const storageClass = row.storage_class || "GLACIER";
+  const now = new Date().toISOString();
   const payload: Record<string, unknown> = {
-    org_id: row.org_id,
-    user_email: row.user_email || null,
+    ...(row.user_email ? { user_email: row.user_email } : {}),
     file_name: row.file_name,
-    s3_bucket: row.s3_bucket || "bharatcloudfinal2",
     s3_key: row.s3_key,
     e2e_path: row.s3_key,
+    size_bytes: sizeBytes,
+    size: String(sizeBytes),
     storage_class: storageClass,
     class: storageClass,
-    source: row.source || "drive",
-    size_mb: sizeMb,
-    size: sizeMb,
-    size_bytes: sizeBytes,
-    is_from_start: row.is_from_start ?? true,
+    source: row.source || "gmail",
+    created_at: now,
+    archived_at: now,
   };
-  if (!payload.user_email) delete payload.user_email;
   for (const column of droppedColumns) delete payload[column];
 
   for (let attempt = 0; attempt < 12; attempt += 1) {
     const { error } = await admin.from("file_archives").insert(payload);
-    if (!error) return;
-    console.log(
-      "[file_archives] insert error",
-      JSON.stringify({
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-      }),
-    );
+    if (!error) return { ok: true };
+    console.error(error.message);
     const missing = error.message.match(/Could not find the '([^']+)' column/i)?.[1];
-    if (!missing || !(missing in payload)) return;
+    if (!missing || !(missing in payload)) return { ok: false, error: error.message };
     droppedColumns.add(missing);
     delete payload[missing];
   }
+  return { ok: false, error: "file_archives insert failed" };
 }
 
 export async function logArchiveRestore(

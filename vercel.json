@@ -9,7 +9,7 @@
       "schedule": "0 4 * * *"
     },
     {
-      "path": "/api/cron/email-backup",
+      "path": "/api/cron/gmail-archive",
       "schedule": "0 2 * * *"
     }
   ]
