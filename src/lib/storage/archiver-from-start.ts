@@ -6,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { insertFileArchiveRow } from "@/lib/archive/save-file-archive-row";
 import { e2eWorkspacePrefix } from "@/lib/roles/platform-roles";
 import { getS3Client } from "@/lib/s3/client";
-import { getE2EBucket, isArchiveFromStart, isS3Configured } from "@/lib/s3/config";
+import { getE2EBucket, isArchiveFromStart, isS3Configured, resolveE2EEndpoint } from "@/lib/s3/config";
 
 export const ARCHIVER_BUCKET =
   process.env.ARCHIVE_E2E_BUCKET?.trim() ||
@@ -74,16 +74,23 @@ export async function putArchiverObject(opts: {
   const client = getS3Client();
   if (!client) return { ok: false, error: "S3 client unavailable" };
 
-  const bucket = opts.bucket || process.env.ARCHIVE_E2E_BUCKET?.trim() || getE2EBucket() || ARCHIVER_BUCKET;
+  const bucket = (opts.bucket || process.env.ARCHIVE_E2E_BUCKET || getE2EBucket() || ARCHIVER_BUCKET || "").replace(
+    /\s+/g,
+    "",
+  );
   if (!bucket) return { ok: false, error: "ARCHIVE_E2E_BUCKET is not set" };
   const storageClass = opts.storageClass || (isArchiveFromStart() ? archiveStorageClass() : undefined);
+  console.error("E2E_DEBUG", { endpoint: resolveE2EEndpoint(), bucket, file: opts.key });
   const attempts: Array<{ StorageClass?: StorageClass; Metadata?: Record<string, string> }> = [
     {
       ...(storageClass ? { StorageClass: storageClass } : {}),
       ...(opts.metadata ? { Metadata: opts.metadata } : {}),
     },
-    {},
   ];
+  if (storageClass === "GLACIER") {
+    attempts.push({ StorageClass: "STANDARD" });
+    attempts.push({});
+  }
 
   let lastError = "Archive upload failed";
   for (const extra of attempts) {
@@ -97,12 +104,13 @@ export async function putArchiverObject(opts: {
     if (sent.ok) return { ok: true, bucket, key: opts.key };
     lastError = sent.error;
     if (!/access denied|invalid storage class/i.test(lastError)) break;
+    console.error("[e2e-upload] retrying without GLACIER", JSON.stringify({ bucket, key: opts.key }));
   }
   return { ok: false, error: lastError };
 }
 
 function retryableUploadError(message: string) {
-  return /socket hang up|ECONNRESET|ECONNREFUSED|ETIMEDOUT|Timeout|NetworkingError|EPIPE|aborted/i.test(
+  return /socket hang up|ECONNRESET|ECONNREFUSED|ETIMEDOUT|Timeout|NetworkingError|EPIPE|aborted|secure TLS connection|Client network socket|socket disconnected/i.test(
     message,
   );
 }

@@ -35,15 +35,20 @@ export async function fetchGoogleTokenRow(
   };
 }
 
+export const GMAIL_RECONNECT_ERROR =
+  "Gmail token needs re-connection - ENCRYPTION_KEY changed. Please disconnect and reconnect Gmail.";
+
+export function isGmailReconnectError(message: string) {
+  return /ENCRYPTION_KEY changed|needs re-connection/i.test(message);
+}
+
 function openSecret(value: string | null) {
   try {
     return decryptSecret(value);
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
-    if (/unable to authenticate data|Unsupported state/i.test(message)) {
-      throw new Error(
-        "Gmail token cannot be decrypted. ENCRYPTION_KEY on this server does not match the key that stored it.",
-      );
+    if (/unable to authenticate data|Unsupported state|ENCRYPTION_KEY/i.test(message)) {
+      throw new Error(GMAIL_RECONNECT_ERROR);
     }
     throw err;
   }

@@ -19,6 +19,8 @@ type BatchResponse = {
   messagesTotal?: number | null;
   gmailCountError?: string;
   tokenExpired?: boolean;
+  needsReconnect?: boolean;
+  message?: string;
 };
 
 /** One click archives one page of 25 messages. The next click continues from offset. */
@@ -27,11 +29,18 @@ export async function archiveMailboxInBatches(
   startOffset = 0,
 ): Promise<
   | { ok: true; archived: number; total: number; offset: number; hasMore: boolean }
-  | { ok: false; error: string; archived: number; offset: number; tokenExpired?: boolean }
+  | { ok: false; error: string; archived: number; offset: number; tokenExpired?: boolean; needsReconnect?: boolean }
 > {
   const sent = await postBatch(startOffset, Math.floor(startOffset / 3) + 1);
   if (!sent.ok) {
-    return { ok: false, error: sent.error, archived: startOffset, offset: startOffset, tokenExpired: sent.tokenExpired };
+    return {
+      ok: false,
+      error: sent.error,
+      archived: startOffset,
+      offset: startOffset,
+      tokenExpired: sent.tokenExpired,
+      needsReconnect: sent.needsReconnect,
+    };
   }
   if (sent.body.gmailCountError || sent.body.tokenExpired) {
     return {
@@ -71,7 +80,7 @@ export async function archiveMailboxInBatches(
 async function postBatch(
   offset: number,
   batch: number,
-): Promise<{ ok: true; body: BatchResponse } | { ok: false; error: string; tokenExpired?: boolean }> {
+): Promise<{ ok: true; body: BatchResponse } | { ok: false; error: string; tokenExpired?: boolean; needsReconnect?: boolean }> {
   let lastError = "Connection closed";
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
@@ -83,7 +92,10 @@ async function postBatch(
       });
       const body = (await res.json().catch(() => ({}))) as BatchResponse;
       if (res.ok) return { ok: true, body };
-      lastError = body.gmailCountError || body.error || `Archive failed (${res.status})`;
+      lastError = body.message || body.gmailCountError || body.error || `Archive failed (${res.status})`;
+      if (body.needsReconnect || res.status === 401) {
+        return { ok: false, error: lastError, tokenExpired: true, needsReconnect: true };
+      }
       if (res.status < 500 || body.tokenExpired) {
         return { ok: false, error: lastError, tokenExpired: body.tokenExpired };
       }

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getGoogleOAuthConfig } from "@/lib/google/config";
 import {
   fetchGoogleTokenRowForWorkspace,
+  isGmailReconnectError,
   isGoogleTokenRowConnected,
 } from "@/lib/google/token-row";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
@@ -18,11 +19,25 @@ export async function GET() {
     return NextResponse.json({ connected: false, demo: true });
   }
 
-  const row = await fetchGoogleTokenRowForWorkspace(
-    supabase,
-    session.companyId,
-    session.email,
-  );
+  let row;
+  try {
+    row = await fetchGoogleTokenRowForWorkspace(
+      supabase,
+      session.companyId,
+      session.email,
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (isGmailReconnectError(message)) {
+      return NextResponse.json({
+        connected: false,
+        needsReconnect: true,
+        email: session.email,
+        message: "Gmail re-auth required",
+      });
+    }
+    throw err;
+  }
   const { clientId, clientSecret } = getGoogleOAuthConfig();
 
   return NextResponse.json({

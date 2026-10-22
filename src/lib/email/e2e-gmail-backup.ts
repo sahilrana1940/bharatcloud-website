@@ -2,9 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { resolveArchiveCompanyId } from "@/lib/archive/resolve-archive-company";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
+import { isGmailReconnectError } from "@/lib/google/token-row";
 import { gmailClient } from "@/lib/google/client";
 import { ARCHIVER_BUCKET, archiveGmailEml } from "@/lib/storage/archiver-from-start";
-import { getE2EBucket, isS3Configured } from "@/lib/s3/config";
+import { getE2EBucket, isS3Configured, resolveE2EEndpoint } from "@/lib/s3/config";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 export const EMAIL_BACKUP_S3_BUCKET = ARCHIVER_BUCKET;
@@ -193,7 +194,7 @@ export async function runE2eGmailBackup(
       messagesTotal: number;
       batch: number;
     }
-  | { ok: false; error: string; runId?: string; retryable?: boolean; tokenExpired?: boolean }
+  | { ok: false; error: string; runId?: string; retryable?: boolean; tokenExpired?: boolean; needsReconnect?: boolean }
 > {
   if (!isS3Configured()) {
     return {
@@ -211,7 +212,9 @@ export async function runE2eGmailBackup(
   const offset = Math.max(0, opts.offset ?? 0);
   const now = new Date();
   const prefix = `gmail/${email}/${now.getUTCFullYear()}/`;
-  const bucket = getE2EBucket() || EMAIL_BACKUP_S3_BUCKET;
+  const bucket = (getE2EBucket() || EMAIL_BACKUP_S3_BUCKET).replace(/\s+/g, "");
+  const endpoint = resolveE2EEndpoint();
+  console.error("E2E_DEBUG", { endpoint, bucket, file: prefix });
 
   const { data: runRow, error: insertErr } = await insertRun(supabase, {
     company_id: orgId,
@@ -242,8 +245,14 @@ export async function runE2eGmailBackup(
 
   const counted = await gmailMailboxCount(supabase, orgId, email);
   if ("error" in counted) {
-    await patchRun(supabase, runId, { status: "error", progress: "error" });
-    return { ok: false, error: counted.error, runId, tokenExpired: counted.tokenExpired };
+    await patchRun(supabase, runId, { status: "error", progress: counted.error.slice(0, 400) });
+    return {
+      ok: false,
+      error: counted.error,
+      runId,
+      tokenExpired: counted.tokenExpired,
+      needsReconnect: Boolean(counted.needsReconnect) || isGmailReconnectError(counted.error),
+    };
   }
   const gmail = counted.gmail;
   const mailboxTotal = counted.messagesTotal;
@@ -368,6 +377,11 @@ export async function runE2eGmailBackup(
     };
   } catch (e) {
     let msg = e instanceof Error ? e.message : "Gmail archive failed";
+    if (isGmailReconnectError(msg)) {
+      await patchRun(supabase, runId, { status: "error", progress: msg.slice(0, 400) });
+      emit({ phase: "error", message: msg });
+      return { ok: false, error: msg, runId, tokenExpired: true, needsReconnect: true };
+    }
     const retryable = /socket hang up|ECONNRESET|ETIMEDOUT|Timeout|aborted/i.test(msg);
     const tokenExpired = /Gmail access expired|invalid_grant|reconnect Gmail/i.test(msg);
     if (tokenExpired) {
@@ -388,14 +402,18 @@ export async function gmailMailboxCount(
   email: string,
 ): Promise<
   | { messagesTotal: number; gmail: NonNullable<ReturnType<typeof gmailClient>> }
-  | { error: string; tokenExpired?: boolean }
+  | { error: string; tokenExpired?: boolean; needsReconnect?: boolean }
 > {
   let accessToken: string | null;
   try {
     accessToken = await getValidGoogleAccessToken(supabase, companyId, email);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Gmail token refresh failed";
-    return { error: message, tokenExpired: /expired|reconnect/i.test(message) };
+    return {
+      error: message,
+      tokenExpired: /expired|reconnect/i.test(message),
+      needsReconnect: isGmailReconnectError(message),
+    };
   }
   if (!accessToken) {
     return { error: "Connect Gmail with mail access first.", tokenExpired: true };
@@ -410,7 +428,7 @@ export async function gmailMailboxCount(
       accessToken = await getValidGoogleAccessToken(supabase, companyId, email, { force: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Gmail token refresh failed";
-      return { error: message, tokenExpired: true };
+      return { error: message, tokenExpired: true, needsReconnect: isGmailReconnectError(message) };
     }
     if (!accessToken) return { error: "Gmail access expired. Reconnect Gmail.", tokenExpired: true };
     gmail = gmailClient(accessToken);

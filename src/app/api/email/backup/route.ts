@@ -12,6 +12,7 @@ import {
 } from "@/lib/email/e2e-gmail-backup";
 import { getE2EBucket } from "@/lib/s3/config";
 import { archiveStorageClass } from "@/lib/storage/archiver-from-start";
+import { isGmailReconnectError } from "@/lib/google/token-row";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { isWorkspaceOwner } from "@/lib/workspace/nav";
@@ -94,6 +95,9 @@ export async function GET(req: Request) {
     messagesTotal,
     gmailCountError,
     tokenExpired: "tokenExpired" in mailbox ? Boolean(mailbox.tokenExpired) : false,
+    needsReconnect:
+      ("needsReconnect" in mailbox && Boolean(mailbox.needsReconnect)) ||
+      isGmailReconnectError(gmailCountError || ""),
     supabaseError,
     lastRun: runs[0] || null,
   };
@@ -140,6 +144,7 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Archive failed";
+    if (isGmailReconnectError(message)) return gmailReconnectResponse();
     const retryable = /socket hang up|socket disconnected|Client network socket|ECONNRESET|ETIMEDOUT|Timeout/i.test(message);
     console.error(
       JSON.stringify({ route: "POST /api/email/backup", message, retryable }),
@@ -151,6 +156,9 @@ export async function POST(req: Request) {
   }
 
   if (!result.ok) {
+    if (result.needsReconnect || isGmailReconnectError(result.error || "")) {
+      return gmailReconnectResponse();
+    }
     console.error(
       JSON.stringify({ route: "POST /api/email/backup", error: result.error, runId: result.runId }),
     );
@@ -191,6 +199,13 @@ export async function POST(req: Request) {
         ? "Gmail mailbox has 0 messages."
         : `Archiving ${result.nextOffset}/${total}...`,
   });
+}
+
+function gmailReconnectResponse() {
+  return NextResponse.json(
+    { success: false, needsReconnect: true, message: "Gmail re-auth required" },
+    { status: 401 },
+  );
 }
 
 function readPositiveInt(value: unknown, fallback: number) {

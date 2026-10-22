@@ -48,6 +48,7 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
   const [error, setError] = useState("");
   const [canRetry, setCanRetry] = useState(false);
   const [tokenExpired, setTokenExpired] = useState(false);
+  const [needsReconnect, setNeedsReconnect] = useState(false);
   const [lastPost, setLastPost] = useState("");
   const [showPost, setShowPost] = useState(false);
   const [messagesTotal, setMessagesTotal] = useState<number | null>(null);
@@ -67,8 +68,12 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
     setTotalArchiveGb(Number(backup.totalArchiveGb) || 0);
     setStatus(backup.status || "idle");
     setTokenExpired(Boolean(backup.tokenExpired));
+    setNeedsReconnect(Boolean(backup.needsReconnect) || Boolean(gs.needsReconnect));
     setMessagesTotal(typeof backup.messagesTotal === "number" ? backup.messagesTotal : null);
-    if (backup.gmailCountError) {
+    if (backup.needsReconnect || gs.needsReconnect) {
+      setError(backup.gmailCountError || gs.message || backup.message || "Gmail re-auth required");
+      setProgress("");
+    } else if (backup.gmailCountError) {
       setError(String(backup.gmailCountError));
       setProgress("");
     } else if (!busy) {
@@ -109,8 +114,9 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
       if (!result.ok) {
         resumeOffset.current = result.offset;
         setError(result.error);
-        setTokenExpired(Boolean(result.tokenExpired) || /reconnect gmail/i.test(result.error));
-        setCanRetry(!result.tokenExpired);
+        setNeedsReconnect(Boolean(result.needsReconnect));
+        setTokenExpired(Boolean(result.tokenExpired) || Boolean(result.needsReconnect) || /reconnect gmail/i.test(result.error));
+        setCanRetry(!result.tokenExpired && !result.needsReconnect);
         setProgress("");
         return;
       }
@@ -125,6 +131,16 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
 
   async function reconnectGmail() {
     setError("");
+    if (needsReconnect) {
+      const cleared = await fetch("/api/auth/google/disconnect", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!cleared.ok) {
+        setError("Could not disconnect Gmail");
+        return;
+      }
+    }
     const res = await fetch(
       `/api/auth/google/drive/url?gmail=1&returnTo=${encodeURIComponent("/dashboard/email-backup")}`,
       fetchOpts,
@@ -212,7 +228,7 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Archive Now
         </button>
-        {(tokenExpired || !connected) && (
+        {(needsReconnect || tokenExpired || !connected) && (
           <button
             type="button"
             onClick={reconnectGmail}

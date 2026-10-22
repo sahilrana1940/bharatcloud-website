@@ -89,16 +89,17 @@ export function getArchiveBucket() {
   return getS3Env().archiveBucket;
 }
 
-/** Bucket from env. ARCHIVE_E2E_BUCKET wins and is used exactly as written. */
+/** Bucket from env. ARCHIVE_E2E_BUCKET wins. Spaces are stripped. */
 export function getE2EBucket() {
-  return (
+  const name = (
     process.env.ARCHIVE_E2E_BUCKET ||
     process.env.E2E_BUCKET_NAME ||
     process.env.E2E_BUCKET ||
     process.env.E2E_S3_B2B_BUCKET ||
     process.env.ARCHIVE_S3_BUCKET ||
-    E2E_BUCKET_DEFAULT
-  ).trim();
+    "bharacloudfinal2"
+  ).replace(/\s+/g, "");
+  return name || "bharacloudfinal2";
 }
 
 export function getE2ECredentials() {

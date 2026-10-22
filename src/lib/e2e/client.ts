@@ -8,10 +8,12 @@ import { getE2EBucket, getE2ECredentials, getE2ERegion, resolveE2EEndpoint } fro
 
 export { calculateBill, E2E_RATES };
 
-const keepAliveAgent = new https.Agent({
-  keepAlive: true,
-  keepAliveMsecs: 1000,
-  maxSockets: 50,
+/** Fresh IPv4 TLS 1.2 socket. Reused keep-alive sockets fail the handshake on Vercel. */
+const tlsAgent = new https.Agent({
+  keepAlive: false,
+  family: 4,
+  rejectUnauthorized: true,
+  secureProtocol: "TLSv1_2_method",
 });
 
 let cachedClient: S3Client | null = null;
@@ -31,13 +33,15 @@ export function getE2EClient(): S3Client | null {
     endpoint,
     forcePathStyle: true,
     credentials: { accessKeyId, secretAccessKey },
-    maxAttempts: 4,
+    maxAttempts: 5,
+    retryMode: "adaptive",
     requestChecksumCalculation: "WHEN_REQUIRED",
     responseChecksumValidation: "WHEN_REQUIRED",
     requestHandler: new NodeHttpHandler({
-      connectionTimeout: 30_000,
+      httpsAgent: tlsAgent,
+      connectionTimeout: 15_000,
       requestTimeout: 120_000,
-      httpsAgent: keepAliveAgent,
+      socketTimeout: 120_000,
     }),
   } as S3ClientConfig);
   cachedKey = key;
