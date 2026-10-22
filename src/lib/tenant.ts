@@ -16,6 +16,7 @@ export type TenantCompany = {
   plan_name: string;
   storage_limit_gb: number;
   subscription_status?: string | null;
+  created_at?: string | null;
   godaddy_connected?: boolean;
   central_drive_owner_email?: string | null;
 };
@@ -98,6 +99,7 @@ export async function loadTenantCompany(companyId: string): Promise<TenantCompan
       plan_name: (minimal.plan_name as string) || "starter",
       storage_limit_gb: Number(minimal.storage_limit_gb ?? 100),
       subscription_status: minimal.subscription_status as string | null,
+      created_at: null,
       godaddy_connected: false,
       central_drive_owner_email: minimal.admin_email as string,
     };
@@ -110,6 +112,7 @@ export async function loadTenantCompany(companyId: string): Promise<TenantCompan
     plan_name: (data.plan_name as string) || "starter",
     storage_limit_gb: Number(data.storage_limit_gb ?? 100),
     subscription_status: data.subscription_status as string | null,
+    created_at: (data.created_at as string | null) ?? null,
     godaddy_connected: Boolean(data.godaddy_connected),
     central_drive_owner_email:
       (data.central_drive_owner_email as string) || (data.admin_email as string),

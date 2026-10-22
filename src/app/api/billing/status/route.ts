@@ -48,8 +48,7 @@ export async function GET() {
     );
   }
 
-  // FIX: TS 4 errors khatam karne ke liye any bana diya
-  const company = companyRaw as any;
+  const company = companyRaw;
 
   const allowed = await canAccessCompany(ws.email, ws.companyId);
   if (!allowed) {
