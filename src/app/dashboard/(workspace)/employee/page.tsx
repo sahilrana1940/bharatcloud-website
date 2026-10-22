@@ -115,10 +115,13 @@ export default function EmployeeDashboardPage() {
                 setEmailBackupBusy(true);
                 setEmailBackupProgress("Archived 0/…");
                 try {
-                  const result = await archiveMailboxInBatches((p) => {
-                    setEmailBackupProgress(p.label);
-                    setEmailBackedUp(p.archived);
-                  });
+                  const result = await archiveMailboxInBatches(
+                    (p) => {
+                      setEmailBackupProgress(p.label);
+                      setEmailBackedUp(p.archived);
+                    },
+                    { offset: 0, pageToken: "" },
+                  );
                   if (!result.ok) {
                     window.alert(result.error || "Archive failed");
                     return;

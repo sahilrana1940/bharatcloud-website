@@ -34,7 +34,14 @@ export function getE2EEndpoint() {
  */
 export function resolveE2EEndpoint() {
   const raw = getE2EEndpoint();
-  if (!raw) return E2E_DELHI_ENDPOINT;
+  if (!raw) return E2E_CHENNAI_ENDPOINT;
+  if (/e2ecloud\.net|objectstorage\.(chn1\.)?e2e\.co\.in/i.test(raw)) {
+    console.warn("[e2e-storage] configured endpoint drops TLS from Vercel. Using Chennai.", {
+      configured: raw,
+      using: E2E_CHENNAI_ENDPOINT,
+    });
+    return E2E_CHENNAI_ENDPOINT;
+  }
   if (isRetiredMumbaiEndpoint(raw)) {
     console.warn(
       "[e2e-storage] Mumbai object storage endpoint is retired. Using https://objectstore.e2enetworks.net. For a Chennai key set E2E_ENDPOINT=https://in-south1-objectstore.e2enetworks.net.",

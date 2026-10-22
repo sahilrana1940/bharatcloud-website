@@ -89,6 +89,8 @@ export function EmployeeMailArchiveClient({
   const [batchPct, setBatchPct] = useState(0);
   const [canRetry, setCanRetry] = useState(false);
   const resumeOffset = useRef(0);
+  const resumePageToken = useRef("");
+  const stopAutoArchive = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const visibleItems = useMemo(() => {
@@ -208,26 +210,38 @@ export function EmployeeMailArchiveClient({
     setError("");
     setCanRetry(false);
     setSuccessMsg("");
-    if (resumeOffset.current === 0) setBatchPct(0);
-    setBatchLabel(resumeOffset.current > 0 ? `Archiving ${resumeOffset.current}/...` : "Archiving 0/...");
+    if (resumeOffset.current === 0 && !resumePageToken.current) setBatchPct(0);
+    stopAutoArchive.current = false;
+    setBatchLabel("Archiving up to 250 messages per batch…");
     try {
-      const result = await archiveMailboxInBatches((p) => {
-        resumeOffset.current = p.offset;
-        setBatchLabel(p.label);
-        setBatchPct(p.total > 0 ? Math.min(100, Math.round((p.archived / p.total) * 100)) : 0);
-      }, resumeOffset.current);
+      const result = await archiveMailboxInBatches(
+        (p) => {
+          resumeOffset.current = p.offset;
+          setBatchLabel(p.label);
+          setBatchPct(p.percent);
+        },
+        { offset: resumeOffset.current, pageToken: resumePageToken.current },
+        {
+          autoContinue: true,
+          shouldStop: () => stopAutoArchive.current,
+          onAutoDelay: () => setBatchLabel((prev) => `${prev} — next batch in 2s…`),
+        },
+      );
       if (!result.ok) {
         resumeOffset.current = result.offset;
         setCanRetry(true);
         setError(result.error || "Backup failed — reconnect Gmail with all scopes");
         return;
       }
-      resumeOffset.current = 0;
-      setSuccessMsg(
-        result.archived > 0
-          ? `Done — archived ${result.archived} messages.`
-          : "Backup finished — no new messages in this Gmail inbox.",
-      );
+      if (result.hasMore) {
+        resumeOffset.current = result.offset;
+        resumePageToken.current = result.pageToken;
+        setSuccessMsg(result.message);
+      } else {
+        resumeOffset.current = 0;
+        resumePageToken.current = "";
+        setSuccessMsg(result.message || (result.archived > 0 ? `Done — archived ${result.archived} messages.` : "Backup finished."));
+      }
       await refresh();
       setStatus((prev) => ({
         ...prev,

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { runE2eGmailBackup } from "@/lib/email/e2e-gmail-backup";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 /** Daily 2 AM — archive recent Gmail in small batches so the function stays under the timeout. */
 export async function GET(req: Request) {
@@ -36,7 +36,7 @@ export async function GET(req: Request) {
     const result = await runE2eGmailBackup(supabase, {
       companyId: row.company_id,
       email: row.email,
-      limit: 20,
+      limit: 50,
       batch,
       newerThanDays: 2,
     });

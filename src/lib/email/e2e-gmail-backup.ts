@@ -10,8 +10,15 @@ import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 export const EMAIL_BACKUP_S3_BUCKET = ARCHIVER_BUCKET;
 
-const DEFAULT_MAX = 3;
-const MAX_CAP = 50;
+import {
+  GMAIL_ARCHIVE_BATCH_SIZE,
+  GMAIL_ARCHIVE_ROUNDS_PER_REQUEST,
+} from "@/lib/email/gmail-archive-constants";
+
+export { GMAIL_ARCHIVE_BATCH_SIZE, GMAIL_ARCHIVE_ROUNDS_PER_REQUEST };
+
+const DEFAULT_MAX = GMAIL_ARCHIVE_BATCH_SIZE;
+const MAX_CAP = GMAIL_ARCHIVE_BATCH_SIZE;
 
 export type E2eEmailBackupProgress = {
   runId: string;
@@ -70,9 +77,47 @@ export async function orgArchiveStorageTotals(
   orgId: string,
   userEmail?: string,
 ) {
-  const rows = await selectArchiveRows(supabase, orgId, userEmail, 1000);
-  const totalMb = rows.data.reduce((n, row) => n + archiveRowMb(row), 0);
-  return { totalMb, fileCount: rows.data.length };
+  return sumFileArchiveStorage(supabase, orgId, userEmail);
+}
+
+/** Sum all file_archives rows (paginated) — not capped at 1000. */
+export async function sumFileArchiveStorage(
+  supabase: SupabaseClient,
+  orgId: string,
+  userEmail?: string,
+) {
+  const db = getSupabaseAdmin() || supabase;
+  const pageSize = 1000;
+  let from = 0;
+  let totalMb = 0;
+  let fileCount = 0;
+
+  for (;;) {
+    let query = db
+      .from("file_archives")
+      .select("size_mb, size_bytes, size")
+      .eq("company_id", orgId);
+    if (userEmail) query = query.eq("email", userEmail.toLowerCase());
+    const { data, error } = await query.range(from, from + pageSize - 1);
+    if (error) {
+      console.error(error.message);
+      break;
+    }
+    const rows = data || [];
+    if (!rows.length) break;
+    for (const row of rows) {
+      totalMb += archiveRowMb(row as Record<string, unknown>);
+    }
+    fileCount += rows.length;
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+
+  if (userEmail && fileCount === 0) {
+    fileCount = await countBackedUpEmails(supabase, orgId, userEmail);
+  }
+
+  return { totalMb, fileCount };
 }
 
 export async function countBackedUpEmails(
@@ -292,10 +337,7 @@ export async function runE2eGmailBackup(
       q: opts.newerThanDays ? `newer_than:${opts.newerThanDays}d` : undefined,
     });
     const messages = slice.messages;
-    const nextPageToken = pageToken ? slice.nextPageToken : null;
-    const hasMore = slice.hasMore;
     const resultSizeEstimate = mailboxTotal;
-    const total = messages.length;
     const already = await archivedMessageIds(
       supabase,
       orgId,
@@ -307,9 +349,11 @@ export async function runE2eGmailBackup(
     let alreadyArchived = 0;
     let bytes = 0;
 
-    for (let i = 0; i < messages.length; i++) {
+    let processedInBatch = 0;
+    for (let i = 0; i < messages.length && processedInBatch < maxMessages; i++) {
       const id = messages[i].id;
       if (!id) continue;
+      processedInBatch += 1;
       if (already.has(id)) {
         alreadyArchived += 1;
         continue;
@@ -319,10 +363,10 @@ export async function runE2eGmailBackup(
 
       emit({
         phase: "uploading",
-        message: `Archiving to ${bucket}/${prefix} (${uploaded + 1}/${total})`,
-        fetched: i + 1,
+        message: `Archiving to ${bucket}/${prefix} (${uploaded + 1}/${maxMessages})`,
+        fetched: processedInBatch,
         uploaded,
-        total,
+        total: maxMessages,
       });
 
       const archived = await archiveGmailEml({
@@ -343,9 +387,14 @@ export async function runE2eGmailBackup(
     }
 
     const sizeMb = bytes / (1024 * 1024);
-    const nextOffset = offset + total;
+    const nextOffset = offset + processedInBatch;
+    const nextPageToken = slice.nextPageToken;
+    const hasMore =
+      slice.hasMore ||
+      Boolean(nextPageToken) ||
+      (pageToken ? processedInBatch >= maxMessages : nextOffset < mailboxTotal);
     const estimate = Math.max(resultSizeEstimate, nextOffset);
-    console.log(`Batch ${batch} archived ${uploaded} emails`);
+    console.log(`Batch ${batch} archived ${uploaded} emails (${processedInBatch} scanned)`);
     await patchRun(supabase, runId, {
       status: "completed",
       progress: `Archived ${uploaded}`,
@@ -354,7 +403,7 @@ export async function runE2eGmailBackup(
     emit({
       phase: "done",
       message: `Archiving ${nextOffset}/${estimate}...`,
-      fetched: total,
+      fetched: processedInBatch,
       uploaded,
       total: estimate,
     });
@@ -363,13 +412,13 @@ export async function runE2eGmailBackup(
       ok: true,
       runId,
       emailCount: uploaded,
-      processed: total,
+      processed: processedInBatch,
       alreadyArchived,
       sizeMb,
       s3Path: prefix,
       nextPageToken,
-      done: mailboxTotal === 0 || !hasMore,
-      hasMore: mailboxTotal > 0 && hasMore,
+      done: !hasMore,
+      hasMore,
       nextOffset,
       resultSizeEstimate: estimate,
       messagesTotal: mailboxTotal,

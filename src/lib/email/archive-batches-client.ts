@@ -1,9 +1,16 @@
+import {
+  GMAIL_ARCHIVE_BATCH_SIZE,
+  GMAIL_ARCHIVE_ROUNDS_PER_REQUEST,
+} from "@/lib/email/gmail-archive-constants";
+
 export type ArchiveBatchProgress = {
   archived: number;
   total: number;
   batch: number;
   label: string;
   offset: number;
+  remaining: number;
+  percent: number;
 };
 
 type BatchResponse = {
@@ -17,78 +24,178 @@ type BatchResponse = {
   done?: boolean;
   resultSizeEstimate?: number;
   messagesTotal?: number | null;
+  backedUpCount?: number;
+  remaining?: number;
   gmailCountError?: string;
   tokenExpired?: boolean;
   needsReconnect?: boolean;
   message?: string;
+  progress?: string;
+  nextPageToken?: string | null;
 };
 
-/** One click archives one page of 25 messages. The next click continues from offset. */
+const AUTO_CONTINUE_DELAY_MS = 2000;
+
+/** One POST archives up to BATCH_SIZE × ROUNDS (250) messages. */
 export async function archiveMailboxInBatches(
   onProgress: (progress: ArchiveBatchProgress) => void,
-  startOffset = 0,
+  start: { offset: number; pageToken: string },
+  opts?: { autoContinue?: boolean; onAutoDelay?: () => void; shouldStop?: () => boolean },
 ): Promise<
-  | { ok: true; archived: number; total: number; offset: number; hasMore: boolean }
+  | {
+      ok: true;
+      archived: number;
+      total: number;
+      offset: number;
+      hasMore: boolean;
+      pageToken: string;
+      message: string;
+      remaining: number;
+      backedUpCount: number;
+      percent: number;
+    }
   | { ok: false; error: string; archived: number; offset: number; tokenExpired?: boolean; needsReconnect?: boolean }
 > {
-  const sent = await postBatch(startOffset, Math.floor(startOffset / 3) + 1);
-  if (!sent.ok) {
-    return {
-      ok: false,
-      error: sent.error,
-      archived: startOffset,
-      offset: startOffset,
-      tokenExpired: sent.tokenExpired,
-      needsReconnect: sent.needsReconnect,
-    };
-  }
-  if (sent.body.gmailCountError || sent.body.tokenExpired) {
-    return {
-      ok: false,
-      error: sent.body.gmailCountError || sent.body.error || "Gmail mailbox count failed",
-      archived: startOffset,
-      offset: startOffset,
-      tokenExpired: sent.body.tokenExpired,
-    };
-  }
-  if (sent.body.error) {
-    return { ok: false, error: sent.body.error, archived: startOffset, offset: startOffset };
-  }
+  let cursor = { ...start };
+  let lastUploaded = 0;
+  let mailboxTotal = 0;
+  let backedUpCount = 0;
+  let remaining = 0;
+  let message = "";
+  let hasMore = true;
 
-  const mailboxTotal = Number(sent.body.messagesTotal ?? sent.body.resultSizeEstimate);
-  if (!Number.isFinite(mailboxTotal)) {
-    return { ok: false, error: "Gmail mailbox count failed", archived: startOffset, offset: startOffset };
-  }
+  while (true) {
+    if (opts?.shouldStop?.()) {
+      return {
+        ok: true,
+        archived: lastUploaded,
+        total: mailboxTotal,
+        offset: cursor.offset,
+        hasMore,
+        pageToken: cursor.pageToken,
+        message: message || "Auto-archive stopped.",
+        remaining,
+        backedUpCount,
+        percent: mailboxTotal > 0 ? Math.min(100, Math.round((backedUpCount / mailboxTotal) * 100)) : 100,
+      };
+    }
 
-  const uploaded = Number(sent.body.uploaded ?? sent.body.emailCount) || 0;
-  const step = Number(sent.body.archived ?? sent.body.processed ?? sent.body.emailCount) || 0;
-  const offset = Number(sent.body.nextOffset ?? startOffset + step);
-  const hasMore = Boolean(sent.body.hasMore) && sent.body.done !== true;
-  const label =
-    mailboxTotal === 0
-      ? "Gmail mailbox has 0 messages."
-      : hasMore
-        ? `Archived ${offset}/${mailboxTotal}. Click Archive Now for the next 3.`
-        : `Archived ${offset}/${mailboxTotal}`;
-  onProgress({ archived: offset, total: mailboxTotal, batch: 1, label, offset });
-  if (uploaded === 0 && step === 0 && mailboxTotal > 0) {
-    return { ok: false, error: sent.body.error || "E2E upload saved 0 emails", archived: startOffset, offset: startOffset };
+    const sent = await postBatch(cursor);
+    if (!sent.ok) {
+      return {
+        ok: false,
+        error: sent.error,
+        archived: cursor.offset,
+        offset: cursor.offset,
+        tokenExpired: sent.tokenExpired,
+        needsReconnect: sent.needsReconnect,
+      };
+    }
+    if (sent.body.gmailCountError || sent.body.tokenExpired) {
+      return {
+        ok: false,
+        error: sent.body.gmailCountError || sent.body.error || "Gmail mailbox count failed",
+        archived: cursor.offset,
+        offset: cursor.offset,
+        tokenExpired: sent.body.tokenExpired,
+      };
+    }
+    if (sent.body.error) {
+      return { ok: false, error: sent.body.error, archived: cursor.offset, offset: cursor.offset };
+    }
+
+    mailboxTotal = Number(sent.body.messagesTotal ?? sent.body.resultSizeEstimate);
+    if (!Number.isFinite(mailboxTotal)) {
+      return { ok: false, error: "Gmail mailbox count failed", archived: cursor.offset, offset: cursor.offset };
+    }
+
+    lastUploaded = Number(sent.body.uploaded ?? sent.body.archived ?? sent.body.emailCount) || 0;
+    backedUpCount = Number(sent.body.backedUpCount);
+    if (!Number.isFinite(backedUpCount)) {
+      backedUpCount = cursor.offset + lastUploaded;
+    }
+    remaining =
+      Number.isFinite(Number(sent.body.remaining)) && sent.body.remaining != null
+        ? Number(sent.body.remaining)
+        : Math.max(0, mailboxTotal - backedUpCount);
+    const offset = Number(sent.body.nextOffset ?? cursor.offset + (sent.body.processed ?? lastUploaded));
+    const pageToken = String(sent.body.nextPageToken || "").trim();
+    hasMore = Boolean(sent.body.hasMore) && sent.body.done !== true;
+    const percent = mailboxTotal > 0 ? Math.min(100, Math.round((backedUpCount / mailboxTotal) * 100)) : 100;
+    message =
+      sent.body.progress ||
+      sent.body.message ||
+      `Archived ${backedUpCount.toLocaleString()} of ${mailboxTotal.toLocaleString()} (${percent}%)`;
+
+    cursor = { offset, pageToken };
+    onProgress({
+      archived: backedUpCount,
+      total: mailboxTotal,
+      batch: 1,
+      label: message,
+      offset,
+      remaining,
+      percent,
+    });
+
+    if (lastUploaded === 0 && mailboxTotal > 0 && !hasMore && !pageToken) {
+      return { ok: false, error: sent.body.error || "E2E upload saved 0 emails", archived: cursor.offset, offset: cursor.offset };
+    }
+
+    if (!hasMore) {
+      return {
+        ok: true,
+        archived: lastUploaded,
+        total: mailboxTotal,
+        offset,
+        hasMore: false,
+        pageToken,
+        message,
+        remaining,
+        backedUpCount,
+        percent,
+      };
+    }
+
+    if (!opts?.autoContinue) {
+      return {
+        ok: true,
+        archived: lastUploaded,
+        total: mailboxTotal,
+        offset,
+        hasMore: true,
+        pageToken,
+        message,
+        remaining,
+        backedUpCount,
+        percent,
+      };
+    }
+
+    opts.onAutoDelay?.();
+    await new Promise((resolve) => setTimeout(resolve, AUTO_CONTINUE_DELAY_MS));
   }
-  return { ok: true, archived: offset, total: mailboxTotal, offset, hasMore };
 }
 
-async function postBatch(
-  offset: number,
-  batch: number,
-): Promise<{ ok: true; body: BatchResponse } | { ok: false; error: string; tokenExpired?: boolean; needsReconnect?: boolean }> {
+async function postBatch(start: {
+  offset: number;
+  pageToken: string;
+}): Promise<{ ok: true; body: BatchResponse } | { ok: false; error: string; tokenExpired?: boolean; needsReconnect?: boolean }> {
   let lastError = "Connection closed";
+  const batch = Math.floor(start.offset / GMAIL_ARCHIVE_BATCH_SIZE) + (start.pageToken ? 2 : 1);
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      const res = await fetch("/api/email/backup", {
+      const res = await fetch("/api/gmail/archive", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ limit: 3, offset, batch }),
+        body: JSON.stringify({
+          limit: GMAIL_ARCHIVE_BATCH_SIZE,
+          rounds: GMAIL_ARCHIVE_ROUNDS_PER_REQUEST,
+          offset: start.pageToken ? 0 : start.offset,
+          pageToken: start.pageToken || undefined,
+          batch,
+        }),
       });
       const body = (await res.json().catch(() => ({}))) as BatchResponse;
       if (res.ok) return { ok: true, body };

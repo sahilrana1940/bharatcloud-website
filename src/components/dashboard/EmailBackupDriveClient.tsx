@@ -41,6 +41,8 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
   const [bucket, setBucket] = useState("bharatcloudfinal2");
   const [storageClass, setStorageClass] = useState("GLACIER");
   const [totalArchiveGb, setTotalArchiveGb] = useState(0);
+  const [totalArchiveMb, setTotalArchiveMb] = useState(0);
+  const [autoArchiving, setAutoArchiving] = useState(false);
   const [progress, setProgress] = useState("");
   const [progressPct, setProgressPct] = useState(0);
   const [status, setStatus] = useState("idle");
@@ -53,6 +55,8 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
   const [showPost, setShowPost] = useState(false);
   const [messagesTotal, setMessagesTotal] = useState<number | null>(null);
   const resumeOffset = useRef(0);
+  const resumePageToken = useRef("");
+  const stopAutoArchive = useRef(false);
 
   const load = useCallback(async () => {
     const [gs, backup] = await Promise.all([
@@ -66,6 +70,10 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
     setBucket(backup.bucket || "bharatcloudfinal2");
     setStorageClass(backup.storageClass || "GLACIER");
     setTotalArchiveGb(Number(backup.totalArchiveGb) || 0);
+    setTotalArchiveMb(Number(backup.totalArchiveMb) || Number(backup.totalArchiveGb) * 1024 || 0);
+    if (!busy && typeof backup.backedUpCount === "number") {
+      setBackedUpCount(Number(backup.backedUpCount));
+    }
     setStatus(backup.status || "idle");
     setTokenExpired(Boolean(backup.tokenExpired));
     setNeedsReconnect(Boolean(backup.needsReconnect) || Boolean(gs.needsReconnect));
@@ -98,18 +106,35 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
     return () => clearInterval(t);
   }, [status, load]);
 
+  function formatArchiveSize() {
+    if (totalArchiveGb >= 0.01) return `${totalArchiveGb.toFixed(2)} GB`;
+    if (totalArchiveMb > 0) return `${totalArchiveMb.toFixed(2)} MB`;
+    return "0 MB";
+  }
+
   async function archiveNow() {
+    stopAutoArchive.current = false;
+    setAutoArchiving(true);
     setBusy(true);
     setError("");
     setCanRetry(false);
-    if (resumeOffset.current === 0) setProgressPct(0);
-    setProgress("Counting Gmail messages...");
+    if (resumeOffset.current === 0 && !resumePageToken.current) setProgressPct(0);
+    setProgress("Archiving up to 250 messages per batch…");
     try {
-      const result = await archiveMailboxInBatches((p) => {
-        resumeOffset.current = p.offset;
-        setProgress(p.label);
-        setProgressPct(p.total > 0 ? Math.min(100, Math.round((p.archived / p.total) * 100)) : 0);
-      }, resumeOffset.current);
+      const result = await archiveMailboxInBatches(
+        (p) => {
+          resumeOffset.current = p.offset;
+          setBackedUpCount(p.archived);
+          setProgress(p.label);
+          setProgressPct(p.percent);
+        },
+        { offset: resumeOffset.current, pageToken: resumePageToken.current },
+        {
+          autoContinue: true,
+          shouldStop: () => stopAutoArchive.current,
+          onAutoDelay: () => setProgress((prev) => `${prev} — next batch in 2s…`),
+        },
+      );
       setLastPost(JSON.stringify(result, null, 2));
       if (!result.ok) {
         resumeOffset.current = result.offset;
@@ -120,13 +145,26 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
         setProgress("");
         return;
       }
-      resumeOffset.current = result.hasMore ? result.offset : 0;
-      setProgress(result.total > 0 ? `Archived ${result.offset}/${result.total}` : "Gmail mailbox has 0 messages.");
-      setProgressPct(result.total > 0 ? Math.min(100, Math.round((result.offset / result.total) * 100)) : 100);
+      if (result.hasMore) {
+        resumeOffset.current = result.offset;
+        resumePageToken.current = result.pageToken;
+      } else {
+        resumeOffset.current = 0;
+        resumePageToken.current = "";
+      }
+      setProgress(result.message);
+      setProgressPct(result.percent);
+      setBackedUpCount(result.backedUpCount);
       await load();
     } finally {
       setBusy(false);
+      setAutoArchiving(false);
     }
+  }
+
+  function stopArchive() {
+    stopAutoArchive.current = true;
+    setAutoArchiving(false);
   }
 
   async function reconnectGmail() {
@@ -188,7 +226,7 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
         <InfoCard label="Archive location" value={`E2E ${bucket}`} sub={`Class: ${storageClass}`} />
         <InfoCard label="Retention" value="7 years minimum" sub="Archiver from start" />
         <InfoCard label="From start" value="Yes" sub="Every file from first day" />
-        <InfoCard label="Total archived" value={`${totalArchiveGb.toFixed(2)} GB`} sub="In bharatcloudfinal2" />
+        <InfoCard label="Total archived" value={formatArchiveSize()} sub={`${backedUpCount.toLocaleString()} files in bharatcloudfinal2`} />
       </div>
 
       <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -226,8 +264,17 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
           className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-[#00BAF2] px-5 py-3 text-sm font-bold text-[#062033] shadow-lg shadow-[#00BAF2]/25 disabled:opacity-50"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Archive Now
+          {autoArchiving ? "Auto-archiving…" : "Archive Now"}
         </button>
+        {busy && autoArchiving && (
+          <button
+            type="button"
+            onClick={stopArchive}
+            className="mt-5 inline-flex items-center justify-center rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold text-slate-800"
+          >
+            Stop
+          </button>
+        )}
         {(needsReconnect || tokenExpired || !connected) && (
           <button
             type="button"
