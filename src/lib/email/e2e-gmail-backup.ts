@@ -192,11 +192,25 @@ function adaptPayload(message: string, payload: Record<string, unknown>) {
   return true;
 }
 
+function runCountPatch(uploaded: number, sizeMb: number) {
+  const n = Math.max(0, Math.floor(uploaded));
+  return {
+    email_count: n,
+    archived_count: n,
+    size_mb: sizeMb,
+  };
+}
+
 async function insertRun(supabase: SupabaseClient, row: Record<string, unknown>) {
   const db = getSupabaseAdmin() || supabase;
-  const result = await db.from("email_backup_runs").insert(row).select("id").single();
-  if (result.error) console.error(result.error.message);
-  return result;
+  let payload = { ...row, email_count: 0, archived_count: 0 };
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const result = await db.from("email_backup_runs").insert(payload).select("id").single();
+    if (!result.error) return result;
+    console.error(result.error.message);
+    if (!adaptPayload(result.error.message, payload)) return result;
+  }
+  return { data: null, error: { message: "email_backup_runs insert failed" } };
 }
 
 async function patchRun(
@@ -414,7 +428,11 @@ export async function runE2eGmailBackup(
   await patchRun(supabase, runId, { progress: "fetching" });
 
   if (mailboxTotal === 0) {
-    await patchRun(supabase, runId, { status: "completed", progress: "Archived 0" });
+    await patchRun(supabase, runId, {
+      status: "completed",
+      progress: "Archived 0",
+      ...runCountPatch(0, 0),
+    });
     return {
       ok: true,
       runId,
@@ -484,6 +502,7 @@ export async function runE2eGmailBackup(
 
       await patchRun(supabase, runId, {
         progress: `Archived ${uploaded}`,
+        ...runCountPatch(uploaded, bytes / (1024 * 1024)),
       });
     }
 
@@ -508,7 +527,7 @@ export async function runE2eGmailBackup(
       status: "completed",
       progress: progressText.slice(0, 400),
       gmail_page_token: nextPageToken,
-      email_count: uploaded,
+      ...runCountPatch(uploaded, sizeMb),
     });
 
     emit({

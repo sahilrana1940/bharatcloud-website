@@ -34,12 +34,24 @@ export async function insertFileArchiveRow(
     console.error(message);
     return { ok: false, error: message };
   }
+  if (row.source === "gmail" && !row.user_id) {
+    const message = "file_archives.user_id is required";
+    console.error(message);
+    return { ok: false, error: message };
+  }
+  if (row.source === "gmail" && !row.gmail_message_id?.trim()) {
+    const message = "file_archives.gmail_message_id is required";
+    console.error(message);
+    return { ok: false, error: message };
+  }
 
   if (row.source === "gmail") {
     const sizeMb = row.size_bytes != null ? row.size_bytes / (1024 * 1024) : row.size_mb ?? 0;
     const payload: Record<string, unknown> = {
       company_id: row.org_id,
       email: row.user_email,
+      user_id: row.user_id,
+      gmail_message_id: row.gmail_message_id!.trim(),
       file_name: row.file_name,
       s3_path: row.s3_key,
       size_mb: sizeMb,
@@ -47,8 +59,6 @@ export async function insertFileArchiveRow(
       storage_class: "GLACIER",
       source: "gmail",
     };
-    if (row.user_id) payload.user_id = row.user_id;
-    if (row.gmail_message_id) payload.gmail_message_id = row.gmail_message_id;
     const { error } = await admin.from("file_archives").insert(payload);
     if (error) {
       if (/duplicate key|unique constraint|23505/i.test(error.message)) {

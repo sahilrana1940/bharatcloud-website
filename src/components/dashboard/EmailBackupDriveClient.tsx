@@ -11,6 +11,7 @@ type BackupRun = {
   backup_date?: string;
   created_at?: string;
   email_count?: number;
+  archived_count?: number;
   size_mb?: number | null;
   s3_bucket?: string;
   s3_path?: string | null;
@@ -394,7 +395,14 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
                 <tr key={r.id} className="border-b border-slate-100">
                   <td className="px-4 py-3">{new Date(r.created_at || r.backup_date || Date.now()).toLocaleString()}</td>
                   <td className="px-4 py-3">{r.status || "—"}</td>
-                  <td className="px-4 py-3">{r.progress || r.email_count || "—"}</td>
+                  <td className="px-4 py-3">
+                    {r.progress ||
+                      (r.archived_count != null && r.archived_count > 0
+                        ? `Archived ${r.archived_count}`
+                        : r.email_count != null && r.email_count > 0
+                          ? `Archived ${r.email_count}`
+                          : "—")}
+                  </td>
                   <td className="px-4 py-3 font-mono text-xs">{r.s3_bucket || bucket}</td>
                 </tr>
               ))}
