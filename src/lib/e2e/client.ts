@@ -1,19 +1,18 @@
 import { S3Client, type S3ClientConfig } from "@aws-sdk/client-s3";
 
 import { calculateBill, E2E_RATES } from "@/lib/admin/platform-costs";
-import { getE2EBucket } from "@/lib/s3/config";
+import { getE2EBucket, getE2ECredentials, getE2ERegion, resolveE2EEndpoint } from "@/lib/s3/config";
 
 export { calculateBill, E2E_RATES };
 
-/** Single E2E client. Bucket and endpoint come from env, never a hardcoded name. */
+/** Single E2E client. Endpoint, region, and keys come from env. */
 export function getE2EClient(): S3Client | null {
-  const endpoint = (process.env.E2E_ENDPOINT || process.env.E2E_S3_ENDPOINT || "").trim();
-  const accessKeyId = (process.env.E2E_ACCESS_KEY || process.env.E2E_S3_ACCESS_KEY || "").trim();
-  const secretAccessKey = (process.env.E2E_SECRET_KEY || process.env.E2E_S3_SECRET_KEY || "").trim();
+  const endpoint = resolveE2EEndpoint();
+  const { accessKeyId, secretAccessKey } = getE2ECredentials();
   if (!endpoint || !accessKeyId || !secretAccessKey) return null;
 
   return new S3Client({
-    region: "us-east-1",
+    region: getE2ERegion(),
     endpoint,
     forcePathStyle: true,
     credentials: { accessKeyId, secretAccessKey },

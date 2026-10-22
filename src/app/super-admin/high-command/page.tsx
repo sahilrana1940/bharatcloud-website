@@ -296,7 +296,7 @@ export default function HighCommandPage() {
               <button
                 key={action.label}
                 type="button"
-                onClick={async () => setNote(await postFix(action.type))}
+                onClick={async () => setNote((await postFix(action.type)).text)}
                 className="border border-sky-400 px-3 py-2 text-[10px] tracking-widest text-sky-200 hover:bg-sky-500 hover:text-slate-950"
               >
                 {action.label}

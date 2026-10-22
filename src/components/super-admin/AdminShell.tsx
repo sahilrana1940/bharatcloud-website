@@ -39,29 +39,37 @@ export function useIstClock() {
   return time;
 }
 
-export async function postFix(type: string) {
-  const res = await fetch("/api/super-admin/fix", {
-    method: "POST",
-    cache: "no-store",
-    headers: {
-      "Content-Type": "application/json",
-      "x-admin-email": SUPER_ADMIN_EMAIL,
-    },
-    body: JSON.stringify({ type }),
-  });
-  const data = await res.json();
-  if (res.status === 403) return "403 Forbidden";
-  return String(data.message || "Request failed");
+export async function postFix(type: string): Promise<{ ok: boolean; text: string }> {
+  try {
+    const res = await fetch("/api/super-admin/fix", {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-email": SUPER_ADMIN_EMAIL,
+      },
+      body: JSON.stringify({ type }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, text: String(data.error || data.message || `Request failed (${res.status})`) };
+    }
+    return { ok: true, text: String(data.message || "Done") };
+  } catch (err) {
+    return { ok: false, text: err instanceof Error ? err.message : "Request failed" };
+  }
 }
 
 export function BugFixPanel({
   buttons,
   accent = "teal",
+  onDone,
 }: {
   buttons: { label: string; type: string }[];
   accent?: "teal" | "green";
+  onDone?: (type: string, ok: boolean) => void;
 }) {
-  const [result, setResult] = useState("");
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [running, setRunning] = useState("");
 
   return (
@@ -76,8 +84,10 @@ export function BugFixPanel({
             disabled={running === button.type}
             onClick={async () => {
               setRunning(button.type);
-              setResult(await postFix(button.type));
+              const next = await postFix(button.type);
+              setResult(next);
               setRunning("");
+              onDone?.(button.type, next.ok);
             }}
             className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
               accent === "green"
@@ -89,7 +99,9 @@ export function BugFixPanel({
           </button>
         ))}
       </div>
-      {result ? <p className="mt-3 text-sm text-emerald-300">{result}</p> : null}
+      {result ? (
+        <p className={`mt-3 text-sm ${result.ok ? "text-emerald-300" : "text-red-400"}`}>{result.text}</p>
+      ) : null}
     </section>
   );
 }

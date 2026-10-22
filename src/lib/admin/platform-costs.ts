@@ -90,3 +90,16 @@ export function calculateBill(totalGB: number): number {
 export function platformTotalInr(storageGb: number): number {
   return E2E_RATES.hostingInr + calculateBill(storageGb);
 }
+
+/** VM and bandwidth stay on the infra sheet. Storage INR follows measured GB. */
+export const INFRA_SHEET = { vm: 800, bandwidth: 300 } as const;
+
+export function infraFromUsage(storageGb: number) {
+  const storage = Math.round(calculateBill(storageGb));
+  return {
+    vm: INFRA_SHEET.vm,
+    storage,
+    bandwidth: INFRA_SHEET.bandwidth,
+    total: INFRA_SHEET.vm + storage + INFRA_SHEET.bandwidth,
+  };
+}

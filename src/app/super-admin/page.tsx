@@ -70,7 +70,7 @@ export default function SuperAdminOverview() {
           <p className="mt-2 text-lg font-semibold text-emerald-400">All operational</p>
         </div>
         <div className="rounded-xl border border-zinc-800 bg-[#111113] p-5">
-          <p className="text-xs uppercase tracking-wider text-zinc-500">E2E Mumbai DC-01</p>
+          <p className="text-xs uppercase tracking-wider text-zinc-500">E2E object storage</p>
           <p className="mt-2 text-lg font-semibold text-emerald-400">Live</p>
         </div>
         <div className="rounded-xl border border-zinc-800 bg-[#111113] p-5">

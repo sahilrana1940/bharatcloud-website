@@ -69,7 +69,7 @@ export async function putArchiverObject(opts: {
   if (!isS3Configured()) {
     return {
       ok: false,
-      error: "E2E Mumbai not configured — set E2E_S3_ENDPOINT and keys on Hostinger.",
+      error: "E2E Chennai storage not configured — set E2E_ENDPOINT, E2E_ACCESS_KEY, and E2E_SECRET_KEY on the host.",
     };
   }
   const client = getS3Client();
