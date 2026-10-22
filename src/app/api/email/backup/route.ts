@@ -110,7 +110,7 @@ export async function POST(req: Request) {
 
   const url = new URL(req.url);
   const body = await req.json().catch(() => ({} as Record<string, unknown>));
-  const limit = Math.min(50, readPositiveInt(url.searchParams.get("limit") ?? body.limit ?? body.maxMessages, 25));
+  const limit = Math.min(10, readPositiveInt(url.searchParams.get("limit") ?? body.limit ?? body.maxMessages, 3));
   const offset = readPositiveInt(url.searchParams.get("offset") ?? body.offset, 0);
   const batch = readPositiveInt(url.searchParams.get("batch") ?? body.batch, Math.floor(offset / Math.max(limit, 1)) + 1);
   const pageToken = String(url.searchParams.get("pageToken") || body.pageToken || "").trim();
@@ -134,7 +134,7 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Archive failed";
-    const retryable = /socket hang up|ECONNRESET|ETIMEDOUT|Timeout/i.test(message);
+    const retryable = /socket hang up|socket disconnected|Client network socket|ECONNRESET|ETIMEDOUT|Timeout/i.test(message);
     console.error(
       JSON.stringify({ route: "POST /api/email/backup", message, retryable }),
     );
