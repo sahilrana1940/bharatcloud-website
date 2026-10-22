@@ -232,7 +232,7 @@ function runCountPatch(uploaded: number, sizeMb: number) {
 
 async function insertRun(supabase: SupabaseClient, row: Record<string, unknown>) {
   const db = getSupabaseAdmin() || supabase;
-  let payload = { ...row, email_count: 0, archived_count: 0 };
+  const payload = { ...row, email_count: 0, archived_count: 0 };
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const result = await db.from("email_backup_runs").insert(payload).select("id").single();
     if (!result.error) return result;
@@ -248,7 +248,7 @@ async function patchRun(
   patch: Record<string, unknown>,
 ) {
   const db = getSupabaseAdmin() || supabase;
-  let payload = { ...patch };
+  const payload = { ...patch };
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const { error } = await db.from("email_backup_runs").update(payload).eq("id", runId);
     if (!error) return;
@@ -560,7 +560,7 @@ export async function runE2eGmailBackup(
         total: maxMessages,
       });
 
-      const archived = await withTlsRetry("E2E Gmail upload", async () => {
+      await withTlsRetry("E2E Gmail upload", async () => {
         const result = await archiveGmailEml({
           orgId,
           userId,

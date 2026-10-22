@@ -29,7 +29,7 @@ export async function handleGmailArchivePost(
     readPositiveInt(url.searchParams.get("limit") ?? body.limit ?? body.maxMessages, GMAIL_ARCHIVE_BATCH_SIZE),
   );
   let offset = readPositiveInt(url.searchParams.get("offset") ?? body.offset, 0);
-  let batch = readPositiveInt(
+  const batch = readPositiveInt(
     url.searchParams.get("batch") ?? body.batch,
     Math.floor(offset / Math.max(limit, 1)) + 1,
   );
@@ -126,7 +126,6 @@ export async function handleGmailArchivePost(
   );
   const hasMore = Boolean(result.hasMore && !result.done);
   const remaining = Math.max(0, total - backedUpCount);
-  const pct = total > 0 ? Math.min(100, Math.round((backedUpCount / total) * 100)) : 100;
   const progressLabel =
     total === 0
       ? "Gmail mailbox has 0 messages."
