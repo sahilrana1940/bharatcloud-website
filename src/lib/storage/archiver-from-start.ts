@@ -31,6 +31,10 @@ export function driveArchiveKey(orgId: string, fileName: string, domain?: string
   return `archive/drive/${orgId}/${Date.now()}-${safe}`;
 }
 
+export function gmailArchiveKey(userEmail: string, messageId: string) {
+  return `gmail/${userEmail.trim().toLowerCase()}/${messageId}.eml`;
+}
+
 export function emailArchiveKey(orgId: string, messageId: string, d = new Date()) {
   const year = d.getUTCFullYear();
   const month = String(d.getUTCMonth() + 1).padStart(2, "0");
@@ -41,16 +45,6 @@ export function emailArchivePrefix(orgId: string, d = new Date()) {
   const year = d.getUTCFullYear();
   const month = String(d.getUTCMonth() + 1).padStart(2, "0");
   return `archive/email/${orgId}/${year}/${month}/`;
-}
-
-function gmailArchiveMetadata() {
-  const at = new Date().toISOString();
-  return {
-    "archive-from": at,
-    source: "gmail-backup",
-    retention: "7-years",
-    type: "archiver-start",
-  };
 }
 
 function driveArchiveMetadata(originalName: string) {
@@ -68,6 +62,7 @@ export async function putArchiverObject(opts: {
   contentType: string;
   metadata?: Record<string, string>;
   bucket?: string;
+  storageClass?: StorageClass;
 }): Promise<{ ok: true; bucket: string; key: string } | { ok: false; error: string }> {
   if (!isS3Configured()) {
     return {
@@ -78,9 +73,9 @@ export async function putArchiverObject(opts: {
   const client = getS3Client();
   if (!client) return { ok: false, error: "S3 client unavailable" };
 
-  const bucket = opts.bucket || getE2EBucket() || ARCHIVER_BUCKET;
-  if (!bucket) return { ok: false, error: "E2E_BUCKET is not set" };
-  const storageClass = isArchiveFromStart() ? archiveStorageClass() : undefined;
+  const bucket = opts.bucket || process.env.ARCHIVE_E2E_BUCKET?.trim() || getE2EBucket() || ARCHIVER_BUCKET;
+  if (!bucket) return { ok: false, error: "ARCHIVE_E2E_BUCKET is not set" };
+  const storageClass = opts.storageClass || (isArchiveFromStart() ? archiveStorageClass() : undefined);
   const attempts: Array<{ StorageClass?: StorageClass; Metadata?: Record<string, string> }> = [
     {
       ...(storageClass ? { StorageClass: storageClass } : {}),
@@ -100,7 +95,7 @@ export async function putArchiverObject(opts: {
     });
     if (sent.ok) return { ok: true, bucket, key: opts.key };
     lastError = sent.error;
-    if (!/access denied/i.test(lastError)) break;
+    if (!/access denied|invalid storage class/i.test(lastError)) break;
   }
   return { ok: false, error: lastError };
 }
@@ -196,25 +191,28 @@ export async function archiveGmailEml(opts: {
   body: Buffer;
   supabase?: SupabaseClient;
 }): Promise<{ ok: true; key: string; bucket: string } | { ok: false; error: string }> {
-  const key = emailArchiveKey(opts.orgId, opts.messageId);
+  if (!opts.userEmail) return { ok: false, error: "Gmail archive needs the mailbox address" };
+  const key = gmailArchiveKey(opts.userEmail, opts.messageId);
+  const bucket = process.env.ARCHIVE_E2E_BUCKET?.trim();
+  if (!bucket) return { ok: false, error: "ARCHIVE_E2E_BUCKET is not set" };
+
   const up = await putArchiverObject({
     key,
     body: opts.body,
     contentType: "message/rfc822",
-    metadata: gmailArchiveMetadata(),
+    bucket,
+    storageClass: "GLACIER",
   });
   if (!up.ok) return up;
 
   const indexed = await insertFileArchiveRow(opts.supabase, {
     org_id: opts.orgId,
-    user_email: opts.userEmail,
+    user_email: opts.userEmail.trim().toLowerCase(),
     file_name: `${opts.messageId}.eml`,
-    s3_bucket: up.bucket,
-    s3_key: up.key,
-    storage_class: "GLACIER",
+    s3_key: key,
     source: "gmail",
-    size_mb: opts.body.length / (1024 * 1024),
-    is_from_start: true,
+    size_bytes: opts.body.length,
+    storage_class: "GLACIER",
   });
   if (!indexed.ok) return { ok: false, error: indexed.error };
 

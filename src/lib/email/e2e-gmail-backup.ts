@@ -3,11 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveArchiveCompanyId } from "@/lib/archive/resolve-archive-company";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { gmailClient } from "@/lib/google/client";
-import {
-  ARCHIVER_BUCKET,
-  archiveGmailEml,
-  emailArchivePrefix,
-} from "@/lib/storage/archiver-from-start";
+import { ARCHIVER_BUCKET, archiveGmailEml } from "@/lib/storage/archiver-from-start";
 import { getE2EBucket, isS3Configured } from "@/lib/s3/config";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
@@ -206,7 +202,7 @@ export async function runE2eGmailBackup(
   const pageToken = opts.pageToken?.trim() || undefined;
   const offset = Math.max(0, opts.offset ?? 0);
   const now = new Date();
-  const prefix = emailArchivePrefix(orgId, now);
+  const prefix = `gmail/${email}/`;
   const bucket = getE2EBucket() || EMAIL_BACKUP_S3_BUCKET;
 
   const { data: runRow, error: insertErr } = await insertRun(supabase, {

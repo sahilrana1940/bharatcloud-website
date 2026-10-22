@@ -11,6 +11,7 @@ export type FileArchiveRow = {
   storage_class?: string;
   source?: string;
   size_mb?: number;
+  size_bytes?: number;
   is_from_start?: boolean;
 };
 
@@ -32,8 +33,24 @@ export async function insertFileArchiveRow(
     return { ok: false, error: message };
   }
 
+  if (row.source === "gmail") {
+    const { error } = await admin.from("file_archives").insert({
+      user_email: row.user_email,
+      file_name: row.file_name,
+      e2e_path: row.s3_key,
+      size_bytes: row.size_bytes ?? 0,
+      class: "GLACIER",
+      source: "gmail",
+    });
+    if (error) {
+      console.error(error.message);
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
+  }
+
   const sizeMb = row.size_mb ?? 0;
-  const sizeBytes = Math.max(0, Math.round(sizeMb * 1024 * 1024));
+  const sizeBytes = row.size_bytes ?? Math.max(0, Math.round(sizeMb * 1024 * 1024));
   const storageClass = row.storage_class || "GLACIER";
   const now = new Date().toISOString();
   const payload: Record<string, unknown> = {
