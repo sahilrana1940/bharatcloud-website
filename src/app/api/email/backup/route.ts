@@ -19,7 +19,7 @@ import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { isWorkspaceOwner } from "@/lib/workspace/nav";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 /** GET — backup runs, progress, org totals for admins. */
 export async function GET(req: Request) {

@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Mail, Settings } from "lucide-react";
 
-import { archiveMailboxInBatches } from "@/lib/email/archive-batches-client";
+import {
+  GMAIL_ARCHIVE_BATCH_SIZE,
+  GMAIL_ARCHIVE_STATUS_POLL_MS,
+} from "@/lib/email/gmail-archive-constants";
 
 type BackupRun = {
   id: string;
@@ -55,8 +58,9 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
   const [lastPost, setLastPost] = useState("");
   const [showPost, setShowPost] = useState(false);
   const [messagesTotal, setMessagesTotal] = useState<number | null>(null);
-  const resumePageToken = useRef("");
   const stopAutoArchive = useRef(false);
+  const batchInFlight = useRef(false);
+  const [backgroundArchiving, setBackgroundArchiving] = useState(false);
 
   const load = useCallback(async () => {
     const [gs, backup] = await Promise.all([
@@ -123,52 +127,95 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
     return "0 MB";
   }
 
+  async function refreshArchiveStatus() {
+    const st = await fetch("/api/gmail-archive-status", fetchOpts).then((r) => r.json());
+    const archived = Number(st.archivedPerUser ?? st.backedUpCount) || 0;
+    const total =
+      typeof st.totalGmailPerUser === "number"
+        ? st.totalGmailPerUser
+        : typeof st.messagesTotal === "number"
+          ? st.messagesTotal
+          : null;
+    setBackedUpCount(archived);
+    if (total != null) {
+      setMessagesTotal(total);
+      setProgress(
+        st.progress ||
+          `Archiving in background ${archived.toLocaleString()}/${total.toLocaleString()}… will continue automatically`,
+      );
+      setProgressPct(Math.min(100, Math.round((archived / total) * 100)));
+    }
+    if (st.gmailError) setError(String(st.gmailError));
+    return st as { hasMore?: boolean; running?: boolean };
+  }
+
+  async function kickArchiveBatch() {
+    if (batchInFlight.current || stopAutoArchive.current) return;
+    batchInFlight.current = true;
+    try {
+      const res = await fetch("/api/gmail/archive", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: GMAIL_ARCHIVE_BATCH_SIZE, rounds: 1 }),
+      });
+      const body = await res.json().catch(() => ({}));
+      setLastPost(JSON.stringify(body, null, 2));
+      if (!res.ok) {
+        setError(body.error || body.message || "Archive batch failed");
+        setNeedsReconnect(Boolean(body.needsReconnect));
+        setTokenExpired(Boolean(body.tokenExpired) || Boolean(body.needsReconnect));
+      }
+    } catch {
+      setError("Archive batch failed — next poll will retry");
+    } finally {
+      batchInFlight.current = false;
+    }
+  }
+
   async function archiveNow() {
     stopAutoArchive.current = false;
+    setBackgroundArchiving(true);
     setAutoArchiving(true);
     setBusy(true);
     setError("");
     setCanRetry(false);
-    if (!resumePageToken.current) setProgressPct(0);
-    setProgress("Starting auto-archive (25 emails every 2s)…");
-    try {
-      const result = await archiveMailboxInBatches(
-        (p) => {
-          setBackedUpCount(p.archived);
-          setProgress(p.label);
-          setProgressPct(p.percent);
-        },
-        { offset: 0, pageToken: resumePageToken.current },
-        {
-          autoContinue: true,
-          shouldStop: () => stopAutoArchive.current,
-          onAutoDelay: () => setProgress((prev) => `${prev} — next batch in 2s…`),
-        },
-      );
-      setLastPost(JSON.stringify(result, null, 2));
-      if (!result.ok) {
-        setError(result.error);
-        setNeedsReconnect(Boolean(result.needsReconnect));
-        setTokenExpired(Boolean(result.tokenExpired) || Boolean(result.needsReconnect) || /reconnect gmail/i.test(result.error));
-        setCanRetry(!result.tokenExpired && !result.needsReconnect);
-        setProgress("");
-        return;
-      }
-      resumePageToken.current = result.hasMore ? result.pageToken : "";
-      setProgress(result.message);
-      setProgressPct(result.percent);
-      setBackedUpCount(result.backedUpCount);
-      await load();
-    } finally {
-      setBusy(false);
-      setAutoArchiving(false);
-    }
+    setProgressPct(0);
+    setProgress("Starting background archive (10 emails per batch)…");
+    void kickArchiveBatch();
+    await refreshArchiveStatus().catch(() => {});
+    setBusy(false);
   }
 
   function stopArchive() {
     stopAutoArchive.current = true;
     setAutoArchiving(false);
+    setBackgroundArchiving(false);
   }
+
+  useEffect(() => {
+    if (!backgroundArchiving) return;
+    const poll = () => {
+      refreshArchiveStatus()
+        .then((st) => {
+          if (stopAutoArchive.current) {
+            setBackgroundArchiving(false);
+            setAutoArchiving(false);
+            return;
+          }
+          if (st?.hasMore) void kickArchiveBatch();
+          else {
+            setBackgroundArchiving(false);
+            setAutoArchiving(false);
+            load().catch(() => {});
+          }
+        })
+        .catch(() => {});
+    };
+    poll();
+    const id = setInterval(poll, GMAIL_ARCHIVE_STATUS_POLL_MS);
+    return () => clearInterval(id);
+  }, [backgroundArchiving, load]);
 
   async function reconnectGmail() {
     setError("");
@@ -271,7 +318,7 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {autoArchiving ? "Auto-archiving…" : "Archive Now"}
         </button>
-        {busy && autoArchiving && (
+        {(busy || backgroundArchiving) && autoArchiving && (
           <button
             type="button"
             onClick={stopArchive}

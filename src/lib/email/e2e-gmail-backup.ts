@@ -11,15 +11,44 @@ import { getSupabaseAdmin } from "@/lib/supabase/server";
 export const EMAIL_BACKUP_S3_BUCKET = ARCHIVER_BUCKET;
 
 import {
+  GMAIL_API_TIMEOUT_MS,
   GMAIL_ARCHIVE_BATCH_SIZE,
   GMAIL_ARCHIVE_ROUNDS_PER_REQUEST,
   GMAIL_LIST_MAX_PAGES,
+  GMAIL_TLS_RETRY_DELAYS_MS,
 } from "@/lib/email/gmail-archive-constants";
 
 export { GMAIL_ARCHIVE_BATCH_SIZE, GMAIL_ARCHIVE_ROUNDS_PER_REQUEST, GMAIL_LIST_MAX_PAGES };
 
 const DEFAULT_MAX = GMAIL_ARCHIVE_BATCH_SIZE;
 const MAX_CAP = GMAIL_ARCHIVE_BATCH_SIZE;
+
+function isTlsOrAbortedError(message: string) {
+  return /aborted|TLS|socket|ECONNRESET|ETIMEDOUT|Timeout|disconnect|hang up/i.test(message);
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withTlsRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  let lastError = `${label} failed`;
+  for (let attempt = 0; attempt <= GMAIL_TLS_RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : lastError;
+      if (!isTlsOrAbortedError(lastError) || attempt >= GMAIL_TLS_RETRY_DELAYS_MS.length) {
+        throw err instanceof Error ? err : new Error(lastError);
+      }
+      console.error(
+        JSON.stringify({ gmailRetry: label, attempt: attempt + 1, waitMs: GMAIL_TLS_RETRY_DELAYS_MS[attempt] }),
+      );
+      await sleep(GMAIL_TLS_RETRY_DELAYS_MS[attempt]);
+    }
+  }
+  throw new Error(lastError);
+}
 
 function toScope(orgId: string, userEmail: string, userId?: string | null): MailboxScope {
   return { companyId: orgId, email: userEmail.toLowerCase(), userId: userId ?? null };
@@ -451,21 +480,26 @@ export async function runE2eGmailBackup(
     };
   }
 
+  let uploaded = 0;
+  let bytes = 0;
+  let resumeGmailToken: string | null = pageToken || null;
+
   try {
     const archivedIds = await loadAllArchivedGmailIds(supabase, orgId, email, userId);
-    const slice = await collectNewGmailMessages(gmail, {
+    const slice = await withTlsRetry("Gmail list", () =>
+      collectNewGmailMessages(gmail, {
       archived: archivedIds,
       limit: maxMessages,
       pageToken,
       maxPages: GMAIL_LIST_MAX_PAGES,
-      q: opts.newerThanDays ? `newer_than:${opts.newerThanDays}d` : undefined,
-    });
+        q: opts.newerThanDays ? `newer_than:${opts.newerThanDays}d` : undefined,
+      }),
+    );
     const messages = slice.messages;
     const resultSizeEstimate = mailboxTotal;
+    resumeGmailToken = slice.nextPageToken ?? resumeGmailToken;
 
-    let uploaded = 0;
     let alreadyArchived = slice.skippedArchived;
-    let bytes = 0;
 
     let processedInBatch = 0;
     for (let i = 0; i < messages.length && processedInBatch < maxMessages; i++) {
@@ -487,15 +521,18 @@ export async function runE2eGmailBackup(
         total: maxMessages,
       });
 
-      const archived = await archiveGmailEml({
-        orgId,
-        userId,
-        userEmail: email,
-        messageId: id,
-        body: rawEmail,
-        supabase,
+      const archived = await withTlsRetry("E2E Gmail upload", async () => {
+        const result = await archiveGmailEml({
+          orgId,
+          userId,
+          userEmail: email,
+          messageId: id,
+          body: rawEmail,
+          supabase,
+        });
+        if (!result.ok) throw new Error(result.error);
+        return result;
       });
-      if (!archived.ok) throw new Error(archived.error);
 
       uploaded += 1;
       bytes += rawEmail.length;
@@ -509,6 +546,7 @@ export async function runE2eGmailBackup(
     const sizeMb = bytes / (1024 * 1024);
     const nextOffset = offset + processedInBatch;
     const nextPageToken = slice.nextPageToken;
+    resumeGmailToken = nextPageToken ?? resumeGmailToken;
     const totalArchivedNow = archivedIds.size + uploaded;
     const hasMore =
       Boolean(nextPageToken) ||
@@ -561,13 +599,23 @@ export async function runE2eGmailBackup(
       emit({ phase: "error", message: msg });
       return { ok: false, error: msg, runId, tokenExpired: true, needsReconnect: true };
     }
-    const retryable = /socket hang up|ECONNRESET|ETIMEDOUT|Timeout|aborted/i.test(msg);
+    const retryable = isTlsOrAbortedError(msg);
     const tokenExpired = /Gmail access expired|invalid_grant|reconnect Gmail/i.test(msg);
     if (tokenExpired) {
       msg = "Gmail access expired. Reconnect Gmail.";
     } else if (/insufficient.*scope|403|Forbidden/i.test(msg)) {
       msg =
         "Gmail permission missing — reconnect Google and allow Gmail read/modify on the consent screen.";
+    }
+    if (retryable && resumeGmailToken) {
+      await patchRun(supabase, runId, {
+        status: "completed",
+        gmail_page_token: resumeGmailToken,
+        progress: `Paused (network) — uploaded ${uploaded} __pt:${resumeGmailToken}`.slice(0, 400),
+        ...runCountPatch(uploaded, bytes / (1024 * 1024)),
+      });
+      emit({ phase: "error", message: msg });
+      return { ok: false, error: msg, runId, retryable: true, tokenExpired };
     }
     await patchRun(supabase, runId, { status: "error", progress: msg.slice(0, 400) });
     emit({ phase: "error", message: msg });
@@ -704,12 +752,15 @@ async function collectNewGmailMessages(
 
   for (let page = 0; page < maxPages && collected.length < opts.limit; page += 1) {
     const pageStartToken = token;
-    const list = await gmail.users.messages.list({
-      userId: "me",
-      maxResults: 100,
-      ...(token ? { pageToken: token } : {}),
-      ...(opts.q ? { q: opts.q } : {}),
-    });
+    const list = await gmail.users.messages.list(
+      {
+        userId: "me",
+        maxResults: 100,
+        ...(token ? { pageToken: token } : {}),
+        ...(opts.q ? { q: opts.q } : {}),
+      },
+      { timeout: GMAIL_API_TIMEOUT_MS },
+    );
     const messages = list.data.messages || [];
     const nextToken = list.data.nextPageToken || undefined;
     console.log(
@@ -826,24 +877,17 @@ async function fetchRawMessage(
   gmail: NonNullable<ReturnType<typeof gmailClient>>,
   id: string,
 ) {
-  let lastError = "Gmail fetch failed";
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    try {
-      const full = await gmail.users.messages.get({
+  return withTlsRetry("Gmail message get", async () => {
+    const full = await gmail.users.messages.get(
+      {
         userId: "me",
         id,
         format: "raw",
-      });
-      const rawB64 = full.data.raw;
-      if (!rawB64) throw new Error("Gmail returned an empty message");
-      return Buffer.from(rawB64, "base64url");
-    } catch (err) {
-      lastError = err instanceof Error ? err.message : "Gmail fetch failed";
-      if (!/socket hang up|ECONNRESET|ETIMEDOUT|Timeout|aborted/i.test(lastError) || attempt === 3) {
-        throw err;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
-    }
-  }
-  throw new Error(lastError);
+      },
+      { timeout: GMAIL_API_TIMEOUT_MS },
+    );
+    const rawB64 = full.data.raw;
+    if (!rawB64) throw new Error("Gmail returned an empty message");
+    return Buffer.from(rawB64, "base64url");
+  });
 }

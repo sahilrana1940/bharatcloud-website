@@ -5,9 +5,9 @@ import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 60;
 
-/** POST — up to 50 × 5 = 250 Gmail .eml archives per click (E2E). */
+/** POST — up to 10 Gmail .eml archives per invocation (E2E). */
 export async function POST(req: Request) {
   const auth = await requireWorkspace();
   if (auth instanceof NextResponse) return auth;
