@@ -34,12 +34,14 @@ export async function insertFileArchiveRow(
   }
 
   if (row.source === "gmail") {
+    const sizeMb = row.size_bytes != null ? row.size_bytes / (1024 * 1024) : row.size_mb ?? 0;
     const { error } = await admin.from("file_archives").insert({
-      user_email: row.user_email,
+      company_id: row.org_id,
+      email: row.user_email,
       file_name: row.file_name,
-      e2e_path: row.s3_key,
-      size_bytes: row.size_bytes ?? 0,
-      class: "GLACIER",
+      s3_path: row.s3_key,
+      size_mb: sizeMb,
+      storage_class: "GLACIER",
       source: "gmail",
     });
     if (error) {

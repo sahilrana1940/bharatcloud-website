@@ -9,7 +9,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 export const EMAIL_BACKUP_S3_BUCKET = ARCHIVER_BUCKET;
 
-const DEFAULT_MAX = 25;
+const DEFAULT_MAX = 3;
 const MAX_CAP = 50;
 
 export type E2eEmailBackupProgress = {
@@ -27,18 +27,24 @@ export async function listEmailBackupRuns(
   userEmail: string,
   limit = 20,
 ) {
-  const { data, error } = await supabase
+  const db = getSupabaseAdmin() || supabase;
+  const { data, error } = await db
     .from("email_backup_runs")
     .select("*")
-    .eq("org_id", orgId)
-    .eq("user_email", userEmail.toLowerCase())
-    .order("backup_date", { ascending: false })
+    .eq("company_id", orgId)
+    .eq("email", userEmail.toLowerCase())
+    .order("created_at", { ascending: false })
     .limit(limit);
 
-  if (error && /does not exist|schema cache/i.test(error.message)) {
-    return { runs: [] as Record<string, unknown>[], tableMissing: true };
+  if (error) {
+    console.error(error.message);
+    return {
+      runs: [] as Record<string, unknown>[],
+      tableMissing: relationMissing(error.message),
+      supabaseError: error.message,
+    };
   }
-  return { runs: data || [], tableMissing: false };
+  return { runs: data || [], tableMissing: false, supabaseError: null as string | null };
 }
 
 export async function listFileArchives(
@@ -48,8 +54,14 @@ export async function listFileArchives(
   userEmail?: string,
 ) {
   const rows = await selectArchiveRows(supabase, orgId, userEmail, limit);
-  if (rows.missing) return { archives: [] as Record<string, unknown>[], tableMissing: true };
-  return { archives: rows.data.map(normalizeArchiveRow), tableMissing: false };
+  if (rows.supabaseError) {
+    return {
+      archives: [] as Record<string, unknown>[],
+      tableMissing: rows.missing,
+      supabaseError: rows.supabaseError,
+    };
+  }
+  return { archives: rows.data.map(normalizeArchiveRow), tableMissing: false, supabaseError: null as string | null };
 }
 
 export async function orgArchiveStorageTotals(
@@ -67,15 +79,17 @@ export async function countBackedUpEmails(
   orgId: string,
   userEmail: string,
 ) {
-  const { data } = await supabase
-    .from("email_backup_runs")
-    .select("email_count")
-    .eq("org_id", orgId)
-    .eq("user_email", userEmail.toLowerCase())
-    .eq("status", "completed");
-
-  if (!data?.length) return 0;
-  return data.reduce((n, r) => n + (Number(r.email_count) || 0), 0);
+  const db = getSupabaseAdmin() || supabase;
+  const { count, error } = await db
+    .from("file_archives")
+    .select("id", { count: "exact", head: true })
+    .eq("company_id", orgId)
+    .eq("email", userEmail.toLowerCase());
+  if (error) {
+    console.error(error.message);
+    return 0;
+  }
+  return count || 0;
 }
 
 export async function orgEmailBackupTotals(supabase: SupabaseClient, orgId: string) {
@@ -123,13 +137,10 @@ function adaptPayload(message: string, payload: Record<string, unknown>) {
 }
 
 async function insertRun(supabase: SupabaseClient, row: Record<string, unknown>) {
-  const payload = { ...row };
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const result = await supabase.from("email_backup_runs").insert(payload).select("id").single();
-    if (!result.error) return result;
-    if (!adaptPayload(result.error.message, payload)) return result;
-  }
-  return supabase.from("email_backup_runs").insert(payload).select("id").single();
+  const db = getSupabaseAdmin() || supabase;
+  const result = await db.from("email_backup_runs").insert(row).select("id").single();
+  if (result.error) console.error(result.error.message);
+  return result;
 }
 
 async function patchRun(
@@ -137,12 +148,9 @@ async function patchRun(
   runId: string,
   patch: Record<string, unknown>,
 ) {
-  const payload = { ...patch };
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const { error } = await supabase.from("email_backup_runs").update(payload).eq("id", runId);
-    if (!error) return;
-    if (!adaptPayload(error.message, payload)) return;
-  }
+  const db = getSupabaseAdmin() || supabase;
+  const { error } = await db.from("email_backup_runs").update(patch).eq("id", runId);
+  if (error) console.error(error.message);
 }
 
 export type E2eEmailBackupBatch = {
@@ -202,16 +210,14 @@ export async function runE2eGmailBackup(
   const pageToken = opts.pageToken?.trim() || undefined;
   const offset = Math.max(0, opts.offset ?? 0);
   const now = new Date();
-  const prefix = `gmail/${email}/`;
+  const prefix = `gmail/${email}/${now.getUTCFullYear()}/`;
   const bucket = getE2EBucket() || EMAIL_BACKUP_S3_BUCKET;
 
   const { data: runRow, error: insertErr } = await insertRun(supabase, {
-    org_id: orgId,
-    user_email: email,
-    s3_bucket: bucket,
-    s3_path: prefix,
+    company_id: orgId,
+    email,
     status: "running",
-    progress: 0,
+    progress: "starting",
   });
 
   if (insertErr || !runRow?.id) {
@@ -236,7 +242,7 @@ export async function runE2eGmailBackup(
 
   const counted = await gmailMailboxCount(supabase, orgId, email);
   if ("error" in counted) {
-    await patchRun(supabase, runId, { status: "error", progress: 0 });
+    await patchRun(supabase, runId, { status: "error", progress: "error" });
     return { ok: false, error: counted.error, runId, tokenExpired: counted.tokenExpired };
   }
   const gmail = counted.gmail;
@@ -247,10 +253,10 @@ export async function runE2eGmailBackup(
     message: `Gmail mailbox has ${mailboxTotal} messages`,
     total: mailboxTotal,
   });
-  await patchRun(supabase, runId, { progress: 0 });
+  await patchRun(supabase, runId, { progress: "fetching" });
 
   if (mailboxTotal === 0) {
-    await patchRun(supabase, runId, { status: "completed", email_count: 0, progress: 100 });
+    await patchRun(supabase, runId, { status: "completed", progress: "Archived 0" });
     return {
       ok: true,
       runId,
@@ -323,9 +329,7 @@ export async function runE2eGmailBackup(
       bytes += rawEmail.length;
 
       await patchRun(supabase, runId, {
-        progress: total > 0 ? Math.round(((uploaded + alreadyArchived) / total) * 100) : 0,
-        email_count: uploaded,
-        size_mb: Math.round((bytes / (1024 * 1024)) * 100) / 100,
+        progress: `Archived ${uploaded}`,
       });
     }
 
@@ -335,10 +339,7 @@ export async function runE2eGmailBackup(
     console.log(`Batch ${batch} archived ${uploaded} emails`);
     await patchRun(supabase, runId, {
       status: "completed",
-      email_count: uploaded,
-      size_mb: Math.round(sizeMb * 100) / 100,
-      s3_path: prefix,
-      progress: 100,
+      progress: `Archived ${uploaded}`,
     });
 
     emit({
@@ -375,7 +376,7 @@ export async function runE2eGmailBackup(
       msg =
         "Gmail permission missing — reconnect Google and allow Gmail read/modify on the consent screen.";
     }
-    await patchRun(supabase, runId, { status: "error", progress: 0 });
+    await patchRun(supabase, runId, { status: "error", progress: msg.slice(0, 400) });
     emit({ phase: "error", message: msg });
     return { ok: false, error: msg, runId, retryable, tokenExpired };
   }
@@ -543,32 +544,24 @@ async function selectArchiveRows(
   fileNames?: string[],
 ) {
   const db = getSupabaseAdmin() || supabase;
-  const run = (column: "org_id" | "user_email", value: string) => {
-    const query = db.from("file_archives").select("*").eq(column, value);
-    if (fileNames?.length) return query.in("file_name", fileNames).limit(limit);
-    return query.order("archived_at", { ascending: false }).limit(limit);
-  };
-
-  const byOrg = await run("org_id", orgId);
-  if (!byOrg.error) return { data: byOrg.data || [], missing: false };
-  const missingColumn = /Could not find the 'org_id' column|schema cache/i.test(byOrg.error.message);
-  if (!missingColumn || !userEmail) {
-    console.log(
-      "[file_archives] select error",
-      JSON.stringify({ message: byOrg.error.message, code: byOrg.error.code }),
-    );
-    return { data: [] as Record<string, unknown>[], missing: /does not exist/i.test(byOrg.error.message) };
+  let query = db.from("file_archives").select("*").eq("company_id", orgId);
+  if (userEmail) query = query.eq("email", userEmail.toLowerCase());
+  if (fileNames?.length) query = query.in("file_name", fileNames);
+  else query = query.order("created_at", { ascending: false });
+  const result = await query.limit(limit);
+  if (result.error) {
+    console.error(result.error.message);
+    return {
+      data: [] as Record<string, unknown>[],
+      missing: relationMissing(result.error.message),
+      supabaseError: result.error.message,
+    };
   }
+  return { data: result.data || [], missing: false, supabaseError: null as string | null };
+}
 
-  const byUser = await run("user_email", userEmail.toLowerCase());
-  if (byUser.error) {
-    console.log(
-      "[file_archives] select error",
-      JSON.stringify({ message: byUser.error.message, code: byUser.error.code }),
-    );
-    return { data: [] as Record<string, unknown>[], missing: /does not exist/i.test(byUser.error.message) };
-  }
-  return { data: byUser.data || [], missing: false };
+function relationMissing(message: string) {
+  return /does not exist/i.test(message) && !/column/i.test(message);
 }
 
 function archiveRowMb(row: Record<string, unknown>) {
@@ -580,9 +573,10 @@ function archiveRowMb(row: Record<string, unknown>) {
 function normalizeArchiveRow(row: Record<string, unknown>) {
   return {
     ...row,
-    s3_key: row.s3_key || row.e2e_path || "",
+    s3_key: row.s3_key || row.s3_path || row.e2e_path || "",
     s3_bucket: row.s3_bucket || "",
     storage_class: row.storage_class || row.class || "",
+    archived_at: row.archived_at || row.created_at || null,
     size_mb: archiveRowMb(row),
     is_from_start: row.is_from_start ?? true,
   };

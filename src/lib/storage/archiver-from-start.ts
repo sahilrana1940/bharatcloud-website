@@ -31,8 +31,9 @@ export function driveArchiveKey(orgId: string, fileName: string, domain?: string
   return `archive/drive/${orgId}/${Date.now()}-${safe}`;
 }
 
-export function gmailArchiveKey(userEmail: string, messageId: string) {
-  return `gmail/${userEmail.trim().toLowerCase()}/${messageId}.eml`;
+export function gmailArchiveKey(userEmail: string, messageId: string, d = new Date()) {
+  const year = d.getUTCFullYear();
+  return `gmail/${userEmail.trim().toLowerCase()}/${year}/${messageId}.eml`;
 }
 
 export function emailArchiveKey(orgId: string, messageId: string, d = new Date()) {

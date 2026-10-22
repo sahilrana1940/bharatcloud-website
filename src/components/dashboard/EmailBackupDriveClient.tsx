@@ -8,13 +8,15 @@ import { archiveMailboxInBatches } from "@/lib/email/archive-batches-client";
 
 type BackupRun = {
   id: string;
-  backup_date: string;
-  email_count: number;
-  size_mb: number | null;
-  s3_bucket: string;
-  s3_path: string | null;
-  status: string;
+  backup_date?: string;
+  created_at?: string;
+  email_count?: number;
+  size_mb?: number | null;
+  s3_bucket?: string;
+  s3_path?: string | null;
+  status?: string;
   progress?: string;
+  email?: string;
 };
 
 type FileArchive = {
@@ -46,6 +48,8 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
   const [error, setError] = useState("");
   const [canRetry, setCanRetry] = useState(false);
   const [tokenExpired, setTokenExpired] = useState(false);
+  const [lastPost, setLastPost] = useState("");
+  const [showPost, setShowPost] = useState(false);
   const [messagesTotal, setMessagesTotal] = useState<number | null>(null);
   const resumeOffset = useRef(0);
 
@@ -101,6 +105,7 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
         setProgress(p.label);
         setProgressPct(p.total > 0 ? Math.min(100, Math.round((p.archived / p.total) * 100)) : 0);
       }, resumeOffset.current);
+      setLastPost(JSON.stringify(result, null, 2));
       if (!result.ok) {
         resumeOffset.current = result.offset;
         setError(result.error);
@@ -243,6 +248,18 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
             Retry
           </button>
         )}
+        {lastPost && (
+          <button
+            type="button"
+            onClick={() => setShowPost((open) => !open)}
+            className="mt-3 block text-sm font-semibold text-[#0F766E] underline"
+          >
+            {showPost ? "Hide POST response" : "Show POST response"}
+          </button>
+        )}
+        {showPost && lastPost && (
+          <pre className="mt-2 max-h-64 overflow-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-100">{lastPost}</pre>
+        )}
       </div>
 
       <section className="mt-10">
@@ -284,6 +301,7 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
                     No archive rows yet — {backedUpCount.toLocaleString()} emails in past runs.
+                    {runs[0]?.status === "error" && runs[0]?.progress ? ` Last run: ${runs[0].progress}` : ""}
                   </td>
                 </tr>
               )}
@@ -299,19 +317,17 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
             <thead>
               <tr className="border-b border-slate-200 text-xs uppercase text-slate-500">
                 <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Emails</th>
-                <th className="px-4 py-3">Size</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Progress</th>
                 <th className="px-4 py-3">Bucket</th>
               </tr>
             </thead>
             <tbody>
               {runs.map((r) => (
                 <tr key={r.id} className="border-b border-slate-100">
-                  <td className="px-4 py-3">{new Date(r.backup_date).toLocaleString()}</td>
-                  <td className="px-4 py-3">{r.email_count ?? 0}</td>
-                  <td className="px-4 py-3">
-                    {r.size_mb != null ? `${Number(r.size_mb).toFixed(2)} MB` : "—"}
-                  </td>
+                  <td className="px-4 py-3">{new Date(r.created_at || r.backup_date || Date.now()).toLocaleString()}</td>
+                  <td className="px-4 py-3">{r.status || "—"}</td>
+                  <td className="px-4 py-3">{r.progress || r.email_count || "—"}</td>
                   <td className="px-4 py-3 font-mono text-xs">{r.s3_bucket || bucket}</td>
                 </tr>
               ))}

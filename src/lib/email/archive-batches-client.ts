@@ -29,7 +29,7 @@ export async function archiveMailboxInBatches(
   | { ok: true; archived: number; total: number; offset: number; hasMore: boolean }
   | { ok: false; error: string; archived: number; offset: number; tokenExpired?: boolean }
 > {
-  const sent = await postBatch(startOffset, Math.floor(startOffset / 25) + 1);
+  const sent = await postBatch(startOffset, Math.floor(startOffset / 3) + 1);
   if (!sent.ok) {
     return { ok: false, error: sent.error, archived: startOffset, offset: startOffset, tokenExpired: sent.tokenExpired };
   }
@@ -59,7 +59,7 @@ export async function archiveMailboxInBatches(
     mailboxTotal === 0
       ? "Gmail mailbox has 0 messages."
       : hasMore
-        ? `Archived ${offset}/${mailboxTotal}. Click Archive Now for the next 25.`
+        ? `Archived ${offset}/${mailboxTotal}. Click Archive Now for the next 3.`
         : `Archived ${offset}/${mailboxTotal}`;
   onProgress({ archived: offset, total: mailboxTotal, batch: 1, label, offset });
   if (uploaded === 0 && step === 0 && mailboxTotal > 0) {
@@ -79,7 +79,7 @@ async function postBatch(
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ limit: 25, offset, batch }),
+        body: JSON.stringify({ limit: 3, offset, batch }),
       });
       const body = (await res.json().catch(() => ({}))) as BatchResponse;
       if (res.ok) return { ok: true, body };
