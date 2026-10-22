@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { resolveMailboxScope } from "@/lib/archive/mailbox-scope";
 import { handleGmailArchivePost } from "@/lib/email/gmail-archive-api";
+import { EMAIL_BACKUP_BATCH_SIZE } from "@/lib/email/gmail-archive-constants";
 import {
   countBackedUpEmails,
   listEmailBackupRuns,
@@ -132,5 +133,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
 
-  return handleGmailArchivePost(req, supabase, session);
+  const body = await req.json().catch(() => ({} as Record<string, unknown>));
+  const patchedReq = new Request(req.url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...body,
+      limit: EMAIL_BACKUP_BATCH_SIZE,
+      maxMessages: EMAIL_BACKUP_BATCH_SIZE,
+    }),
+  });
+  return handleGmailArchivePost(patchedReq, supabase, session);
 }

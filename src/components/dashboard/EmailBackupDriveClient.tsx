@@ -5,9 +5,27 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Mail, Settings } from "lucide-react";
 
 import {
+  EMAIL_BACKUP_BATCH_SIZE,
   GMAIL_AUTO_BATCH_DELAY_MS,
+  GMAIL_ARCHIVE_503_RETRY_MS,
   GMAIL_ARCHIVE_STATUS_POLL_MS,
 } from "@/lib/email/gmail-archive-constants";
+
+type GmailArchivePostResponse = {
+  success?: boolean;
+  archived?: number;
+  alreadyArchived?: number;
+  totalArchived?: number;
+  hasMore?: boolean;
+  nextOffset?: number;
+  messagesTotal?: number;
+  totalGmailPerUser?: number;
+  error?: string;
+  message?: string;
+  needsReconnect?: boolean;
+  tokenExpired?: boolean;
+  retryable?: boolean;
+};
 
 type BackupRun = {
   id: string;
@@ -59,6 +77,7 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
   const [lastPost, setLastPost] = useState("");
   const [showPost, setShowPost] = useState(false);
   const [messagesTotal, setMessagesTotal] = useState<number | null>(null);
+  const [totalArchived, setTotalArchived] = useState(0);
   const stopAutoArchive = useRef(false);
   const batchInFlight = useRef(false);
   const [backgroundArchiving, setBackgroundArchiving] = useState(false);
@@ -71,13 +90,17 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
     setConnected(Boolean(gs.connected));
     setRuns(backup.runs || []);
     setArchives(backup.archives || []);
-    setBackedUpCount(Number(backup.archivedPerUser ?? backup.backedUpCount) || 0);
+    const loadedArchived = Number(backup.archivedPerUser ?? backup.backedUpCount) || 0;
+    setBackedUpCount(loadedArchived);
+    setTotalArchived(loadedArchived);
     setBucket(backup.bucket || "bharatcloudfinal2");
     setStorageClass(backup.storageClass || "GLACIER");
     setTotalArchiveGb(Number(backup.totalArchiveGb) || 0);
     setTotalArchiveMb(Number(backup.totalArchiveMb) || Number(backup.totalArchiveGb) * 1024 || 0);
     if (!busy && typeof backup.backedUpCount === "number") {
-      setBackedUpCount(Number(backup.backedUpCount));
+      const n = Number(backup.backedUpCount);
+      setBackedUpCount(n);
+      setTotalArchived(n);
     }
     setStatus(backup.status || "idle");
     setTokenExpired(Boolean(backup.tokenExpired));
@@ -163,46 +186,79 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
     setShowPost(true);
     setProgressPct(0);
     setProgress("Starting archive…");
+    setTotalArchived(backedUpCount);
 
-    let pageToken: string | undefined;
-    let archived = backedUpCount;
+    let offset = 0;
+    let hasMore = true;
     let total = messagesTotal ?? 0;
 
     try {
+      let cumulativeArchived = totalArchived;
+
       while (!stopAutoArchive.current) {
-        const res = await fetch("/api/e2e/gmail/backup", {
+        if (total > 0 && cumulativeArchived >= total) break;
+
+        const res = await fetch("/api/email/backup", {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(pageToken ? { pageToken } : {}),
+          body: JSON.stringify({
+            limit: EMAIL_BACKUP_BATCH_SIZE,
+            rounds: 1,
+            offset,
+          }),
         });
         const data = (await res.json().catch(() => ({
-          archived: 0,
-          total: 0,
-          continue: false,
+          success: false,
           error: "Empty or invalid JSON from archive API",
-        }))) as {
-          archived?: number;
-          total?: number;
-          continue?: boolean;
-          nextPageToken?: string | null;
-          error?: string | null;
-        };
+        }))) as GmailArchivePostResponse;
 
-        setLastPost(JSON.stringify(data, null, 2));
-        archived = Number(data.archived) || 0;
-        total = Number(data.total) || total;
-        setBackedUpCount(archived);
+        setLastPost(JSON.stringify({ status: res.status, ...data }, null, 2));
+
+        if (res.status === 503 || (data.retryable && !data.success)) {
+          setError(data.error || data.message || "Archive busy — retrying in 5 seconds…");
+          setProgress(
+            total > 0
+              ? `${cumulativeArchived.toLocaleString()} / ${total.toLocaleString()} — retrying…`
+              : "Retrying archive in 5 seconds…",
+          );
+          await new Promise((resolve) => setTimeout(resolve, GMAIL_ARCHIVE_503_RETRY_MS));
+          continue;
+        }
+
+        const batchArchived = Number(data.archived) || 0;
+        const alreadyArchived = Number(data.alreadyArchived) || 0;
+        cumulativeArchived =
+          Number(data.totalArchived) || alreadyArchived + batchArchived;
+
+        total =
+          Number(data.messagesTotal) ||
+          Number(data.totalGmailPerUser) ||
+          total;
+
+        setTotalArchived(cumulativeArchived);
+        setBackedUpCount(cumulativeArchived);
         if (total > 0) setMessagesTotal(total);
-        setProgress(`${archived.toLocaleString()} / ${total.toLocaleString()}`);
-        setProgressPct(total > 0 ? Math.min(100, Math.round((archived / total) * 100)) : 0);
-        if (data.error) setError(String(data.error));
-        else setError("");
+        setProgress(`${cumulativeArchived.toLocaleString()} / ${total.toLocaleString()}`);
+        setProgressPct(total > 0 ? Math.min(100, Math.round((cumulativeArchived / total) * 100)) : 0);
 
-        pageToken = data.nextPageToken?.trim() || undefined;
-        const batchUploaded = Number((data as { batchUploaded?: number }).batchUploaded) || 0;
-        if (!data.continue || archived >= total) break;
-        if (!pageToken && batchUploaded === 0) break;
+        if (!res.ok || data.success === false) {
+          setError(data.error || data.message || "Archive batch failed");
+          setNeedsReconnect(Boolean(data.needsReconnect));
+          setTokenExpired(Boolean(data.tokenExpired) || Boolean(data.needsReconnect));
+          if (data.needsReconnect || data.tokenExpired) break;
+          await new Promise((resolve) => setTimeout(resolve, GMAIL_ARCHIVE_503_RETRY_MS));
+          continue;
+        }
+        setError("");
+
+        hasMore = Boolean(data.hasMore);
+        if (typeof data.nextOffset === "number" && Number.isFinite(data.nextOffset)) {
+          offset = data.nextOffset;
+        }
+
+        if (!hasMore && (total <= 0 || cumulativeArchived >= total)) break;
+        if (total > 0 && cumulativeArchived >= total) break;
         await new Promise((resolve) => setTimeout(resolve, GMAIL_AUTO_BATCH_DELAY_MS));
       }
     } catch {
@@ -374,7 +430,7 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {isArchiving
-            ? `Archiving… ${backedUpCount.toLocaleString()}/${(messagesTotal ?? backedUpCount).toLocaleString()}`
+            ? `Archiving… ${totalArchived.toLocaleString()}/${(messagesTotal ?? 0).toLocaleString()}`
             : "Archive Now"}
         </button>
         {(busy || backgroundArchiving) && autoArchiving && (

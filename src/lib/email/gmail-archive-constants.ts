@@ -1,6 +1,12 @@
 /** Messages uploaded per archive batch (one Vercel POST). */
 export const GMAIL_ARCHIVE_BATCH_SIZE = 10;
 
+/** Batch size for POST /api/email/backup (smaller for Vercel timeouts). */
+export const EMAIL_BACKUP_BATCH_SIZE = 3;
+
+/** Wait before retrying archive POST after HTTP 503. */
+export const GMAIL_ARCHIVE_503_RETRY_MS = 5000;
+
 /** One round per POST — client polls and kicks next batch. */
 export const GMAIL_ARCHIVE_ROUNDS_PER_REQUEST = 1;
 
