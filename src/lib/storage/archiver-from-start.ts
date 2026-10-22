@@ -1,12 +1,10 @@
-import { Readable } from "node:stream";
-
-import { PutObjectCommand, type StorageClass } from "@aws-sdk/client-s3";
+import type { StorageClass } from "@aws-sdk/client-s3";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { putObjectSigned } from "@/lib/e2e/signed-put";
 import { insertFileArchiveRow } from "@/lib/archive/save-file-archive-row";
 import { e2eWorkspacePrefix } from "@/lib/roles/platform-roles";
-import { getS3Client } from "@/lib/s3/client";
-import { getE2EBucket, isArchiveFromStart, isS3Configured, resolveE2EEndpoint } from "@/lib/s3/config";
+import { getE2EBucket, isArchiveFromStart, isS3Configured } from "@/lib/s3/config";
 
 export const ARCHIVER_BUCKET =
   process.env.ARCHIVE_E2E_BUCKET?.trim() ||
@@ -71,96 +69,22 @@ export async function putArchiverObject(opts: {
       error: "E2E Chennai storage not configured — set E2E_ENDPOINT, E2E_ACCESS_KEY, and E2E_SECRET_KEY on the host.",
     };
   }
-  const client = getS3Client();
-  if (!client) return { ok: false, error: "S3 client unavailable" };
-
   const bucket = (opts.bucket || process.env.ARCHIVE_E2E_BUCKET || getE2EBucket() || ARCHIVER_BUCKET || "").replace(
     /\s+/g,
     "",
   );
   if (!bucket) return { ok: false, error: "ARCHIVE_E2E_BUCKET is not set" };
   const storageClass = opts.storageClass || (isArchiveFromStart() ? archiveStorageClass() : undefined);
-  console.error("E2E_DEBUG", { endpoint: resolveE2EEndpoint(), bucket, file: opts.key });
-  const attempts: Array<{ StorageClass?: StorageClass; Metadata?: Record<string, string> }> = [
-    {
-      ...(storageClass ? { StorageClass: storageClass } : {}),
-      ...(opts.metadata ? { Metadata: opts.metadata } : {}),
-    },
-  ];
-  if (storageClass === "GLACIER") {
-    attempts.push({ StorageClass: "STANDARD" });
-    attempts.push({});
-  }
-
-  let lastError = "Archive upload failed";
-  for (const extra of attempts) {
-    const sent = await putObjectWithRetry(client, {
-      Bucket: bucket,
-      Key: opts.key,
-      Body: opts.body,
-      ContentType: opts.contentType,
-      ...extra,
-    });
-    if (sent.ok) return { ok: true, bucket, key: opts.key };
-    lastError = sent.error;
-    if (!/access denied|invalid storage class/i.test(lastError)) break;
-    console.error("[e2e-upload] retrying without GLACIER", JSON.stringify({ bucket, key: opts.key }));
-  }
-  return { ok: false, error: lastError };
-}
-
-function retryableUploadError(message: string) {
-  return /socket hang up|ECONNRESET|ECONNREFUSED|ETIMEDOUT|Timeout|NetworkingError|EPIPE|aborted|secure TLS connection|Client network socket|socket disconnected/i.test(
-    message,
-  );
-}
-
-async function putObjectWithRetry(
-  client: NonNullable<ReturnType<typeof getS3Client>>,
-  input: {
-    Bucket: string;
-    Key: string;
-    Body: Buffer;
-    ContentType: string;
-    StorageClass?: StorageClass;
-    Metadata?: Record<string, string>;
-  },
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  let lastError = "Archive upload failed";
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    try {
-      await client.send(
-        new PutObjectCommand({
-          Bucket: input.Bucket,
-          Key: input.Key,
-          Body: Readable.from(input.Body),
-          ContentLength: input.Body.length,
-          ContentType: input.ContentType,
-          ...(input.StorageClass ? { StorageClass: input.StorageClass } : {}),
-          ...(input.Metadata ? { Metadata: input.Metadata } : {}),
-        }),
-      );
-      return { ok: true };
-    } catch (err) {
-      const code =
-        err && typeof err === "object" && "Code" in err
-          ? String((err as { Code?: string }).Code || "")
-          : err && typeof err === "object" && "name" in err
-            ? String((err as { name?: string }).name || "")
-            : "";
-      lastError = err instanceof Error ? err.message : "Archive upload failed";
-      console.error(lastError);
-      console.error(
-        "[e2e-upload] put failed",
-        JSON.stringify({ attempt, code, message: lastError, bucket: input.Bucket, key: input.Key }),
-      );
-      if (!retryableUploadError(lastError) || attempt === 3) {
-        return { ok: false, error: lastError };
-      }
-      await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
-    }
-  }
-  return { ok: false, error: lastError };
+  const sent = await putObjectSigned({
+    bucket,
+    key: opts.key,
+    body: opts.body,
+    contentType: opts.contentType,
+    storageClass,
+    metadata: opts.metadata,
+  });
+  if (!sent.ok) return { ok: false, error: sent.error };
+  return { ok: true, bucket, key: opts.key };
 }
 
 export async function uploadAsArchiver(
@@ -205,13 +129,22 @@ export async function archiveGmailEml(opts: {
   const bucket = process.env.ARCHIVE_E2E_BUCKET?.trim();
   if (!bucket) return { ok: false, error: "ARCHIVE_E2E_BUCKET is not set" };
 
-  const up = await putArchiverObject({
+  let up = await putArchiverObject({
     key,
     body: opts.body,
     contentType: "message/rfc822",
     bucket,
     storageClass: "GLACIER",
   });
+  if (!up.ok && /storage class|403|400/i.test(up.error)) {
+    up = await putArchiverObject({
+      key,
+      body: opts.body,
+      contentType: "message/rfc822",
+      bucket,
+      storageClass: "STANDARD" as StorageClass,
+    });
+  }
   if (!up.ok) return up;
 
   const indexed = await insertFileArchiveRow(opts.supabase, {

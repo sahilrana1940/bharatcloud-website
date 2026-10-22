@@ -1,49 +1,59 @@
-import https from "node:https";
-
 import { S3Client, type S3ClientConfig } from "@aws-sdk/client-s3";
-import { NodeHttpHandler } from "@smithy/node-http-handler";
+import { FetchHttpHandler } from "@smithy/fetch-http-handler";
 
 import { calculateBill, E2E_RATES } from "@/lib/admin/platform-costs";
-import { getE2EBucket, getE2ECredentials, getE2ERegion, resolveE2EEndpoint } from "@/lib/s3/config";
+import {
+  getE2EBucket,
+  getE2ECredentials,
+  getE2ERegion,
+  resolveE2EEndpoint,
+} from "@/lib/s3/config";
 
 export { calculateBill, E2E_RATES };
-
-/** Fresh IPv4 TLS 1.2 socket. Reused keep-alive sockets fail the handshake on Vercel. */
-const tlsAgent = new https.Agent({
-  keepAlive: false,
-  family: 4,
-  rejectUnauthorized: true,
-  secureProtocol: "TLSv1_2_method",
-});
 
 let cachedClient: S3Client | null = null;
 let cachedKey = "";
 
-/** Single E2E client. Endpoint, region, and keys come from env. */
+function envForcePathStyle(): boolean {
+  const v = process.env.E2E_FORCE_PATH_STYLE?.trim().toLowerCase();
+  if (v === "0" || v === "false") return false;
+  return true;
+}
+
+/** SDK client for list/get. Uploads use fetch SigV4, not this handler. */
+export function createE2EClient(opts?: {
+  endpoint?: string;
+  forcePathStyle?: boolean;
+}): S3Client | null {
+  const endpoint = (opts?.endpoint || resolveE2EEndpoint()).replace(/\/$/, "");
+  const { accessKeyId, secretAccessKey } = getE2ECredentials();
+  if (!endpoint || !accessKeyId || !secretAccessKey) return null;
+
+  const forcePathStyle = opts?.forcePathStyle ?? envForcePathStyle();
+
+  return new S3Client({
+    region: getE2ERegion(),
+    endpoint,
+    forcePathStyle,
+    credentials: { accessKeyId, secretAccessKey },
+    maxAttempts: 3,
+    retryMode: "standard",
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
+    requestHandler: new FetchHttpHandler({ requestTimeout: 120_000 }),
+  } as S3ClientConfig);
+}
+
+/** Single cached E2E client for normal SDK use. */
 export function getE2EClient(): S3Client | null {
   const endpoint = resolveE2EEndpoint();
   const { accessKeyId, secretAccessKey } = getE2ECredentials();
   if (!endpoint || !accessKeyId || !secretAccessKey) return null;
 
-  const key = `${endpoint}|${getE2ERegion()}|${accessKeyId}`;
+  const key = `${endpoint}|${getE2ERegion()}|${accessKeyId}|${envForcePathStyle()}`;
   if (cachedClient && cachedKey === key) return cachedClient;
 
-  cachedClient = new S3Client({
-    region: getE2ERegion(),
-    endpoint,
-    forcePathStyle: true,
-    credentials: { accessKeyId, secretAccessKey },
-    maxAttempts: 5,
-    retryMode: "adaptive",
-    requestChecksumCalculation: "WHEN_REQUIRED",
-    responseChecksumValidation: "WHEN_REQUIRED",
-    requestHandler: new NodeHttpHandler({
-      httpsAgent: tlsAgent,
-      connectionTimeout: 15_000,
-      requestTimeout: 120_000,
-      socketTimeout: 120_000,
-    }),
-  } as S3ClientConfig);
+  cachedClient = createE2EClient();
   cachedKey = key;
   return cachedClient;
 }
