@@ -125,7 +125,7 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
       </p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <InfoCard label="Archive location" value={`E2E Mumbai ${bucket}`} sub={`Class: ${storageClass}`} />
+        <InfoCard label="Archive location" value={`E2E ${bucket}`} sub={`Class: ${storageClass}`} />
         <InfoCard label="Retention" value="7 years minimum" sub="Archiver from start" />
         <InfoCard label="From start" value="Yes" sub="Every file from first day" />
         <InfoCard label="Total archived" value={`${totalArchiveGb.toFixed(2)} GB`} sub="In bharatcloudfinal2" />

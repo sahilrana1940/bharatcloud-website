@@ -28,6 +28,7 @@ loadEnvFile(".env");
 
 const DELHI = "https://objectstore.e2enetworks.net";
 const configuredEndpoint = (
+  process.env.ARCHIVE_E2E_ENDPOINT ||
   process.env.E2E_ENDPOINT ||
   process.env.E2E_S3_ENDPOINT ||
   process.env.WASABI_ENDPOINT ||
@@ -37,32 +38,36 @@ const endpoint = /mumbai|mum-objectstore|ap-mumbai/i.test(configuredEndpoint)
   ? DELHI
   : configuredEndpoint || DELHI;
 const configuredRegion = (
+  process.env.ARCHIVE_E2E_REGION ||
   process.env.E2E_REGION ||
   process.env.E2E_S3_REGION ||
   process.env.WASABI_REGION ||
   "us-east-1"
 ).trim();
-const region = /mumbai/i.test(configuredRegion) ? "us-east-1" : configuredRegion;
+const region = /mumbai|delhi|chennai|noida/i.test(configuredRegion) ? "us-east-1" : configuredRegion;
 const accessKeyId =
+  process.env.ARCHIVE_E2E_ACCESS_KEY_ID ||
   process.env.E2E_ACCESS_KEY ||
   process.env.E2E_S3_ACCESS_KEY ||
   process.env.E2E_S3_ACCESS_KEY_ID ||
   process.env.WASABI_ACCESS_KEY ||
   "";
 const secretAccessKey =
+  process.env.ARCHIVE_E2E_SECRET_ACCESS_KEY ||
   process.env.E2E_SECRET_KEY ||
   process.env.E2E_S3_SECRET_KEY ||
   process.env.E2E_S3_SECRET_ACCESS_KEY ||
   process.env.WASABI_SECRET_KEY ||
   "";
 const rawBucket =
+  process.env.ARCHIVE_E2E_BUCKET ||
   process.env.E2E_BUCKET_NAME ||
   process.env.E2E_BUCKET ||
   process.env.E2E_S3_B2B_BUCKET ||
   process.env.ARCHIVE_S3_BUCKET ||
   process.env.WASABI_B2B_BUCKET ||
   "bharatcloudfinal2";
-const bucket = rawBucket.trim() === "bharacloudfinal2" ? "bharatcloudfinal2" : rawBucket.trim();
+const bucket = rawBucket.trim();
 
 if (!endpoint || !accessKeyId || !secretAccessKey) {
   console.error(

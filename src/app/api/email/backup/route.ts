@@ -9,6 +9,7 @@ import {
   runE2eGmailBackup,
   EMAIL_BACKUP_S3_BUCKET,
 } from "@/lib/email/e2e-gmail-backup";
+import { getE2EBucket } from "@/lib/s3/config";
 import { archiveStorageClass } from "@/lib/storage/archiver-from-start";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
@@ -26,7 +27,7 @@ export async function GET(req: Request) {
   if (!supabase) {
     return NextResponse.json({
       demo: true,
-      bucket: EMAIL_BACKUP_S3_BUCKET,
+      bucket: getE2EBucket() || EMAIL_BACKUP_S3_BUCKET,
       backedUpCount: 0,
       targetCount: 10000,
       runs: [],
@@ -69,7 +70,7 @@ export async function GET(req: Request) {
   const storageTotals = await orgArchiveStorageTotals(supabase, session.companyId);
 
   return NextResponse.json({
-    bucket: EMAIL_BACKUP_S3_BUCKET,
+    bucket: getE2EBucket() || EMAIL_BACKUP_S3_BUCKET,
     storageClass: archiveStorageClass(),
     backedUpCount,
     targetCount: 10000,
@@ -133,8 +134,8 @@ export async function POST(req: Request) {
     runId: result.runId,
     emailCount: result.emailCount,
     sizeMb: result.sizeMb,
-    bucket: EMAIL_BACKUP_S3_BUCKET,
+    bucket: getE2EBucket() || EMAIL_BACKUP_S3_BUCKET,
     s3Path: result.s3Path,
-    progress: `Archived ${result.emailCount} emails to ${EMAIL_BACKUP_S3_BUCKET}/${result.s3Path} (Gmail unchanged)`,
+    progress: `Archived ${result.emailCount} emails to ${getE2EBucket() || EMAIL_BACKUP_S3_BUCKET}/${result.s3Path} (Gmail unchanged)`,
   });
 }

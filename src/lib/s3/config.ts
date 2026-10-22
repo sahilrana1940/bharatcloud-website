@@ -16,9 +16,16 @@ function isRetiredMumbaiEndpoint(url: string) {
   return host.includes("mumbai") || host.includes("mum-objectstore") || host.includes("ap-mumbai");
 }
 
-/** Raw endpoint from env. Empty when unset. */
+/** Raw endpoint from env. Empty when unset. ARCHIVE_E2E_ENDPOINT wins. */
 export function getE2EEndpoint() {
-  return (process.env.E2E_ENDPOINT || process.env.E2E_S3_ENDPOINT || "").trim().replace(/\/$/, "");
+  return (
+    process.env.ARCHIVE_E2E_ENDPOINT ||
+    process.env.E2E_ENDPOINT ||
+    process.env.E2E_S3_ENDPOINT ||
+    ""
+  )
+    .trim()
+    .replace(/\/$/, "");
 }
 
 /**
@@ -39,9 +46,14 @@ export function resolveE2EEndpoint() {
 }
 
 export function getE2ERegion() {
-  const raw = (process.env.E2E_REGION || process.env.E2E_S3_REGION || E2E_SIGNING_REGION).trim();
-  if (/mumbai/i.test(raw)) {
-    console.warn("[e2e-storage] Ignoring Mumbai SigV4 region. Using us-east-1.", { configured: raw });
+  const raw = (
+    process.env.ARCHIVE_E2E_REGION ||
+    process.env.E2E_REGION ||
+    process.env.E2E_S3_REGION ||
+    E2E_SIGNING_REGION
+  ).trim();
+  // E2E signs with us-east-1. "delhi" / "chennai" / "mumbai" select the endpoint, not SigV4.
+  if (/mumbai|delhi|chennai|noida/i.test(raw)) {
     return E2E_SIGNING_REGION;
   }
   return raw || E2E_SIGNING_REGION;
@@ -77,37 +89,28 @@ export function getArchiveBucket() {
   return getS3Env().archiveBucket;
 }
 
-/**
- * Bucket from env. E2E_BUCKET_NAME wins.
- * The typo bharacloudfinal2 is rewritten to bharatcloudfinal2.
- * Measurement still probes the typo bucket if the corrected name is denied.
- */
+/** Bucket from env. ARCHIVE_E2E_BUCKET wins and is used exactly as written. */
 export function getE2EBucket() {
-  const raw = (
+  return (
+    process.env.ARCHIVE_E2E_BUCKET ||
     process.env.E2E_BUCKET_NAME ||
     process.env.E2E_BUCKET ||
     process.env.E2E_S3_B2B_BUCKET ||
     process.env.ARCHIVE_S3_BUCKET ||
     E2E_BUCKET_DEFAULT
   ).trim();
-  if (raw === E2E_BUCKET_TYPO) {
-    console.warn(
-      "[e2e-storage] Bucket name typo corrected.",
-      { configured: E2E_BUCKET_TYPO, using: E2E_BUCKET_DEFAULT },
-    );
-    return E2E_BUCKET_DEFAULT;
-  }
-  return raw;
 }
 
 export function getE2ECredentials() {
   const accessKeyId = (
+    process.env.ARCHIVE_E2E_ACCESS_KEY_ID ||
     process.env.E2E_ACCESS_KEY ||
     process.env.E2E_S3_ACCESS_KEY ||
     process.env.E2E_S3_ACCESS_KEY_ID ||
     ""
   ).trim();
   const secretAccessKey = (
+    process.env.ARCHIVE_E2E_SECRET_ACCESS_KEY ||
     process.env.E2E_SECRET_KEY ||
     process.env.E2E_S3_SECRET_KEY ||
     process.env.E2E_S3_SECRET_ACCESS_KEY ||

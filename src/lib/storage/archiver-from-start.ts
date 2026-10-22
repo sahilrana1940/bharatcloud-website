@@ -7,6 +7,7 @@ import { getS3Client } from "@/lib/s3/client";
 import { getE2EBucket, isArchiveFromStart, isS3Configured } from "@/lib/s3/config";
 
 export const ARCHIVER_BUCKET =
+  process.env.ARCHIVE_E2E_BUCKET?.trim() ||
   process.env.E2E_BUCKET?.trim() ||
   process.env.E2E_S3_B2B_BUCKET?.trim() ||
   process.env.ARCHIVE_S3_BUCKET?.trim() ||

@@ -8,7 +8,7 @@ import {
   archiveGmailEml,
   emailArchivePrefix,
 } from "@/lib/storage/archiver-from-start";
-import { isS3Configured } from "@/lib/s3/config";
+import { getE2EBucket, isS3Configured } from "@/lib/s3/config";
 
 export const EMAIL_BACKUP_S3_BUCKET = ARCHIVER_BUCKET;
 
@@ -180,7 +180,7 @@ export async function runE2eGmailBackup(
   const maxMessages = Math.min(MAX_CAP, Math.max(1, opts.maxMessages ?? DEFAULT_MAX));
   const now = new Date();
   const prefix = emailArchivePrefix(orgId, now);
-  const bucket = EMAIL_BACKUP_S3_BUCKET;
+  const bucket = getE2EBucket() || EMAIL_BACKUP_S3_BUCKET;
 
   const { data: runRow, error: insertErr } = await insertRun(supabase, {
     org_id: orgId,
