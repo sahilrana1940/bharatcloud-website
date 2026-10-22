@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { resolveMailboxScope } from "@/lib/archive/mailbox-scope";
 import { handleGmailArchivePost } from "@/lib/email/gmail-archive-api";
 import {
   countBackedUpEmails,
@@ -45,16 +46,21 @@ export async function GET(req: Request) {
     isCompanyOwner: session.isCompanyOwner,
   });
 
+  const scope = await resolveMailboxScope(supabase, session.companyId, session.email);
+
   const { runs, tableMissing, supabaseError: runsError } = await listEmailBackupRuns(
     supabase,
-    session.companyId,
-    session.email,
+    scope.companyId,
+    scope.email,
+    20,
+    scope.userId,
   );
 
   const backedUpCount = await countBackedUpEmails(
     supabase,
-    session.companyId,
-    session.email,
+    scope.companyId,
+    scope.email,
+    scope.userId,
   );
 
   let orgTotals = null;
@@ -68,12 +74,13 @@ export async function GET(req: Request) {
 
   const { archives, tableMissing: archivesMissing, supabaseError: archivesError } = await listFileArchives(
     supabase,
-    session.companyId,
+    scope.companyId,
     50,
-    session.email,
+    scope.email,
+    scope.userId,
   );
-  const storageTotals = await orgArchiveStorageTotals(supabase, session.companyId, session.email);
-  const mailbox = await gmailMailboxCount(supabase, session.companyId, session.email);
+  const storageTotals = await orgArchiveStorageTotals(supabase, scope.companyId, scope.email, scope.userId);
+  const mailbox = await gmailMailboxCount(supabase, scope.companyId, scope.email);
   const messagesTotal = "messagesTotal" in mailbox ? mailbox.messagesTotal : null;
   const gmailCountError = "error" in mailbox ? mailbox.error : null;
   const supabaseError = runsError || archivesError || null;
@@ -81,7 +88,10 @@ export async function GET(req: Request) {
     bucket: getE2EBucket() || EMAIL_BACKUP_S3_BUCKET,
     storageClass: archiveStorageClass(),
     backedUpCount,
-    targetCount: 10000,
+    totalArchived: backedUpCount,
+    archiveScope: { companyId: scope.companyId, email: scope.email, userId: scope.userId },
+    mailboxEmail: "mailboxEmail" in mailbox ? mailbox.mailboxEmail : session.email,
+    targetCount: messagesTotal ?? 0,
     runs,
     archives,
     archivesMissing,

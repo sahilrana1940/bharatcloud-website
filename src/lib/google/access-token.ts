@@ -2,15 +2,20 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { encryptSecret } from "@/lib/crypto/encryption";
 import { createOAuth2Client } from "@/lib/google/client";
-import { fetchGoogleTokenRowForWorkspace } from "@/lib/google/token-row";
+import {
+  fetchGoogleTokenRowForMailbox,
+  fetchGoogleTokenRowForWorkspace,
+} from "@/lib/google/token-row";
 
 export async function getValidGoogleAccessToken(
   supabase: SupabaseClient,
   companyId: string,
   email: string,
-  opts?: { force?: boolean },
+  opts?: { force?: boolean; mailboxOnly?: boolean },
 ): Promise<string | null> {
-  const data = await fetchGoogleTokenRowForWorkspace(supabase, companyId, email);
+  const data = opts?.mailboxOnly
+    ? await fetchGoogleTokenRowForMailbox(supabase, companyId, email)
+    : await fetchGoogleTokenRowForWorkspace(supabase, companyId, email);
 
   if (!data?.access_token && !data?.refresh_token) return null;
 

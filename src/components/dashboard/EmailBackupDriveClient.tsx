@@ -244,7 +244,9 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
         </div>
 
         {messagesTotal != null && !error && (
-          <p className="mt-3 text-sm text-slate-600">Gmail messages: {messagesTotal}</p>
+          <p className="mt-3 text-sm text-slate-600">
+            This mailbox: {backedUpCount.toLocaleString()} archived / {messagesTotal.toLocaleString()} in Gmail
+          </p>
         )}
 
         <div className="mt-5 flex flex-wrap gap-3">

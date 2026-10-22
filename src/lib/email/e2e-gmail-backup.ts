@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { resolveArchiveCompanyId } from "@/lib/archive/resolve-archive-company";
+import type { MailboxScope } from "@/lib/archive/mailbox-scope";
+import { ensureCompanyUserForArchive } from "@/lib/archive/resolve-archive-company";
+import { resolveMailboxScope } from "@/lib/archive/mailbox-scope";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { isGmailReconnectError } from "@/lib/google/token-row";
 import { gmailClient } from "@/lib/google/client";
@@ -21,6 +23,10 @@ export { GMAIL_ARCHIVE_BATCH_SIZE, GMAIL_ARCHIVE_ROUNDS_PER_REQUEST, GMAIL_LIST_
 const DEFAULT_MAX = GMAIL_ARCHIVE_BATCH_SIZE;
 const MAX_CAP = GMAIL_ARCHIVE_BATCH_SIZE;
 
+function toScope(orgId: string, userEmail: string, userId?: string | null): MailboxScope {
+  return { companyId: orgId, email: userEmail.toLowerCase(), userId: userId ?? null };
+}
+
 export type E2eEmailBackupProgress = {
   runId: string;
   phase: "fetching" | "uploading" | "done" | "error";
@@ -35,13 +41,15 @@ export async function listEmailBackupRuns(
   orgId: string,
   userEmail: string,
   limit = 20,
+  userId?: string | null,
 ) {
   const db = getSupabaseAdmin() || supabase;
+  const scope = toScope(orgId, userEmail, userId);
   const { data, error } = await db
     .from("email_backup_runs")
     .select("*")
-    .eq("company_id", orgId)
-    .eq("email", userEmail.toLowerCase())
+    .eq("company_id", scope.companyId)
+    .eq("email", scope.email)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -61,8 +69,9 @@ export async function listFileArchives(
   orgId: string,
   limit = 50,
   userEmail?: string,
+  userId?: string | null,
 ) {
-  const rows = await selectArchiveRows(supabase, orgId, userEmail, limit);
+  const rows = await selectArchiveRows(supabase, orgId, userEmail, limit, undefined, userId);
   if (rows.supabaseError) {
     return {
       archives: [] as Record<string, unknown>[],
@@ -77,8 +86,9 @@ export async function orgArchiveStorageTotals(
   supabase: SupabaseClient,
   orgId: string,
   userEmail?: string,
+  userId?: string | null,
 ) {
-  return sumFileArchiveStorage(supabase, orgId, userEmail);
+  return sumFileArchiveStorage(supabase, orgId, userEmail, userId);
 }
 
 /** Sum all file_archives rows (paginated) — not capped at 1000. */
@@ -86,19 +96,19 @@ export async function sumFileArchiveStorage(
   supabase: SupabaseClient,
   orgId: string,
   userEmail?: string,
+  userId?: string | null,
 ) {
   const db = getSupabaseAdmin() || supabase;
   const pageSize = 1000;
   let from = 0;
   let totalMb = 0;
   let fileCount = 0;
+  const scope = userEmail ? toScope(orgId, userEmail, userId) : null;
 
   for (;;) {
-    let query = db
-      .from("file_archives")
-      .select("size_mb, size_bytes, size")
-      .eq("company_id", orgId);
-    if (userEmail) query = query.eq("email", userEmail.toLowerCase());
+    let query = db.from("file_archives").select("size_mb, size_bytes, size");
+    if (scope) query = query.eq("company_id", scope.companyId).eq("email", scope.email);
+    else query = query.eq("company_id", orgId);
     const { data, error } = await query.range(from, from + pageSize - 1);
     if (error) {
       console.error(error.message);
@@ -115,7 +125,7 @@ export async function sumFileArchiveStorage(
   }
 
   if (userEmail && fileCount === 0) {
-    fileCount = await countBackedUpEmails(supabase, orgId, userEmail);
+    fileCount = await countBackedUpEmails(supabase, orgId, userEmail, userId);
   }
 
   return { totalMb, fileCount };
@@ -125,13 +135,15 @@ export async function countBackedUpEmails(
   supabase: SupabaseClient,
   orgId: string,
   userEmail: string,
+  userId?: string | null,
 ) {
   const db = getSupabaseAdmin() || supabase;
+  const scope = toScope(orgId, userEmail, userId);
   const { count, error } = await db
     .from("file_archives")
     .select("id", { count: "exact", head: true })
-    .eq("company_id", orgId)
-    .eq("email", userEmail.toLowerCase());
+    .eq("company_id", scope.companyId)
+    .eq("email", scope.email);
   if (error) {
     console.error(error.message);
     return 0;
@@ -210,13 +222,15 @@ export async function getLastGmailPageToken(
   supabase: SupabaseClient,
   orgId: string,
   userEmail: string,
+  userId?: string | null,
 ): Promise<string | null> {
   const db = getSupabaseAdmin() || supabase;
+  const scope = toScope(orgId, userEmail, userId);
   const { data, error } = await db
     .from("email_backup_runs")
     .select("gmail_page_token, progress")
-    .eq("company_id", orgId)
-    .eq("email", userEmail.toLowerCase())
+    .eq("company_id", scope.companyId)
+    .eq("email", scope.email)
     .eq("status", "completed")
     .order("created_at", { ascending: false })
     .limit(1)
@@ -240,18 +254,20 @@ export async function loadAllArchivedGmailIds(
   supabase: SupabaseClient,
   orgId: string,
   userEmail: string,
+  userId?: string | null,
 ): Promise<Set<string>> {
   const db = getSupabaseAdmin() || supabase;
   const archived = new Set<string>();
   const pageSize = 1000;
   let from = 0;
+  const scope = toScope(orgId, userEmail, userId);
 
   for (;;) {
     const { data, error } = await db
       .from("file_archives")
       .select("file_name, source")
-      .eq("company_id", orgId)
-      .eq("email", userEmail.toLowerCase())
+      .eq("company_id", scope.companyId)
+      .eq("email", scope.email)
       .range(from, from + pageSize - 1);
 
     if (error) {
@@ -297,6 +313,7 @@ export async function runE2eGmailBackup(
     offset?: number;
     batch?: number;
     newerThanDays?: number;
+    userId?: string | null;
     onProgress?: (p: E2eEmailBackupProgress) => void;
   },
 ): Promise<
@@ -326,22 +343,26 @@ export async function runE2eGmailBackup(
   }
 
   const email = opts.email.toLowerCase();
-  const orgId = await resolveArchiveCompanyId(supabase, opts.companyId, email);
+  const scope = await resolveMailboxScope(supabase, opts.companyId, email);
+  const orgId = scope.companyId;
+  const userId = opts.userId ?? scope.userId;
+  await ensureCompanyUserForArchive(supabase, orgId, email);
   const requested = opts.limit ?? opts.maxMessages ?? DEFAULT_MAX;
   const maxMessages = Math.min(MAX_CAP, Math.max(1, requested));
   const batch = Math.max(1, opts.batch ?? 1);
-  const storedToken = await getLastGmailPageToken(supabase, orgId, email);
+  const storedToken = await getLastGmailPageToken(supabase, orgId, email, userId);
   const pageToken = (opts.pageToken?.trim() || storedToken || undefined) as string | undefined;
   const offset = pageToken ? 0 : Math.max(0, opts.offset ?? 0);
   const now = new Date();
   const prefix = `gmail/${email}/${now.getUTCFullYear()}/`;
   const bucket = (getE2EBucket() || EMAIL_BACKUP_S3_BUCKET).replace(/\s+/g, "");
   const endpoint = resolveE2EEndpoint();
-  console.error("E2E_DEBUG", { endpoint, bucket, file: prefix });
+  console.error("E2E_DEBUG", { endpoint, bucket, file: prefix, companyId: orgId, email });
 
   const { data: runRow, error: insertErr } = await insertRun(supabase, {
     company_id: orgId,
     email,
+    ...(userId ? { user_id: userId } : {}),
     status: "running",
     progress: "starting",
   });
@@ -408,7 +429,7 @@ export async function runE2eGmailBackup(
   }
 
   try {
-    const archivedIds = await loadAllArchivedGmailIds(supabase, orgId, email);
+    const archivedIds = await loadAllArchivedGmailIds(supabase, orgId, email, userId);
     const slice = await collectNewGmailMessages(gmail, {
       archived: archivedIds,
       limit: maxMessages,
@@ -445,6 +466,7 @@ export async function runE2eGmailBackup(
 
       const archived = await archiveGmailEml({
         orgId,
+        userId,
         userEmail: email,
         messageId: id,
         body: rawEmail,
@@ -534,12 +556,15 @@ export async function gmailMailboxCount(
   companyId: string,
   email: string,
 ): Promise<
-  | { messagesTotal: number; gmail: NonNullable<ReturnType<typeof gmailClient>> }
+  | { messagesTotal: number; gmail: NonNullable<ReturnType<typeof gmailClient>>; mailboxEmail?: string }
   | { error: string; tokenExpired?: boolean; needsReconnect?: boolean }
 > {
+  const normalized = email.toLowerCase();
   let accessToken: string | null;
   try {
-    accessToken = await getValidGoogleAccessToken(supabase, companyId, email);
+    accessToken = await getValidGoogleAccessToken(supabase, companyId, normalized, {
+      mailboxOnly: true,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Gmail token refresh failed";
     return {
@@ -549,16 +574,23 @@ export async function gmailMailboxCount(
     };
   }
   if (!accessToken) {
-    return { error: "Connect Gmail with mail access first.", tokenExpired: true };
+    return {
+      error: "Connect Gmail with mail access for this account first.",
+      tokenExpired: true,
+      needsReconnect: true,
+    };
   }
 
   let gmail = gmailClient(accessToken);
   if (!gmail) return { error: "Gmail client unavailable" };
 
-  let profile = await readGmailProfile(gmail);
+  let profile = await readGmailProfile(gmail, normalized);
   if ("tokenExpired" in profile && profile.tokenExpired) {
     try {
-      accessToken = await getValidGoogleAccessToken(supabase, companyId, email, { force: true });
+      accessToken = await getValidGoogleAccessToken(supabase, companyId, normalized, {
+        force: true,
+        mailboxOnly: true,
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Gmail token refresh failed";
       return { error: message, tokenExpired: true, needsReconnect: isGmailReconnectError(message) };
@@ -566,31 +598,53 @@ export async function gmailMailboxCount(
     if (!accessToken) return { error: "Gmail access expired. Reconnect Gmail.", tokenExpired: true };
     gmail = gmailClient(accessToken);
     if (!gmail) return { error: "Gmail client unavailable" };
-    profile = await readGmailProfile(gmail);
+    profile = await readGmailProfile(gmail, normalized);
   }
   if ("error" in profile) return profile;
-  return { messagesTotal: profile.messagesTotal, gmail };
+  return {
+    messagesTotal: profile.messagesTotal,
+    gmail,
+    mailboxEmail: profile.mailboxEmail,
+  };
 }
 
 async function readGmailProfile(
   gmail: NonNullable<ReturnType<typeof gmailClient>>,
-): Promise<{ messagesTotal: number } | { error: string; tokenExpired?: boolean }> {
+  expectedEmail: string,
+): Promise<
+  { messagesTotal: number; mailboxEmail: string } | { error: string; tokenExpired?: boolean }
+> {
   try {
     const profile = await gmail.users.getProfile({ userId: "me" });
+    const mailboxEmail = String(profile.data.emailAddress || "").toLowerCase();
+    const list = await gmail.users.messages.list({ userId: "me", maxResults: 1 });
+    const estimate = Number(list.data.resultSizeEstimate);
     console.log(
       "[gmail] users.getProfile",
       JSON.stringify({
-        emailAddress: profile.data.emailAddress || null,
+        emailAddress: mailboxEmail || null,
         messagesTotal: profile.data.messagesTotal ?? null,
+        resultSizeEstimate: list.data.resultSizeEstimate ?? null,
         threadsTotal: profile.data.threadsTotal ?? null,
-        historyId: profile.data.historyId || null,
       }),
     );
-    const total = Number(profile.data.messagesTotal);
+    if (mailboxEmail && mailboxEmail !== expectedEmail.toLowerCase()) {
+      return {
+        error: `Gmail is connected as ${mailboxEmail}, not ${expectedEmail}. Reconnect Gmail for this user.`,
+        tokenExpired: true,
+      };
+    }
+    const profileTotal = Number(profile.data.messagesTotal);
+    const total =
+      Number.isFinite(estimate) && estimate >= 0
+        ? estimate
+        : Number.isFinite(profileTotal)
+          ? profileTotal
+          : NaN;
     if (!Number.isFinite(total)) {
       return { error: "Gmail mailbox count failed. The profile response had no messagesTotal." };
     }
-    return { messagesTotal: total };
+    return { messagesTotal: total, mailboxEmail: mailboxEmail || expectedEmail };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Gmail profile request failed";
     const status =
@@ -696,10 +750,16 @@ async function selectArchiveRows(
   userEmail: string | undefined,
   limit: number,
   fileNames?: string[],
+  userId?: string | null,
 ) {
   const db = getSupabaseAdmin() || supabase;
-  let query = db.from("file_archives").select("*").eq("company_id", orgId);
-  if (userEmail) query = query.eq("email", userEmail.toLowerCase());
+  let query = db.from("file_archives").select("*");
+  if (userEmail) {
+    const scope = toScope(orgId, userEmail, userId);
+    query = query.eq("company_id", scope.companyId).eq("email", scope.email);
+  } else {
+    query = query.eq("company_id", orgId);
+  }
   if (fileNames?.length) query = query.in("file_name", fileNames);
   else query = query.order("created_at", { ascending: false });
   const result = await query.limit(limit);

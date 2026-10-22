@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 export type FileArchiveRow = {
   org_id: string;
+  user_id?: string | null;
   user_email?: string;
   file_name: string;
   s3_bucket?: string;
@@ -38,9 +39,11 @@ export async function insertFileArchiveRow(
     const { error } = await admin.from("file_archives").insert({
       company_id: row.org_id,
       email: row.user_email,
+      ...(row.user_id ? { user_id: row.user_id } : {}),
       file_name: row.file_name,
       s3_path: row.s3_key,
       size_mb: sizeMb,
+      size: String(Math.max(0, row.size_bytes ?? Math.round(sizeMb * 1024 * 1024))),
       storage_class: "GLACIER",
       source: "gmail",
     });

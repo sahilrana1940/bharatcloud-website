@@ -89,3 +89,13 @@ export async function fetchGoogleTokenRowForWorkspace(
 
   return primary;
 }
+
+/** Gmail archive — token must match this company + mailbox (no cross-tenant fallback). */
+export async function fetchGoogleTokenRowForMailbox(
+  supabase: SupabaseClient,
+  companyId: string,
+  email: string,
+): Promise<GoogleTokenRow | null> {
+  const row = await fetchGoogleTokenRow(supabase, companyId, email.toLowerCase());
+  return isGoogleTokenRowConnected(row) ? row : null;
+}

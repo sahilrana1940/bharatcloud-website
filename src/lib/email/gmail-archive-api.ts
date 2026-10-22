@@ -5,6 +5,7 @@ import {
   GMAIL_ARCHIVE_BATCH_SIZE,
   GMAIL_ARCHIVE_ROUNDS_PER_REQUEST,
 } from "@/lib/email/gmail-archive-constants";
+import { resolveMailboxScope } from "@/lib/archive/mailbox-scope";
 import {
   countBackedUpEmails,
   getLastGmailPageToken,
@@ -32,14 +33,6 @@ export async function handleGmailArchivePost(
     url.searchParams.get("batch") ?? body.batch,
     Math.floor(offset / Math.max(limit, 1)) + 1,
   );
-  let pageToken = String(url.searchParams.get("pageToken") || body.pageToken || body.nextPageToken || "").trim();
-  if (!pageToken) {
-    pageToken = (await getLastGmailPageToken(supabase, session.companyId, session.email)) || "";
-  }
-  const rounds = Math.min(
-    GMAIL_ARCHIVE_ROUNDS_PER_REQUEST,
-    readPositiveInt(body.rounds ?? url.searchParams.get("rounds"), GMAIL_ARCHIVE_ROUNDS_PER_REQUEST),
-  );
   const requestedEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   if (requestedEmail && requestedEmail !== session.email.toLowerCase()) {
     return NextResponse.json(
@@ -47,6 +40,17 @@ export async function handleGmailArchivePost(
       { status: 403 },
     );
   }
+
+  const scope = await resolveMailboxScope(supabase, session.companyId, session.email);
+
+  let pageToken = String(url.searchParams.get("pageToken") || body.pageToken || body.nextPageToken || "").trim();
+  if (!pageToken) {
+    pageToken = (await getLastGmailPageToken(supabase, scope.companyId, scope.email, scope.userId)) || "";
+  }
+  const rounds = Math.min(
+    GMAIL_ARCHIVE_ROUNDS_PER_REQUEST,
+    readPositiveInt(body.rounds ?? url.searchParams.get("rounds"), GMAIL_ARCHIVE_ROUNDS_PER_REQUEST),
+  );
 
   let totalUploaded = 0;
   let totalProcessed = 0;
@@ -58,8 +62,9 @@ export async function handleGmailArchivePost(
     let result: Awaited<ReturnType<typeof runE2eGmailBackup>>;
     try {
       result = await runE2eGmailBackup(supabase, {
-        companyId: session.companyId,
-        email: session.email,
+        companyId: scope.companyId,
+        email: scope.email,
+        userId: scope.userId,
         limit,
         offset: pageToken ? 0 : offset,
         batch: batch + round,
@@ -113,7 +118,12 @@ export async function handleGmailArchivePost(
 
   const result = lastOk;
   const total = result.messagesTotal;
-  const backedUpCount = await countBackedUpEmails(supabase, session.companyId, session.email);
+  const backedUpCount = await countBackedUpEmails(
+    supabase,
+    scope.companyId,
+    scope.email,
+    scope.userId,
+  );
   const hasMore = Boolean(result.hasMore && !result.done);
   const remaining = Math.max(0, total - backedUpCount);
   const pct = total > 0 ? Math.min(100, Math.round((backedUpCount / total) * 100)) : 100;
