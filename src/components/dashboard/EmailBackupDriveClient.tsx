@@ -54,7 +54,6 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
   const [lastPost, setLastPost] = useState("");
   const [showPost, setShowPost] = useState(false);
   const [messagesTotal, setMessagesTotal] = useState<number | null>(null);
-  const resumeOffset = useRef(0);
   const resumePageToken = useRef("");
   const stopAutoArchive = useRef(false);
 
@@ -118,17 +117,16 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
     setBusy(true);
     setError("");
     setCanRetry(false);
-    if (resumeOffset.current === 0 && !resumePageToken.current) setProgressPct(0);
+    if (!resumePageToken.current) setProgressPct(0);
     setProgress("Archiving up to 250 messages per batch…");
     try {
       const result = await archiveMailboxInBatches(
         (p) => {
-          resumeOffset.current = p.offset;
           setBackedUpCount(p.archived);
           setProgress(p.label);
           setProgressPct(p.percent);
         },
-        { offset: resumeOffset.current, pageToken: resumePageToken.current },
+        { offset: 0, pageToken: resumePageToken.current },
         {
           autoContinue: true,
           shouldStop: () => stopAutoArchive.current,
@@ -137,7 +135,6 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
       );
       setLastPost(JSON.stringify(result, null, 2));
       if (!result.ok) {
-        resumeOffset.current = result.offset;
         setError(result.error);
         setNeedsReconnect(Boolean(result.needsReconnect));
         setTokenExpired(Boolean(result.tokenExpired) || Boolean(result.needsReconnect) || /reconnect gmail/i.test(result.error));
@@ -145,13 +142,7 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
         setProgress("");
         return;
       }
-      if (result.hasMore) {
-        resumeOffset.current = result.offset;
-        resumePageToken.current = result.pageToken;
-      } else {
-        resumeOffset.current = 0;
-        resumePageToken.current = "";
-      }
+      resumePageToken.current = result.hasMore ? result.pageToken : "";
       setProgress(result.message);
       setProgressPct(result.percent);
       setBackedUpCount(result.backedUpCount);

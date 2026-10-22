@@ -13,9 +13,10 @@ export const EMAIL_BACKUP_S3_BUCKET = ARCHIVER_BUCKET;
 import {
   GMAIL_ARCHIVE_BATCH_SIZE,
   GMAIL_ARCHIVE_ROUNDS_PER_REQUEST,
+  GMAIL_LIST_MAX_PAGES,
 } from "@/lib/email/gmail-archive-constants";
 
-export { GMAIL_ARCHIVE_BATCH_SIZE, GMAIL_ARCHIVE_ROUNDS_PER_REQUEST };
+export { GMAIL_ARCHIVE_BATCH_SIZE, GMAIL_ARCHIVE_ROUNDS_PER_REQUEST, GMAIL_LIST_MAX_PAGES };
 
 const DEFAULT_MAX = GMAIL_ARCHIVE_BATCH_SIZE;
 const MAX_CAP = GMAIL_ARCHIVE_BATCH_SIZE;
@@ -195,8 +196,84 @@ async function patchRun(
   patch: Record<string, unknown>,
 ) {
   const db = getSupabaseAdmin() || supabase;
-  const { error } = await db.from("email_backup_runs").update(patch).eq("id", runId);
-  if (error) console.error(error.message);
+  let payload = { ...patch };
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const { error } = await db.from("email_backup_runs").update(payload).eq("id", runId);
+    if (!error) return;
+    console.error(error.message);
+    if (!adaptPayload(error.message, payload)) return;
+  }
+}
+
+/** Resume Gmail list after the last completed backup run. */
+export async function getLastGmailPageToken(
+  supabase: SupabaseClient,
+  orgId: string,
+  userEmail: string,
+): Promise<string | null> {
+  const db = getSupabaseAdmin() || supabase;
+  const { data, error } = await db
+    .from("email_backup_runs")
+    .select("gmail_page_token, progress")
+    .eq("company_id", orgId)
+    .eq("email", userEmail.toLowerCase())
+    .eq("status", "completed")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error(error.message);
+    return null;
+  }
+
+  const columnToken = typeof data?.gmail_page_token === "string" ? data.gmail_page_token.trim() : "";
+  if (columnToken) return columnToken;
+
+  const progress = String(data?.progress || "");
+  const embedded = progress.match(/__pt:([^\s|]+)/)?.[1]?.trim();
+  return embedded || null;
+}
+
+/** All Gmail message IDs already stored in file_archives for this mailbox. */
+export async function loadAllArchivedGmailIds(
+  supabase: SupabaseClient,
+  orgId: string,
+  userEmail: string,
+): Promise<Set<string>> {
+  const db = getSupabaseAdmin() || supabase;
+  const archived = new Set<string>();
+  const pageSize = 1000;
+  let from = 0;
+
+  for (;;) {
+    const { data, error } = await db
+      .from("file_archives")
+      .select("file_name, source")
+      .eq("company_id", orgId)
+      .eq("email", userEmail.toLowerCase())
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.error(error.message);
+      break;
+    }
+    const rows = data || [];
+    if (!rows.length) break;
+
+    for (const row of rows) {
+      const source = String(row.source || "").toLowerCase();
+      if (source && source !== "gmail") continue;
+      const name = String(row.file_name || "");
+      if (!name.endsWith(".eml")) continue;
+      archived.add(name.slice(0, -4));
+    }
+
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return archived;
 }
 
 export type E2eEmailBackupBatch = {
@@ -253,8 +330,9 @@ export async function runE2eGmailBackup(
   const requested = opts.limit ?? opts.maxMessages ?? DEFAULT_MAX;
   const maxMessages = Math.min(MAX_CAP, Math.max(1, requested));
   const batch = Math.max(1, opts.batch ?? 1);
-  const pageToken = opts.pageToken?.trim() || undefined;
-  const offset = Math.max(0, opts.offset ?? 0);
+  const storedToken = await getLastGmailPageToken(supabase, orgId, email);
+  const pageToken = (opts.pageToken?.trim() || storedToken || undefined) as string | undefined;
+  const offset = pageToken ? 0 : Math.max(0, opts.offset ?? 0);
   const now = new Date();
   const prefix = `gmail/${email}/${now.getUTCFullYear()}/`;
   const bucket = (getE2EBucket() || EMAIL_BACKUP_S3_BUCKET).replace(/\s+/g, "");
@@ -330,23 +408,19 @@ export async function runE2eGmailBackup(
   }
 
   try {
-    const slice = await listMessageWindow(gmail, {
-      offset: pageToken ? 0 : offset,
+    const archivedIds = await loadAllArchivedGmailIds(supabase, orgId, email);
+    const slice = await collectNewGmailMessages(gmail, {
+      archived: archivedIds,
       limit: maxMessages,
       pageToken,
+      maxPages: GMAIL_LIST_MAX_PAGES,
       q: opts.newerThanDays ? `newer_than:${opts.newerThanDays}d` : undefined,
     });
     const messages = slice.messages;
     const resultSizeEstimate = mailboxTotal;
-    const already = await archivedMessageIds(
-      supabase,
-      orgId,
-      email,
-      messages.map((m) => m.id).filter((id): id is string => Boolean(id)),
-    );
 
     let uploaded = 0;
-    let alreadyArchived = 0;
+    let alreadyArchived = slice.skippedArchived;
     let bytes = 0;
 
     let processedInBatch = 0;
@@ -354,7 +428,7 @@ export async function runE2eGmailBackup(
       const id = messages[i].id;
       if (!id) continue;
       processedInBatch += 1;
-      if (already.has(id)) {
+      if (archivedIds.has(id)) {
         alreadyArchived += 1;
         continue;
       }
@@ -389,15 +463,25 @@ export async function runE2eGmailBackup(
     const sizeMb = bytes / (1024 * 1024);
     const nextOffset = offset + processedInBatch;
     const nextPageToken = slice.nextPageToken;
+    const totalArchivedNow = archivedIds.size + uploaded;
     const hasMore =
-      slice.hasMore ||
       Boolean(nextPageToken) ||
-      (pageToken ? processedInBatch >= maxMessages : nextOffset < mailboxTotal);
+      slice.hasMore ||
+      (totalArchivedNow < mailboxTotal && (processedInBatch > 0 || alreadyArchived > 0));
+    const done = totalArchivedNow >= mailboxTotal || (!nextPageToken && !slice.hasMore);
     const estimate = Math.max(resultSizeEstimate, nextOffset);
-    console.log(`Batch ${batch} archived ${uploaded} emails (${processedInBatch} scanned)`);
+    console.log(
+      `Batch ${batch} archived ${uploaded} emails (${processedInBatch} new ids, ${alreadyArchived} skipped, token=${nextPageToken ? "yes" : "no"})`,
+    );
+    const progressText =
+      nextPageToken && nextPageToken.length > 0
+        ? `Archived ${uploaded} __pt:${nextPageToken}`
+        : `Archived ${uploaded}`;
     await patchRun(supabase, runId, {
       status: "completed",
-      progress: `Archived ${uploaded}`,
+      progress: progressText.slice(0, 400),
+      gmail_page_token: nextPageToken,
+      email_count: uploaded,
     });
 
     emit({
@@ -417,7 +501,7 @@ export async function runE2eGmailBackup(
       sizeMb,
       s3Path: prefix,
       nextPageToken,
-      done: !hasMore,
+      done,
       hasMore,
       nextOffset,
       resultSizeEstimate: estimate,
@@ -522,17 +606,26 @@ async function readGmailProfile(
   }
 }
 
-async function listMessageWindow(
+/** List Gmail pages until we have up to `limit` message IDs not yet in file_archives. */
+async function collectNewGmailMessages(
   gmail: NonNullable<ReturnType<typeof gmailClient>>,
-  opts: { offset: number; limit: number; pageToken?: string; q?: string },
+  opts: {
+    archived: Set<string>;
+    limit: number;
+    pageToken?: string;
+    maxPages?: number;
+    q?: string;
+  },
 ) {
+  const maxPages = opts.maxPages ?? GMAIL_LIST_MAX_PAGES;
   const collected: { id: string }[] = [];
-  let skipped = 0;
-  let token = opts.pageToken;
-  let estimate = 0;
+  let token: string | undefined = opts.pageToken?.trim() || undefined;
+  let skippedArchived = 0;
   let hasMore = false;
+  let nextPageToken: string | null = null;
 
-  for (let page = 0; page < 200 && collected.length < opts.limit; page += 1) {
+  for (let page = 0; page < maxPages && collected.length < opts.limit; page += 1) {
+    const pageStartToken = token;
     const list = await gmail.users.messages.list({
       userId: "me",
       maxResults: 100,
@@ -540,67 +633,61 @@ async function listMessageWindow(
       ...(opts.q ? { q: opts.q } : {}),
     });
     const messages = list.data.messages || [];
+    const nextToken = list.data.nextPageToken || undefined;
     console.log(
       "[gmail] users.messages.list",
       JSON.stringify({
-        resultSizeEstimate: list.data.resultSizeEstimate ?? null,
+        pageStartToken: pageStartToken || null,
         returned: messages.length,
-        hasNextPage: Boolean(list.data.nextPageToken),
+        hasNextPage: Boolean(nextToken),
+        newCollected: collected.length,
       }),
     );
-    estimate = Math.max(estimate, Number(list.data.resultSizeEstimate) || 0);
-    token = list.data.nextPageToken || undefined;
+
     if (!messages.length) {
       hasMore = false;
+      nextPageToken = null;
       break;
     }
 
+    let hitLimitMidPage = false;
     for (const message of messages) {
       if (!message.id) continue;
-      if (skipped < opts.offset) {
-        skipped += 1;
+      if (opts.archived.has(message.id)) {
+        skippedArchived += 1;
         continue;
       }
+      collected.push({ id: message.id });
       if (collected.length >= opts.limit) {
-        hasMore = true;
+        hitLimitMidPage = true;
         break;
       }
-      collected.push({ id: message.id });
     }
 
-    if (collected.length >= opts.limit) {
-      hasMore = hasMore || Boolean(token);
+    if (hitLimitMidPage) {
+      nextPageToken = pageStartToken || null;
+      hasMore = true;
       break;
     }
-    if (!token) {
-      hasMore = false;
-      break;
-    }
+
+    nextPageToken = nextToken || null;
+    hasMore = Boolean(nextToken);
+    token = nextToken;
+    if (!token) break;
+  }
+
+  if (collected.length < opts.limit && hasMore && nextPageToken) {
+    hasMore = true;
+  } else if (!nextPageToken && collected.length === 0) {
+    hasMore = false;
   }
 
   return {
     messages: collected,
     hasMore,
-    nextPageToken: token || null,
-    resultSizeEstimate: estimate,
+    nextPageToken,
+    skippedArchived,
   };
-}
-
-async function archivedMessageIds(
-  supabase: SupabaseClient,
-  orgId: string,
-  userEmail: string,
-  ids: string[],
-) {
-  const found = new Set<string>();
-  if (!ids.length) return found;
-  const names = ids.map((id) => `${id}.eml`);
-  const rows = await selectArchiveRows(supabase, orgId, userEmail, names.length, names);
-  for (const row of rows.data) {
-    const name = String(row.file_name || "");
-    if (name.endsWith(".eml")) found.add(name.slice(0, -4));
-  }
-  return found;
 }
 
 async function selectArchiveRows(

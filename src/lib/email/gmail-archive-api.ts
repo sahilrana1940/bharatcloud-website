@@ -7,6 +7,7 @@ import {
 } from "@/lib/email/gmail-archive-constants";
 import {
   countBackedUpEmails,
+  getLastGmailPageToken,
   runE2eGmailBackup,
   EMAIL_BACKUP_S3_BUCKET,
 } from "@/lib/email/e2e-gmail-backup";
@@ -32,6 +33,9 @@ export async function handleGmailArchivePost(
     Math.floor(offset / Math.max(limit, 1)) + 1,
   );
   let pageToken = String(url.searchParams.get("pageToken") || body.pageToken || body.nextPageToken || "").trim();
+  if (!pageToken) {
+    pageToken = (await getLastGmailPageToken(supabase, session.companyId, session.email)) || "";
+  }
   const rounds = Math.min(
     GMAIL_ARCHIVE_ROUNDS_PER_REQUEST,
     readPositiveInt(body.rounds ?? url.searchParams.get("rounds"), GMAIL_ARCHIVE_ROUNDS_PER_REQUEST),
@@ -95,10 +99,12 @@ export async function handleGmailArchivePost(
     totalAlreadyArchived += result.alreadyArchived;
     totalSizeMb += result.sizeMb;
 
-    if (!result.hasMore || result.done) break;
+    if (result.done || (!result.hasMore && !result.nextPageToken)) break;
 
     pageToken = result.nextPageToken?.trim() || "";
     offset = result.nextOffset;
+    if (result.emailCount === 0 && result.hasMore && pageToken) continue;
+    if (!result.hasMore) break;
   }
 
   if (!lastOk) {
@@ -114,14 +120,13 @@ export async function handleGmailArchivePost(
   const message =
     total === 0
       ? "Gmail mailbox has 0 messages."
-      : hasMore
-        ? `Archived ${backedUpCount.toLocaleString()} of ${total.toLocaleString()} (${pct}%) — next batch in 2s if auto-run is on`
-        : `Archived ${backedUpCount.toLocaleString()} of ${total.toLocaleString()} (${pct}%) — mailbox catch-up complete`;
+      : `Archived ${totalUploaded}, Total ${backedUpCount.toLocaleString()} / ${total.toLocaleString()}`;
 
   return NextResponse.json({
     success: true,
     archived: totalUploaded,
     uploaded: totalUploaded,
+    totalArchived: backedUpCount,
     nextOffset: result.nextOffset,
     hasMore,
     runId: result.runId,

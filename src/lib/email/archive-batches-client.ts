@@ -32,6 +32,7 @@ type BatchResponse = {
   message?: string;
   progress?: string;
   nextPageToken?: string | null;
+  totalArchived?: number;
 };
 
 const AUTO_CONTINUE_DELAY_MS = 2000;
@@ -110,7 +111,7 @@ export async function archiveMailboxInBatches(
     }
 
     lastUploaded = Number(sent.body.uploaded ?? sent.body.archived ?? sent.body.emailCount) || 0;
-    backedUpCount = Number(sent.body.backedUpCount);
+    backedUpCount = Number(sent.body.totalArchived ?? sent.body.backedUpCount);
     if (!Number.isFinite(backedUpCount)) {
       backedUpCount = cursor.offset + lastUploaded;
     }
@@ -139,7 +140,12 @@ export async function archiveMailboxInBatches(
     });
 
     if (lastUploaded === 0 && mailboxTotal > 0 && !hasMore && !pageToken) {
-      return { ok: false, error: sent.body.error || "E2E upload saved 0 emails", archived: cursor.offset, offset: cursor.offset };
+      return {
+        ok: false,
+        error: sent.body.error || "E2E upload saved 0 emails — check Gmail token and E2E config",
+        archived: cursor.offset,
+        offset: cursor.offset,
+      };
     }
 
     if (!hasMore) {
@@ -192,7 +198,7 @@ async function postBatch(start: {
         body: JSON.stringify({
           limit: GMAIL_ARCHIVE_BATCH_SIZE,
           rounds: GMAIL_ARCHIVE_ROUNDS_PER_REQUEST,
-          offset: start.pageToken ? 0 : start.offset,
+          offset: 0,
           pageToken: start.pageToken || undefined,
           batch,
         }),
