@@ -15,6 +15,7 @@ import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { isWorkspaceOwner } from "@/lib/workspace/nav";
 
+export const runtime = "nodejs";
 export const maxDuration = 300;
 
 /** GET — backup runs, progress, org totals for admins. */
@@ -98,14 +99,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
 
-  let maxMessages = 100;
-  try {
-    const body = await req.json().catch(() => ({}));
-    if (typeof body?.maxMessages === "number") {
-      maxMessages = body.maxMessages;
-    }
-  } catch {
-    /* empty body ok */
+  const url = new URL(req.url);
+  const body = await req.json().catch(() => ({} as Record<string, unknown>));
+  const limit = Math.min(50, readPositiveInt(url.searchParams.get("limit") ?? body.limit ?? body.maxMessages, 25));
+  const offset = readPositiveInt(url.searchParams.get("offset") ?? body.offset, 0);
+  const batch = readPositiveInt(url.searchParams.get("batch") ?? body.batch, Math.floor(offset / Math.max(limit, 1)) + 1);
+  const pageToken = String(url.searchParams.get("pageToken") || body.pageToken || "").trim();
+  const requestedEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  if (requestedEmail && requestedEmail !== session.email.toLowerCase()) {
+    return NextResponse.json(
+      { success: false, error: "Archive the signed-in mailbox only." },
+      { status: 403 },
+    );
   }
 
   let result: Awaited<ReturnType<typeof runE2eGmailBackup>>;
@@ -113,29 +118,58 @@ export async function POST(req: Request) {
     result = await runE2eGmailBackup(supabase, {
       companyId: session.companyId,
       email: session.email,
-      maxMessages,
+      limit,
+      offset,
+      batch,
+      pageToken: pageToken || undefined,
     });
   } catch (err) {
-    console.error(JSON.stringify(err, null, 2));
     const message = err instanceof Error ? err.message : "Archive failed";
-    return NextResponse.json({ success: false, error: message }, { status: 400 });
-  }
-
-  if (!result.ok) {
-    console.error(JSON.stringify({ route: "POST /api/email/backup", ...result }, null, 2));
+    const retryable = /socket hang up|ECONNRESET|ETIMEDOUT|Timeout/i.test(message);
+    console.error(
+      JSON.stringify({ route: "POST /api/email/backup", message, retryable }),
+    );
     return NextResponse.json(
-      { success: false, error: result.error, runId: result.runId },
-      { status: 400 },
+      { success: false, error: message, retryable },
+      { status: retryable ? 503 : 400 },
     );
   }
 
+  if (!result.ok) {
+    console.error(
+      JSON.stringify({ route: "POST /api/email/backup", error: result.error, runId: result.runId }),
+    );
+    return NextResponse.json(
+      { success: false, error: result.error, runId: result.runId, retryable: result.retryable },
+      { status: result.retryable ? 503 : 400 },
+    );
+  }
+
+  const estimate = Math.max(result.resultSizeEstimate, result.nextOffset);
   return NextResponse.json({
     success: true,
+    archived: result.processed,
+    uploaded: result.emailCount,
+    nextOffset: result.nextOffset,
+    hasMore: result.hasMore,
     runId: result.runId,
     emailCount: result.emailCount,
+    processed: result.processed,
+    alreadyArchived: result.alreadyArchived,
     sizeMb: result.sizeMb,
     bucket: getE2EBucket() || EMAIL_BACKUP_S3_BUCKET,
     s3Path: result.s3Path,
-    progress: `Archived ${result.emailCount} emails to ${getE2EBucket() || EMAIL_BACKUP_S3_BUCKET}/${result.s3Path} (Gmail unchanged)`,
+    nextPageToken: result.nextPageToken,
+    done: result.done,
+    resultSizeEstimate: estimate,
+    batch: result.batch,
+    offset: result.nextOffset,
+    progress: `Archiving ${result.nextOffset}/${estimate}...`,
   });
+}
+
+function readPositiveInt(value: unknown, fallback: number) {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return Math.floor(n);
 }

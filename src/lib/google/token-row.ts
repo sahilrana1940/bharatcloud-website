@@ -27,12 +27,26 @@ export async function fetchGoogleTokenRow(
 
   if (!data) return null;
   return {
-    access_token: decryptSecret(data.access_token as string | null),
-    refresh_token: decryptSecret(data.refresh_token as string | null),
+    access_token: openSecret(data.access_token as string | null),
+    refresh_token: openSecret(data.refresh_token as string | null),
     expiry: (data.expiry as string) || null,
     google_email: (data.google_email as string) || null,
     company_id: (data.company_id as string) || null,
   };
+}
+
+function openSecret(value: string | null) {
+  try {
+    return decryptSecret(value);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (/unable to authenticate data|Unsupported state/i.test(message)) {
+      throw new Error(
+        "Gmail token cannot be decrypted. ENCRYPTION_KEY on this server does not match the key that stored it.",
+      );
+    }
+    throw err;
+  }
 }
 
 export function isGoogleTokenRowConnected(row: GoogleTokenRow | null): boolean {
@@ -59,8 +73,8 @@ export async function fetchGoogleTokenRowForWorkspace(
 
   for (const data of rows || []) {
     const row: GoogleTokenRow = {
-      access_token: decryptSecret(data.access_token as string | null),
-      refresh_token: decryptSecret(data.refresh_token as string | null),
+      access_token: openSecret(data.access_token as string | null),
+      refresh_token: openSecret(data.refresh_token as string | null),
       expiry: (data.expiry as string) || null,
       google_email: (data.google_email as string) || null,
       company_id: (data.company_id as string) || null,

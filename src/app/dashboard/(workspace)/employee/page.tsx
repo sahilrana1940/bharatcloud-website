@@ -8,12 +8,14 @@ import { motion } from "framer-motion";
 
 import { EmployeeWorkspaceBanner } from "@/components/dashboard/EmployeeWorkspaceBanner";
 import { RoleDashboardGate } from "@/components/dashboard/RoleDashboardGate";
+import { archiveMailboxInBatches } from "@/lib/email/archive-batches-client";
 
 export default function EmployeeDashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [emailBackedUp, setEmailBackedUp] = useState(0);
   const [emailBackupBusy, setEmailBackupBusy] = useState(false);
+  const [emailBackupProgress, setEmailBackupProgress] = useState("");
   const [totalArchiveGb, setTotalArchiveGb] = useState(0);
 
   useEffect(() => {
@@ -111,29 +113,29 @@ export default function EmployeeDashboardPage() {
               disabled={emailBackupBusy}
               onClick={async () => {
                 setEmailBackupBusy(true);
+                setEmailBackupProgress("Archived 0/…");
                 try {
-                  const res = await fetch("/api/email/backup", {
-                    method: "POST",
-                    credentials: "include",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ maxMessages: 100 }),
+                  const result = await archiveMailboxInBatches((p) => {
+                    setEmailBackupProgress(p.label);
+                    setEmailBackedUp(p.archived);
                   });
-                  const j = await res.json().catch(() => ({}));
-                  if (res.ok) {
-                    setEmailBackedUp((n) => n + (Number(j.emailCount) || 0));
-                    router.push("/dashboard/email-backup");
-                  } else {
-                    window.alert(j.error || "Archive failed");
+                  if (!result.ok) {
+                    window.alert(result.error || "Archive failed");
+                    return;
                   }
+                  router.push("/dashboard/email-backup");
                 } finally {
                   setEmailBackupBusy(false);
                 }
               }}
               className="rounded-xl bg-[#00BAF2] px-4 py-2 text-sm font-bold text-[#062033] disabled:opacity-60"
             >
-              {emailBackupBusy ? "Archiving…" : "Archive Now"}
+              {emailBackupBusy ? emailBackupProgress || "Archiving…" : "Archive Now"}
             </button>
           </div>
+          {emailBackupBusy && (
+            <p className="mt-3 text-sm text-slate-600">{emailBackupProgress}</p>
+          )}
         </article>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2">

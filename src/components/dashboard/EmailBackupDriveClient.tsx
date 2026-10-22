@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Mail, Settings } from "lucide-react";
+
+import { archiveMailboxInBatches } from "@/lib/email/archive-batches-client";
 
 type BackupRun = {
   id: string;
@@ -38,9 +40,12 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
   const [storageClass, setStorageClass] = useState("GLACIER");
   const [totalArchiveGb, setTotalArchiveGb] = useState(0);
   const [progress, setProgress] = useState("");
+  const [progressPct, setProgressPct] = useState(0);
   const [status, setStatus] = useState("idle");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [canRetry, setCanRetry] = useState(false);
+  const resumeOffset = useRef(0);
 
   const load = useCallback(async () => {
     const [gs, backup] = await Promise.all([
@@ -73,20 +78,24 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
   async function archiveNow() {
     setBusy(true);
     setError("");
-    setProgress("Fetching emails for archive copy…");
+    setCanRetry(false);
+    if (resumeOffset.current === 0) setProgressPct(0);
+    setProgress(resumeOffset.current > 0 ? `Archiving ${resumeOffset.current}/...` : "Archiving 0/...");
     try {
-      const res = await fetch("/api/email/backup", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ maxMessages: 100 }),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(j.error || "Archive failed");
+      const result = await archiveMailboxInBatches((p) => {
+        resumeOffset.current = p.offset;
+        setProgress(p.label);
+        setProgressPct(p.total > 0 ? Math.min(100, Math.round((p.archived / p.total) * 100)) : 0);
+      }, resumeOffset.current);
+      if (!result.ok) {
+        resumeOffset.current = result.offset;
+        setError(result.error);
+        setCanRetry(true);
         return;
       }
-      setProgress(j.progress || "Archive complete");
+      resumeOffset.current = 0;
+      setProgress(result.total > 0 ? `Archived ${result.archived}/${result.total}` : "Archive complete");
+      setProgressPct(100);
       await load();
     } finally {
       setBusy(false);
@@ -164,10 +173,27 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
           Archive Now
         </button>
 
-        {(progress || status === "running") && (
-          <p className="mt-4 text-sm text-slate-600">{progress}</p>
+        {(progress || status === "running" || busy) && (
+          <div className="mt-4">
+            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full bg-[#00BAF2] transition-all"
+                style={{ width: `${busy || status === "running" ? progressPct : progress ? 100 : 0}%` }}
+              />
+            </div>
+            <p className="mt-2 text-sm text-slate-600">{progress || "Archiving…"}</p>
+          </div>
         )}
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        {canRetry && !busy && (
+          <button
+            type="button"
+            onClick={archiveNow}
+            className="mt-3 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800"
+          >
+            Retry
+          </button>
+        )}
       </div>
 
       <section className="mt-10">

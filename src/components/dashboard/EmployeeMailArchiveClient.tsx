@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { CloudUpload, Mail, Search, Send } from "lucide-react";
 
 import { InboxItem } from "@/components/gmail/InboxItem";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { archiveMailboxInBatches } from "@/lib/email/archive-batches-client";
 
 type ArchiveRow = {
   id: string;
@@ -84,6 +85,10 @@ export function EmployeeMailArchiveClient({
     }>
   >([]);
   const [successMsg, setSuccessMsg] = useState("");
+  const [batchLabel, setBatchLabel] = useState("");
+  const [batchPct, setBatchPct] = useState(0);
+  const [canRetry, setCanRetry] = useState(false);
+  const resumeOffset = useRef(0);
   const [searchQuery, setSearchQuery] = useState("");
 
   const visibleItems = useMemo(() => {
@@ -201,30 +206,35 @@ export function EmployeeMailArchiveClient({
   async function startEmailBackup() {
     setSyncing(true);
     setError("");
+    setCanRetry(false);
     setSuccessMsg("");
+    if (resumeOffset.current === 0) setBatchPct(0);
+    setBatchLabel(resumeOffset.current > 0 ? `Archiving ${resumeOffset.current}/...` : "Archiving 0/...");
     try {
-      const res = await fetch("/api/archive/email", { method: "POST", ...fetchOpts });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(j.error || "Backup failed — reconnect Gmail with all scopes");
+      const result = await archiveMailboxInBatches((p) => {
+        resumeOffset.current = p.offset;
+        setBatchLabel(p.label);
+        setBatchPct(p.total > 0 ? Math.min(100, Math.round((p.archived / p.total) * 100)) : 0);
+      }, resumeOffset.current);
+      if (!result.ok) {
+        resumeOffset.current = result.offset;
+        setCanRetry(true);
+        setError(result.error || "Backup failed — reconnect Gmail with all scopes");
         return;
       }
-      const n = Number(j.count ?? 0);
-      const warn = typeof j.warning === "string" ? j.warning : "";
+      resumeOffset.current = 0;
       setSuccessMsg(
-        n > 0
-          ? `Done — archived ${n} message${n === 1 ? "" : "s"} to the company vault.${warn ? ` (${warn})` : ""}`
-          : "Backup finished — no messages found in this Gmail inbox (or they were already archived).",
+        result.archived > 0
+          ? `Done — archived ${result.archived} messages.`
+          : "Backup finished — no new messages in this Gmail inbox.",
       );
-      if (warn) setError("");
       await refresh();
-      if (n > 0) {
-        setStatus((prev) => ({
-          ...prev,
-          status: "completed",
-          archivedCount: Math.max(prev.archivedCount ?? 0, n),
-        }));
-      }
+      setStatus((prev) => ({
+        ...prev,
+        status: "completed",
+        progress: `${result.archived}/${result.total || result.archived}`,
+        archivedCount: Math.max(prev.archivedCount ?? 0, result.archived),
+      }));
     } catch {
       setError("Network error — try again or check your connection.");
     } finally {
@@ -355,16 +365,21 @@ export function EmployeeMailArchiveClient({
             <CloudUpload className="h-4 w-4" />
             {syncing ? "Archiving…" : "Start my email backup"}
           </Button>
+          {canRetry && !syncing && (
+            <Button type="button" variant="outline" className="mt-3" onClick={startEmailBackup}>
+              Retry
+            </Button>
+          )}
           {(syncing || status.status === "syncing") && (
             <div className="mt-4">
               <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                 <div
                   className="h-full bg-cyan-500 transition-all"
-                  style={{ width: `${progressPct}%` }}
+                  style={{ width: `${syncing ? batchPct : progressPct}%` }}
                 />
               </div>
               <p className="mt-1 text-xs text-slate-500">
-                {status.progress || "Syncing…"}
+                {syncing ? batchLabel : status.progress || "Syncing…"}
               </p>
             </div>
           )}

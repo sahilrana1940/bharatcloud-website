@@ -1,3 +1,5 @@
+import { Readable } from "node:stream";
+
 import { PutObjectCommand, type StorageClass } from "@aws-sdk/client-s3";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -89,21 +91,68 @@ export async function putArchiverObject(opts: {
 
   let lastError = "Archive upload failed";
   for (const extra of attempts) {
+    const sent = await putObjectWithRetry(client, {
+      Bucket: bucket,
+      Key: opts.key,
+      Body: opts.body,
+      ContentType: opts.contentType,
+      ...extra,
+    });
+    if (sent.ok) return { ok: true, bucket, key: opts.key };
+    lastError = sent.error;
+    if (!/access denied/i.test(lastError)) break;
+  }
+  return { ok: false, error: lastError };
+}
+
+function retryableUploadError(message: string) {
+  return /socket hang up|ECONNRESET|ECONNREFUSED|ETIMEDOUT|Timeout|NetworkingError|EPIPE|aborted/i.test(
+    message,
+  );
+}
+
+async function putObjectWithRetry(
+  client: NonNullable<ReturnType<typeof getS3Client>>,
+  input: {
+    Bucket: string;
+    Key: string;
+    Body: Buffer;
+    ContentType: string;
+    StorageClass?: StorageClass;
+    Metadata?: Record<string, string>;
+  },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  let lastError = "Archive upload failed";
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
       await client.send(
         new PutObjectCommand({
-          Bucket: bucket,
-          Key: opts.key,
-          Body: opts.body,
-          ContentType: opts.contentType,
-          ...extra,
+          Bucket: input.Bucket,
+          Key: input.Key,
+          Body: Readable.from(input.Body),
+          ContentLength: input.Body.length,
+          ContentType: input.ContentType,
+          ...(input.StorageClass ? { StorageClass: input.StorageClass } : {}),
+          ...(input.Metadata ? { Metadata: input.Metadata } : {}),
         }),
       );
-      return { ok: true, bucket, key: opts.key };
+      return { ok: true };
     } catch (err) {
-      console.error(JSON.stringify(err, null, 2));
+      const code =
+        err && typeof err === "object" && "Code" in err
+          ? String((err as { Code?: string }).Code || "")
+          : err && typeof err === "object" && "name" in err
+            ? String((err as { name?: string }).name || "")
+            : "";
       lastError = err instanceof Error ? err.message : "Archive upload failed";
-      if (!/access denied/i.test(lastError)) break;
+      console.error(
+        "[e2e-upload] put failed",
+        JSON.stringify({ attempt, code, message: lastError, bucket: input.Bucket, key: input.Key }),
+      );
+      if (!retryableUploadError(lastError) || attempt === 3) {
+        return { ok: false, error: lastError };
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
     }
   }
   return { ok: false, error: lastError };

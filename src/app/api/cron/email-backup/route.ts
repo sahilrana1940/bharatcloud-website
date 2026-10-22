@@ -5,7 +5,7 @@ import { getSupabaseOrNull } from "@/lib/workspace/db";
 
 export const maxDuration = 300;
 
-/** Daily 2 AM — backup Gmail for users with Google tokens (service role). */
+/** Daily 2 AM — archive recent Gmail in small batches so the function stays under the timeout. */
 export async function GET(req: Request) {
   const secret = req.headers.get("authorization")?.replace("Bearer ", "");
   if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
@@ -21,26 +21,38 @@ export async function GET(req: Request) {
     .from("google_oauth_tokens")
     .select("company_id, email")
     .not("refresh_token", "is", null)
-    .limit(50);
+    .limit(8);
 
   let ok = 0;
   let failed = 0;
+  let archived = 0;
+  const started = Date.now();
+  let batch = 0;
 
   for (const row of tokens || []) {
     if (!row.company_id || !row.email) continue;
+    if (Date.now() - started > 240_000) break;
+    batch += 1;
     const result = await runE2eGmailBackup(supabase, {
       companyId: row.company_id,
       email: row.email,
-      maxMessages: 100,
+      limit: 20,
+      batch,
+      newerThanDays: 2,
     });
-    if (result.ok) ok += 1;
-    else failed += 1;
+    if (result.ok) {
+      ok += 1;
+      archived += result.emailCount;
+    } else {
+      failed += 1;
+    }
   }
 
   return NextResponse.json({
     ok: true,
-    processed: (tokens || []).length,
+    processed: batch,
     succeeded: ok,
     failed,
+    archived,
   });
 }

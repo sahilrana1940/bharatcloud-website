@@ -12,8 +12,8 @@ import { getE2EBucket, isS3Configured } from "@/lib/s3/config";
 
 export const EMAIL_BACKUP_S3_BUCKET = ARCHIVER_BUCKET;
 
-const DEFAULT_MAX = 100;
-const MAX_CAP = 1000;
+const DEFAULT_MAX = 25;
+const MAX_CAP = 50;
 
 export type E2eEmailBackupProgress = {
   runId: string;
@@ -156,17 +156,46 @@ async function patchRun(
   }
 }
 
+export type E2eEmailBackupBatch = {
+  limit?: number;
+  maxMessages?: number;
+  pageToken?: string;
+  offset?: number;
+  batch?: number;
+  /** Cron only. Limits the Gmail query to recent mail. */
+  newerThanDays?: number;
+};
+
 export async function runE2eGmailBackup(
   supabase: SupabaseClient,
   opts: {
     companyId: string;
     email: string;
     maxMessages?: number;
+    limit?: number;
+    pageToken?: string;
+    offset?: number;
+    batch?: number;
+    newerThanDays?: number;
     onProgress?: (p: E2eEmailBackupProgress) => void;
   },
 ): Promise<
-  | { ok: true; runId: string; emailCount: number; sizeMb: number; s3Path: string }
-  | { ok: false; error: string; runId?: string }
+  | {
+      ok: true;
+      runId: string;
+      emailCount: number;
+      processed: number;
+      alreadyArchived: number;
+      sizeMb: number;
+      s3Path: string;
+      nextPageToken: string | null;
+      done: boolean;
+      hasMore: boolean;
+      nextOffset: number;
+      resultSizeEstimate: number;
+      batch: number;
+    }
+  | { ok: false; error: string; runId?: string; retryable?: boolean }
 > {
   if (!isS3Configured()) {
     return {
@@ -177,7 +206,11 @@ export async function runE2eGmailBackup(
 
   const email = opts.email.toLowerCase();
   const orgId = await resolveArchiveCompanyId(supabase, opts.companyId, email);
-  const maxMessages = Math.min(MAX_CAP, Math.max(1, opts.maxMessages ?? DEFAULT_MAX));
+  const requested = opts.limit ?? opts.maxMessages ?? DEFAULT_MAX;
+  const maxMessages = Math.min(MAX_CAP, Math.max(1, requested));
+  const batch = Math.max(1, opts.batch ?? 1);
+  const pageToken = opts.pageToken?.trim() || undefined;
+  const offset = Math.max(0, opts.offset ?? 0);
   const now = new Date();
   const prefix = emailArchivePrefix(orgId, now);
   const bucket = getE2EBucket() || EMAIL_BACKUP_S3_BUCKET;
@@ -234,37 +267,40 @@ export async function runE2eGmailBackup(
   await patchRun(supabase, runId, { progress: 0 });
 
   try {
-    const list = await gmail.users.messages.list({
-      userId: "me",
-      maxResults: maxMessages,
+    const slice = await listMessageWindow(gmail, {
+      offset: pageToken ? 0 : offset,
+      limit: maxMessages,
+      pageToken,
+      q: opts.newerThanDays ? `newer_than:${opts.newerThanDays}d` : undefined,
     });
-    const messages = list.data.messages || [];
+    const messages = slice.messages;
+    const nextPageToken = pageToken ? slice.nextPageToken : null;
+    const hasMore = slice.hasMore;
+    const resultSizeEstimate = Math.max(slice.resultSizeEstimate, offset + messages.length);
     const total = messages.length;
+    const already = await archivedMessageIds(
+      supabase,
+      orgId,
+      messages.map((m) => m.id).filter((id): id is string => Boolean(id)),
+    );
 
     let uploaded = 0;
+    let alreadyArchived = 0;
     let bytes = 0;
 
     for (let i = 0; i < messages.length; i++) {
       const id = messages[i].id;
       if (!id) continue;
+      if (already.has(id)) {
+        alreadyArchived += 1;
+        continue;
+      }
 
-      const full = await gmail.users.messages.get({
-        userId: "me",
-        id,
-        format: "raw",
-      });
-
-      const rawB64 = full.data.raw;
-      if (!rawB64) continue;
-
-      const rawEmail = Buffer.from(rawB64, "base64url");
+      const rawEmail = await fetchRawMessage(gmail, id);
 
       emit({
-        phase: i === 0 ? "fetching" : "uploading",
-        message:
-          i < 3
-            ? `Fetching ${total} emails…`
-            : `Archiving to ${bucket}/${prefix} (${uploaded + 1}/${total})`,
+        phase: "uploading",
+        message: `Archiving to ${bucket}/${prefix} (${uploaded + 1}/${total})`,
         fetched: i + 1,
         uploaded,
         total,
@@ -282,13 +318,16 @@ export async function runE2eGmailBackup(
       bytes += rawEmail.length;
 
       await patchRun(supabase, runId, {
-        progress: total > 0 ? Math.round((uploaded / total) * 100) : 0,
+        progress: total > 0 ? Math.round(((uploaded + alreadyArchived) / total) * 100) : 0,
         email_count: uploaded,
         size_mb: Math.round((bytes / (1024 * 1024)) * 100) / 100,
       });
     }
 
     const sizeMb = bytes / (1024 * 1024);
+    const nextOffset = offset + total;
+    const estimate = Math.max(resultSizeEstimate, nextOffset);
+    console.log(`Batch ${batch} archived ${uploaded} emails`);
     await patchRun(supabase, runId, {
       status: "completed",
       email_count: uploaded,
@@ -299,21 +338,135 @@ export async function runE2eGmailBackup(
 
     emit({
       phase: "done",
-      message: `Archived ${uploaded} emails on E2E Mumbai (${bucket}). Gmail not modified.`,
+      message: `Archiving ${nextOffset}/${estimate}...`,
       fetched: total,
       uploaded,
-      total,
+      total: estimate,
     });
 
-    return { ok: true, runId, emailCount: uploaded, sizeMb, s3Path: prefix };
+    return {
+      ok: true,
+      runId,
+      emailCount: uploaded,
+      processed: total,
+      alreadyArchived,
+      sizeMb,
+      s3Path: prefix,
+      nextPageToken,
+      done: !hasMore,
+      hasMore,
+      nextOffset,
+      resultSizeEstimate: estimate,
+      batch,
+    };
   } catch (e) {
     let msg = e instanceof Error ? e.message : "Gmail archive failed";
+    const retryable = /socket hang up|ECONNRESET|ETIMEDOUT|Timeout|aborted/i.test(msg);
     if (/insufficient.*scope|403|Forbidden/i.test(msg)) {
       msg =
         "Gmail permission missing — reconnect Google and allow Gmail read/modify on the consent screen.";
     }
     await patchRun(supabase, runId, { status: "error", progress: 0 });
     emit({ phase: "error", message: msg });
-    return { ok: false, error: msg, runId };
+    return { ok: false, error: msg, runId, retryable };
   }
+}
+
+async function listMessageWindow(
+  gmail: NonNullable<ReturnType<typeof gmailClient>>,
+  opts: { offset: number; limit: number; pageToken?: string; q?: string },
+) {
+  const collected: { id: string }[] = [];
+  let skipped = 0;
+  let token = opts.pageToken;
+  let estimate = 0;
+  let hasMore = false;
+
+  for (let page = 0; page < 200 && collected.length < opts.limit; page += 1) {
+    const list = await gmail.users.messages.list({
+      userId: "me",
+      maxResults: 100,
+      ...(token ? { pageToken: token } : {}),
+      ...(opts.q ? { q: opts.q } : {}),
+    });
+    const messages = list.data.messages || [];
+    estimate = Math.max(estimate, Number(list.data.resultSizeEstimate) || 0);
+    token = list.data.nextPageToken || undefined;
+    if (!messages.length) {
+      hasMore = false;
+      break;
+    }
+
+    for (const message of messages) {
+      if (!message.id) continue;
+      if (skipped < opts.offset) {
+        skipped += 1;
+        continue;
+      }
+      if (collected.length >= opts.limit) {
+        hasMore = true;
+        break;
+      }
+      collected.push({ id: message.id });
+    }
+
+    if (collected.length >= opts.limit) {
+      hasMore = hasMore || Boolean(token);
+      break;
+    }
+    if (!token) {
+      hasMore = false;
+      break;
+    }
+  }
+
+  return {
+    messages: collected,
+    hasMore,
+    nextPageToken: token || null,
+    resultSizeEstimate: estimate,
+  };
+}
+
+async function archivedMessageIds(supabase: SupabaseClient, orgId: string, ids: string[]) {
+  const found = new Set<string>();
+  if (!ids.length) return found;
+  const names = ids.map((id) => `${id}.eml`);
+  const { data, error } = await supabase
+    .from("file_archives")
+    .select("file_name")
+    .eq("org_id", orgId)
+    .in("file_name", names);
+  if (error) return found;
+  for (const row of data || []) {
+    const name = String(row.file_name || "");
+    if (name.endsWith(".eml")) found.add(name.slice(0, -4));
+  }
+  return found;
+}
+
+async function fetchRawMessage(
+  gmail: NonNullable<ReturnType<typeof gmailClient>>,
+  id: string,
+) {
+  let lastError = "Gmail fetch failed";
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const full = await gmail.users.messages.get({
+        userId: "me",
+        id,
+        format: "raw",
+      });
+      const rawB64 = full.data.raw;
+      if (!rawB64) throw new Error("Gmail returned an empty message");
+      return Buffer.from(rawB64, "base64url");
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : "Gmail fetch failed";
+      if (!/socket hang up|ECONNRESET|ETIMEDOUT|Timeout|aborted/i.test(lastError) || attempt === 3) {
+        throw err;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+    }
+  }
+  throw new Error(lastError);
 }
