@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/server";
 export type FileArchiveRow = {
   org_id: string;
   user_id?: string | null;
+  gmail_message_id?: string | null;
   user_email?: string;
   file_name: string;
   s3_bucket?: string;
@@ -36,18 +37,23 @@ export async function insertFileArchiveRow(
 
   if (row.source === "gmail") {
     const sizeMb = row.size_bytes != null ? row.size_bytes / (1024 * 1024) : row.size_mb ?? 0;
-    const { error } = await admin.from("file_archives").insert({
+    const payload: Record<string, unknown> = {
       company_id: row.org_id,
       email: row.user_email,
-      ...(row.user_id ? { user_id: row.user_id } : {}),
       file_name: row.file_name,
       s3_path: row.s3_key,
       size_mb: sizeMb,
       size: String(Math.max(0, row.size_bytes ?? Math.round(sizeMb * 1024 * 1024))),
       storage_class: "GLACIER",
       source: "gmail",
-    });
+    };
+    if (row.user_id) payload.user_id = row.user_id;
+    if (row.gmail_message_id) payload.gmail_message_id = row.gmail_message_id;
+    const { error } = await admin.from("file_archives").insert(payload);
     if (error) {
+      if (/duplicate key|unique constraint|23505/i.test(error.message)) {
+        return { ok: true };
+      }
       console.error(error.message);
       return { ok: false, error: error.message };
     }

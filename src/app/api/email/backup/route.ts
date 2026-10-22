@@ -89,6 +89,8 @@ export async function GET(req: Request) {
     storageClass: archiveStorageClass(),
     backedUpCount,
     totalArchived: backedUpCount,
+    archivedPerUser: backedUpCount,
+    totalGmailPerUser: messagesTotal,
     archiveScope: { companyId: scope.companyId, email: scope.email, userId: scope.userId },
     mailboxEmail: "mailboxEmail" in mailbox ? mailbox.mailboxEmail : session.email,
     targetCount: messagesTotal ?? 0,

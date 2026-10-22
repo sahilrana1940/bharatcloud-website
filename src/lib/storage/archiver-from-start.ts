@@ -151,6 +151,7 @@ export async function archiveGmailEml(opts: {
   const indexed = await insertFileArchiveRow(opts.supabase, {
     org_id: opts.orgId,
     user_id: opts.userId ?? null,
+    gmail_message_id: opts.messageId,
     user_email: opts.userEmail.trim().toLowerCase(),
     file_name: `${opts.messageId}.eml`,
     s3_key: key,

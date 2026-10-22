@@ -65,7 +65,7 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
     setConnected(Boolean(gs.connected));
     setRuns(backup.runs || []);
     setArchives(backup.archives || []);
-    setBackedUpCount(Number(backup.backedUpCount) || 0);
+    setBackedUpCount(Number(backup.archivedPerUser ?? backup.backedUpCount) || 0);
     setBucket(backup.bucket || "bharatcloudfinal2");
     setStorageClass(backup.storageClass || "GLACIER");
     setTotalArchiveGb(Number(backup.totalArchiveGb) || 0);
@@ -76,7 +76,13 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
     setStatus(backup.status || "idle");
     setTokenExpired(Boolean(backup.tokenExpired));
     setNeedsReconnect(Boolean(backup.needsReconnect) || Boolean(gs.needsReconnect));
-    setMessagesTotal(typeof backup.messagesTotal === "number" ? backup.messagesTotal : null);
+    setMessagesTotal(
+      typeof backup.totalGmailPerUser === "number"
+        ? backup.totalGmailPerUser
+        : typeof backup.messagesTotal === "number"
+          ? backup.messagesTotal
+          : null,
+    );
     if (backup.needsReconnect || gs.needsReconnect) {
       setError(backup.gmailCountError || gs.message || backup.message || "Gmail re-auth required");
       setProgress("");
@@ -85,10 +91,15 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
       setProgress("");
     } else if (!busy) {
       setError("");
+      const archived = Number(backup.archivedPerUser ?? backup.backedUpCount) || 0;
+      const total =
+        typeof backup.totalGmailPerUser === "number"
+          ? backup.totalGmailPerUser
+          : typeof backup.messagesTotal === "number"
+            ? backup.messagesTotal
+            : null;
       setProgress(
-        typeof backup.messagesTotal === "number"
-          ? `Gmail messages: ${backup.messagesTotal}`
-          : backup.progress || "",
+        total != null ? `${archived.toLocaleString()} / ${total.toLocaleString()} archived in E2E` : backup.progress || "",
       );
     }
   }, [busy]);
@@ -118,7 +129,7 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
     setError("");
     setCanRetry(false);
     if (!resumePageToken.current) setProgressPct(0);
-    setProgress("Archiving up to 250 messages per batch…");
+    setProgress("Starting auto-archive (25 emails every 2s)…");
     try {
       const result = await archiveMailboxInBatches(
         (p) => {
@@ -214,10 +225,10 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
       </p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <InfoCard label="Your mailbox" value={messagesTotal != null ? `${backedUpCount.toLocaleString()} / ${messagesTotal.toLocaleString()}` : `${backedUpCount.toLocaleString()} / —`} sub="Archived / Gmail total (this user)" />
         <InfoCard label="Archive location" value={`E2E ${bucket}`} sub={`Class: ${storageClass}`} />
         <InfoCard label="Retention" value="7 years minimum" sub="Archiver from start" />
-        <InfoCard label="From start" value="Yes" sub="Every file from first day" />
-        <InfoCard label="Total archived" value={formatArchiveSize()} sub={`${backedUpCount.toLocaleString()} files in bharatcloudfinal2`} />
+        <InfoCard label="Total archived" value={formatArchiveSize()} sub={`Your files only · ${userEmail}`} />
       </div>
 
       <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -244,8 +255,8 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
         </div>
 
         {messagesTotal != null && !error && (
-          <p className="mt-3 text-sm text-slate-600">
-            This mailbox: {backedUpCount.toLocaleString()} archived / {messagesTotal.toLocaleString()} in Gmail
+          <p className="mt-3 text-sm font-medium text-slate-700">
+            {backedUpCount.toLocaleString()} / {messagesTotal.toLocaleString()} — your Gmail archive progress
           </p>
         )}
 

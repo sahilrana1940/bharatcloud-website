@@ -1,6 +1,7 @@
 import {
   GMAIL_ARCHIVE_BATCH_SIZE,
   GMAIL_ARCHIVE_ROUNDS_PER_REQUEST,
+  GMAIL_AUTO_BATCH_DELAY_MS,
 } from "@/lib/email/gmail-archive-constants";
 
 export type ArchiveBatchProgress = {
@@ -33,11 +34,15 @@ type BatchResponse = {
   progress?: string;
   nextPageToken?: string | null;
   totalArchived?: number;
+  archivedPerUser?: number;
+  totalGmailPerUser?: number;
 };
 
-const AUTO_CONTINUE_DELAY_MS = 2000;
+function formatProgress(archived: number, total: number) {
+  return `Archiving ${archived.toLocaleString()}/${total.toLocaleString()}…`;
+}
 
-/** One POST archives up to BATCH_SIZE × ROUNDS (250) messages. */
+/** Auto-loops POST /api/gmail/archive every 2s until done or stopped. */
 export async function archiveMailboxInBatches(
   onProgress: (progress: ArchiveBatchProgress) => void,
   start: { offset: number; pageToken: string },
@@ -105,13 +110,17 @@ export async function archiveMailboxInBatches(
       return { ok: false, error: sent.body.error, archived: cursor.offset, offset: cursor.offset };
     }
 
-    mailboxTotal = Number(sent.body.messagesTotal ?? sent.body.resultSizeEstimate);
+    mailboxTotal = Number(
+      sent.body.totalGmailPerUser ?? sent.body.messagesTotal ?? sent.body.resultSizeEstimate,
+    );
     if (!Number.isFinite(mailboxTotal)) {
       return { ok: false, error: "Gmail mailbox count failed", archived: cursor.offset, offset: cursor.offset };
     }
 
     lastUploaded = Number(sent.body.uploaded ?? sent.body.archived ?? sent.body.emailCount) || 0;
-    backedUpCount = Number(sent.body.totalArchived ?? sent.body.backedUpCount);
+    backedUpCount = Number(
+      sent.body.archivedPerUser ?? sent.body.totalArchived ?? sent.body.backedUpCount,
+    );
     if (!Number.isFinite(backedUpCount)) {
       backedUpCount = cursor.offset + lastUploaded;
     }
@@ -123,10 +132,7 @@ export async function archiveMailboxInBatches(
     const pageToken = String(sent.body.nextPageToken || "").trim();
     hasMore = Boolean(sent.body.hasMore) && sent.body.done !== true;
     const percent = mailboxTotal > 0 ? Math.min(100, Math.round((backedUpCount / mailboxTotal) * 100)) : 100;
-    message =
-      sent.body.progress ||
-      sent.body.message ||
-      `Archived ${backedUpCount.toLocaleString()} of ${mailboxTotal.toLocaleString()} (${percent}%)`;
+    message = sent.body.progress || formatProgress(backedUpCount, mailboxTotal);
 
     cursor = { offset, pageToken };
     onProgress({
@@ -156,7 +162,7 @@ export async function archiveMailboxInBatches(
         offset,
         hasMore: false,
         pageToken,
-        message,
+        message: `Complete — ${backedUpCount.toLocaleString()}/${mailboxTotal.toLocaleString()}`,
         remaining,
         backedUpCount,
         percent,
@@ -179,7 +185,7 @@ export async function archiveMailboxInBatches(
     }
 
     opts.onAutoDelay?.();
-    await new Promise((resolve) => setTimeout(resolve, AUTO_CONTINUE_DELAY_MS));
+    await new Promise((resolve) => setTimeout(resolve, GMAIL_AUTO_BATCH_DELAY_MS));
   }
 }
 

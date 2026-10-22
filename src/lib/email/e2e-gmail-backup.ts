@@ -1,8 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { MailboxScope } from "@/lib/archive/mailbox-scope";
-import { ensureCompanyUserForArchive } from "@/lib/archive/resolve-archive-company";
-import { resolveMailboxScope } from "@/lib/archive/mailbox-scope";
+import { resolveMailboxScope, type MailboxScope } from "@/lib/archive/mailbox-scope";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { isGmailReconnectError } from "@/lib/google/token-row";
 import { gmailClient } from "@/lib/google/client";
@@ -45,13 +43,10 @@ export async function listEmailBackupRuns(
 ) {
   const db = getSupabaseAdmin() || supabase;
   const scope = toScope(orgId, userEmail, userId);
-  const { data, error } = await db
-    .from("email_backup_runs")
-    .select("*")
-    .eq("company_id", scope.companyId)
-    .eq("email", scope.email)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  let runQuery = db.from("email_backup_runs").select("*");
+  if (scope.userId) runQuery = runQuery.eq("user_id", scope.userId);
+  else runQuery = runQuery.eq("company_id", scope.companyId).eq("email", scope.email);
+  const { data, error } = await runQuery.order("created_at", { ascending: false }).limit(limit);
 
   if (error) {
     console.error(error.message);
@@ -107,8 +102,11 @@ export async function sumFileArchiveStorage(
 
   for (;;) {
     let query = db.from("file_archives").select("size_mb, size_bytes, size");
-    if (scope) query = query.eq("company_id", scope.companyId).eq("email", scope.email);
-    else query = query.eq("company_id", orgId);
+    if (scope) {
+      query = scope.userId
+        ? query.eq("user_id", scope.userId)
+        : query.eq("company_id", scope.companyId).eq("email", scope.email);
+    } else query = query.eq("company_id", orgId);
     const { data, error } = await query.range(from, from + pageSize - 1);
     if (error) {
       console.error(error.message);
@@ -139,11 +137,10 @@ export async function countBackedUpEmails(
 ) {
   const db = getSupabaseAdmin() || supabase;
   const scope = toScope(orgId, userEmail, userId);
-  const { count, error } = await db
-    .from("file_archives")
-    .select("id", { count: "exact", head: true })
-    .eq("company_id", scope.companyId)
-    .eq("email", scope.email);
+  const base = db.from("file_archives").select("id", { count: "exact", head: true });
+  const { count, error } = scope.userId
+    ? await base.eq("user_id", scope.userId)
+    : await base.eq("company_id", scope.companyId).eq("email", scope.email);
   if (error) {
     console.error(error.message);
     return 0;
@@ -226,15 +223,14 @@ export async function getLastGmailPageToken(
 ): Promise<string | null> {
   const db = getSupabaseAdmin() || supabase;
   const scope = toScope(orgId, userEmail, userId);
-  const { data, error } = await db
+  const tokenBase = db
     .from("email_backup_runs")
     .select("gmail_page_token, progress")
-    .eq("company_id", scope.companyId)
-    .eq("email", scope.email)
-    .eq("status", "completed")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq("status", "completed");
+  const tokenQuery = scope.userId
+    ? tokenBase.eq("user_id", scope.userId)
+    : tokenBase.eq("company_id", scope.companyId).eq("email", scope.email);
+  const { data, error } = await tokenQuery.order("created_at", { ascending: false }).limit(1).maybeSingle();
 
   if (error) {
     console.error(error.message);
@@ -263,12 +259,11 @@ export async function loadAllArchivedGmailIds(
   const scope = toScope(orgId, userEmail, userId);
 
   for (;;) {
-    const { data, error } = await db
-      .from("file_archives")
-      .select("file_name, source")
-      .eq("company_id", scope.companyId)
-      .eq("email", scope.email)
-      .range(from, from + pageSize - 1);
+    const idBase = db.from("file_archives").select("file_name, source, gmail_message_id");
+    const idQuery = scope.userId
+      ? idBase.eq("user_id", scope.userId)
+      : idBase.eq("company_id", scope.companyId).eq("email", scope.email);
+    const { data, error } = await idQuery.range(from, from + pageSize - 1);
 
     if (error) {
       console.error(error.message);
@@ -280,6 +275,11 @@ export async function loadAllArchivedGmailIds(
     for (const row of rows) {
       const source = String(row.source || "").toLowerCase();
       if (source && source !== "gmail") continue;
+      const mid = String(row.gmail_message_id || "").trim();
+      if (mid) {
+        archived.add(mid);
+        continue;
+      }
       const name = String(row.file_name || "");
       if (!name.endsWith(".eml")) continue;
       archived.add(name.slice(0, -4));
@@ -346,7 +346,12 @@ export async function runE2eGmailBackup(
   const scope = await resolveMailboxScope(supabase, opts.companyId, email);
   const orgId = scope.companyId;
   const userId = opts.userId ?? scope.userId;
-  await ensureCompanyUserForArchive(supabase, orgId, email);
+  if (!userId) {
+    return {
+      ok: false,
+      error: "Could not resolve user_id for this mailbox (company_users row missing).",
+    };
+  }
   const requested = opts.limit ?? opts.maxMessages ?? DEFAULT_MAX;
   const maxMessages = Math.min(MAX_CAP, Math.max(1, requested));
   const batch = Math.max(1, opts.batch ?? 1);
@@ -755,8 +760,10 @@ async function selectArchiveRows(
   const db = getSupabaseAdmin() || supabase;
   let query = db.from("file_archives").select("*");
   if (userEmail) {
-    const scope = toScope(orgId, userEmail, userId);
-    query = query.eq("company_id", scope.companyId).eq("email", scope.email);
+    const rowScope = toScope(orgId, userEmail, userId);
+    query = rowScope.userId
+      ? query.eq("user_id", rowScope.userId)
+      : query.eq("company_id", rowScope.companyId).eq("email", rowScope.email);
   } else {
     query = query.eq("company_id", orgId);
   }

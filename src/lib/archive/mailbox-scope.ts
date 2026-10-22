@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { resolveArchiveCompanyId } from "@/lib/archive/resolve-archive-company";
+import {
+  ensureCompanyUserForArchive,
+  resolveArchiveCompanyId,
+} from "@/lib/archive/resolve-archive-company";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 export type MailboxScope = {
@@ -36,6 +39,15 @@ export async function resolveMailboxScope(
 ): Promise<MailboxScope> {
   const normalized = email.toLowerCase();
   const companyId = await resolveArchiveCompanyId(supabase, cookieCompanyId, normalized);
+  await ensureCompanyUserForArchive(supabase, companyId, normalized);
   const userId = await getCompanyUserId(supabase, companyId, normalized);
   return { companyId, email: normalized, userId };
+}
+
+/** Primary tenant filter — prefer user_id (company_users.id). */
+export function applyUserArchiveFilter<
+  T extends { eq: (col: string, val: string) => T },
+>(query: T, scope: MailboxScope): T {
+  if (scope.userId) return query.eq("user_id", scope.userId);
+  return query.eq("company_id", scope.companyId).eq("email", scope.email);
 }

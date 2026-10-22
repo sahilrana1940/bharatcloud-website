@@ -127,10 +127,16 @@ export async function handleGmailArchivePost(
   const hasMore = Boolean(result.hasMore && !result.done);
   const remaining = Math.max(0, total - backedUpCount);
   const pct = total > 0 ? Math.min(100, Math.round((backedUpCount / total) * 100)) : 100;
-  const message =
+  const progressLabel =
     total === 0
       ? "Gmail mailbox has 0 messages."
-      : `Archived ${totalUploaded}, Total ${backedUpCount.toLocaleString()} / ${total.toLocaleString()}`;
+      : `Archiving ${backedUpCount.toLocaleString()}/${total.toLocaleString()}…`;
+  const message =
+    total === 0
+      ? progressLabel
+      : hasMore
+        ? `Archived ${totalUploaded} this batch — ${progressLabel}`
+        : `Complete — ${backedUpCount.toLocaleString()}/${total.toLocaleString()} archived`;
 
   return NextResponse.json({
     success: true,
@@ -156,7 +162,9 @@ export async function handleGmailArchivePost(
     offset: result.nextOffset,
     roundsCompleted: Math.min(rounds, totalProcessed > 0 ? rounds : 1),
     message,
-    progress: total === 0 ? message : `Archived ${backedUpCount.toLocaleString()} of ${total.toLocaleString()} (${pct}%)`,
+    progress: progressLabel,
+    archivedPerUser: backedUpCount,
+    totalGmailPerUser: total,
   });
 }
 
