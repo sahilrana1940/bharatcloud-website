@@ -165,7 +165,7 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
             this screen guides you.
           </p>
           <a
-            href="https://github.com/sahilrana1940/bharatcloud-website/blob/main/docs/GOOGLE_DRIVE_CONNECT.md"
+            href="/docs/GOOGLE_DRIVE_CONNECT.md"
             className="mt-4 inline-block text-sm text-cyan-700 underline"
             target="_blank"
             rel="noreferrer"

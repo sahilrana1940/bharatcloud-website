@@ -2,25 +2,19 @@
 
 import { useMemo, useState } from "react";
 
-import { BILLING_PLANS, type BillingPlanId } from "@/lib/billing/plans";
-
-const UPI_ID = "sahilrana1940@pytes";
-const PAYEE = "BharatCloud";
+import { BILLING_PLANS, getUpiLink, type BillingPlanId } from "@/lib/billing/plans";
+import { BILLING_UPI_NUMBER, billingUpiName, billingUpiVpa } from "@/lib/billing/upi";
 
 export default function BillingPage() {
   const [selectedId, setSelectedId] = useState<BillingPlanId>("growth");
   const selected = BILLING_PLANS.find((plan) => plan.id === selectedId) ?? BILLING_PLANS[1];
+  const upiId = billingUpiVpa();
+  const payee = billingUpiName();
 
-  const upiLink = useMemo(() => {
-    const params = new URLSearchParams({
-      pa: UPI_ID,
-      pn: PAYEE,
-      am: String(selected.price),
-      cu: "INR",
-      tn: `BharatCloud ${selected.name}`,
-    });
-    return `upi://pay?${params.toString()}`;
-  }, [selected.name, selected.price]);
+  const upiLink = useMemo(
+    () => getUpiLink(selected.price, selected.name),
+    [selected.name, selected.price],
+  );
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=12&data=${encodeURIComponent(upiLink)}`;
 
@@ -29,7 +23,7 @@ export default function BillingPage() {
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#0F766E]">UPI only</p>
       <h1 className="mt-2 text-2xl font-semibold text-[#10243E] sm:text-3xl">Billing</h1>
       <p className="mt-2 max-w-xl text-sm text-slate-600">
-        Pay with any UPI app. Scan the QR or pay <strong>{UPI_ID}</strong>. Cards and netbanking are not accepted.
+        Pay with any UPI app. Scan the QR or pay <strong>{upiId}</strong> ({payee}). Cards and netbanking are not accepted.
       </p>
 
       <div className="mt-8 grid max-w-4xl gap-3 sm:grid-cols-3">
@@ -68,12 +62,14 @@ export default function BillingPage() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={qrUrl}
-          alt={`UPI QR for ${UPI_ID}`}
+          alt={`UPI QR for ${upiId}`}
           width={320}
           height={320}
           className="mt-4 rounded-xl bg-white"
         />
-        <p className="mt-4 text-lg font-semibold tracking-wide text-[#10243E]">{UPI_ID}</p>
+        <p className="mt-4 text-lg font-semibold tracking-wide text-[#10243E]">{upiId}</p>
+        <p className="mt-1 text-sm text-slate-600">{payee}</p>
+        <p className="mt-2 text-sm font-medium text-[#10243E]">UPI Number: {BILLING_UPI_NUMBER}</p>
         <p className="mt-1 text-xs text-slate-500">Inclusive of all taxes · GST not applicable</p>
         <a
           href={upiLink}

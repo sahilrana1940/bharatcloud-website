@@ -11,14 +11,10 @@ export const BRAND_FOOTER =
 /** Primary platform super-admin login (also in default list). */
 export const SUPER_ADMIN_EMAIL = "support@bharatcloud.store";
 
-/** Legacy super admin (also full access) */
-export const LEGACY_SUPER_ADMIN_EMAIL = "sahilrana1940@gmail.com";
-
 const DEFAULT_SUPER_ADMINS = [
   SUPER_ADMIN_EMAIL,
   "support@bharatcloud.com",
   "admin@bharatcloud.store",
-  LEGACY_SUPER_ADMIN_EMAIL,
 ];
 
 export function listSuperAdminEmails(): string[] {

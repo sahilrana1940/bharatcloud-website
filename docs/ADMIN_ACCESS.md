@@ -6,13 +6,13 @@ Demo login buttons were removed from `/login`. Use one of the paths below.
 
 These emails are **super admin** in code (`src/lib/brand.ts`):
 
-- `admin@bharatcloud.store` (primary in code)
-- `sahilrana1940@gmail.com` (your ID — use this after **Create account** signup)
+- `support@bharatcloud.store` (primary in code)
+- `admin@bharatcloud.store`
 
 ### Recommended: create your account once
 
 1. Open **https://bharatcloud.store/signup**
-2. Register with **your work email** (e.g. `sahilrana1940@gmail.com`) and a password (min 6 chars).
+2. Register with **your work email** (for example `support@bharatcloud.store`) and a password (min 6 chars).
 3. Sign in at **/login** with the same email + password.
 4. Open **/admin/super** — super admin is granted by email, not by demo links.
 

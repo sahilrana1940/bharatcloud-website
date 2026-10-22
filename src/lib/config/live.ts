@@ -1,10 +1,12 @@
+import { envFlagOn } from "@/lib/billing/upi";
+
 /** Production billing UI — hide rehearsal scan / FAILED banners. Set NEXT_PUBLIC_LIVE=1 on Hostinger. */
 export function isAppLive(): boolean {
   return (
-    process.env.NEXT_PUBLIC_LIVE === "1" ||
-    process.env.LIVE === "1" ||
-    process.env.NEXT_PUBLIC_BILLING_UPI_LIVE === "1" ||
-    process.env.BILLING_UPI_LIVE === "1"
+    envFlagOn(process.env.NEXT_PUBLIC_LIVE) ||
+    envFlagOn(process.env.LIVE) ||
+    envFlagOn(process.env.NEXT_PUBLIC_BILLING_UPI_LIVE) ||
+    envFlagOn(process.env.BILLING_UPI_LIVE)
   );
 }
 

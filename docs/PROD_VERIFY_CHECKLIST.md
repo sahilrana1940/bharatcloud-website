@@ -1,6 +1,6 @@
 # PROD VERIFY CHECKLIST
 
-**Repo:** `sahilrana1940/bharatcloud-website`  
+**Repo:** `bharatcloud-website`  
 **Doc:** `docs/PROD_VERIFY_CHECKLIST.md`  
 **Reference commit:** `f77795a` (update after each doc change on `main`)
 

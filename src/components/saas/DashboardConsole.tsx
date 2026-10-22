@@ -25,7 +25,9 @@ import { UPGRADE_EXAMPLE } from "@/lib/config/upgrade.config";
 
 const IS_LIVE = isAppLive();
 const PAYTM_LIVE_UPI =
-  process.env.NEXT_PUBLIC_PAYTM_UPI_ID?.trim() || "Sahilrana1940@paytm";
+  process.env.NEXT_PUBLIC_BILLING_UPI_VPA?.trim() ||
+  process.env.NEXT_PUBLIC_PAYTM_UPI_ID?.trim() ||
+  "9469276461@idfcfirst";
 
 const PLAN = planById("100gb") ?? {
   id: "100gb",
