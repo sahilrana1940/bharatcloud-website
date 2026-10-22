@@ -19,6 +19,64 @@ export type FileArchiveRow = {
 
 const droppedColumns = new Set<string>();
 
+export async function upsertGmailFileArchiveRow(
+  row: FileArchiveRow,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admin = getSupabaseAdmin();
+  if (!admin) {
+    const message = "SUPABASE_SERVICE_ROLE_KEY is not set";
+    console.error(message);
+    return { ok: false, error: message };
+  }
+  if (!row.user_email) {
+    const message = "file_archives.user_email is required";
+    console.error(message);
+    return { ok: false, error: message };
+  }
+  if (!row.user_id) {
+    const message = "file_archives.user_id is required";
+    console.error(message);
+    return { ok: false, error: message };
+  }
+  if (!row.gmail_message_id?.trim()) {
+    const message = "file_archives.gmail_message_id is required";
+    console.error(message);
+    return { ok: false, error: message };
+  }
+
+  const sizeMb = row.size_bytes != null ? row.size_bytes / (1024 * 1024) : row.size_mb ?? 0;
+  const payload: Record<string, unknown> = {
+    company_id: row.org_id,
+    email: row.user_email,
+    user_id: row.user_id,
+    gmail_message_id: row.gmail_message_id.trim(),
+    file_name: row.file_name,
+    s3_path: row.s3_key,
+    size_mb: sizeMb,
+    size: String(Math.max(0, row.size_bytes ?? Math.round(sizeMb * 1024 * 1024))),
+    storage_class: row.storage_class || "GLACIER",
+    source: "gmail",
+  };
+
+  const { error } = await admin.from("file_archives").upsert(payload, {
+    onConflict: "company_id,file_name",
+    ignoreDuplicates: false,
+  });
+  if (error) {
+    if (/duplicate key|unique constraint|23505/i.test(error.message)) {
+      return { ok: true };
+    }
+    const { error: insertError } = await admin.from("file_archives").insert(payload);
+    if (!insertError) return { ok: true };
+    if (/duplicate key|unique constraint|23505/i.test(insertError.message)) {
+      return { ok: true };
+    }
+    console.error(insertError.message);
+    return { ok: false, error: insertError.message };
+  }
+  return { ok: true };
+}
+
 export async function insertFileArchiveRow(
   _supabase: SupabaseClient | null | undefined,
   row: FileArchiveRow,
@@ -46,28 +104,7 @@ export async function insertFileArchiveRow(
   }
 
   if (row.source === "gmail") {
-    const sizeMb = row.size_bytes != null ? row.size_bytes / (1024 * 1024) : row.size_mb ?? 0;
-    const payload: Record<string, unknown> = {
-      company_id: row.org_id,
-      email: row.user_email,
-      user_id: row.user_id,
-      gmail_message_id: row.gmail_message_id!.trim(),
-      file_name: row.file_name,
-      s3_path: row.s3_key,
-      size_mb: sizeMb,
-      size: String(Math.max(0, row.size_bytes ?? Math.round(sizeMb * 1024 * 1024))),
-      storage_class: "GLACIER",
-      source: "gmail",
-    };
-    const { error } = await admin.from("file_archives").insert(payload);
-    if (error) {
-      if (/duplicate key|unique constraint|23505/i.test(error.message)) {
-        return { ok: true };
-      }
-      console.error(error.message);
-      return { ok: false, error: error.message };
-    }
-    return { ok: true };
+    return upsertGmailFileArchiveRow({ ...row, source: "gmail" });
   }
 
   const sizeMb = row.size_mb ?? 0;

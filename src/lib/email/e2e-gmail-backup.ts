@@ -912,7 +912,7 @@ function normalizeArchiveRow(row: Record<string, unknown>) {
   };
 }
 
-async function fetchRawMessage(
+export async function fetchRawMessage(
   gmail: NonNullable<ReturnType<typeof gmailClient>>,
   id: string,
 ) {
