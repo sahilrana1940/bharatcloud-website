@@ -33,8 +33,9 @@ export async function GET(req: Request) {
     supabase,
     session.companyId,
     limit,
+    session.email,
   );
-  const totals = await orgArchiveStorageTotals(supabase, session.companyId);
+  const totals = await orgArchiveStorageTotals(supabase, session.companyId, session.email);
 
   return NextResponse.json({
     bucket: EMAIL_BACKUP_S3_BUCKET,

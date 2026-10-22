@@ -48,29 +48,21 @@ export async function listFileArchives(
   supabase: SupabaseClient,
   orgId: string,
   limit = 50,
+  userEmail?: string,
 ) {
-  const { data, error } = await supabase
-    .from("file_archives")
-    .select("*")
-    .eq("org_id", orgId)
-    .order("archived_at", { ascending: false })
-    .limit(limit);
-
-  if (error && /does not exist|schema cache/i.test(error.message)) {
-    return { archives: [] as Record<string, unknown>[], tableMissing: true };
-  }
-  return { archives: data || [], tableMissing: false };
+  const rows = await selectArchiveRows(supabase, orgId, userEmail, limit);
+  if (rows.missing) return { archives: [] as Record<string, unknown>[], tableMissing: true };
+  return { archives: rows.data.map(normalizeArchiveRow), tableMissing: false };
 }
 
-export async function orgArchiveStorageTotals(supabase: SupabaseClient, orgId: string) {
-  const { data } = await supabase
-    .from("file_archives")
-    .select("size_mb")
-    .eq("org_id", orgId);
-
-  const rows = data || [];
-  const totalMb = rows.reduce((n, r) => n + (Number(r.size_mb) || 0), 0);
-  return { totalMb, fileCount: rows.length };
+export async function orgArchiveStorageTotals(
+  supabase: SupabaseClient,
+  orgId: string,
+  userEmail?: string,
+) {
+  const rows = await selectArchiveRows(supabase, orgId, userEmail, 1000);
+  const totalMb = rows.data.reduce((n, row) => n + archiveRowMb(row), 0);
+  return { totalMb, fileCount: rows.data.length };
 }
 
 export async function countBackedUpEmails(
@@ -281,6 +273,7 @@ export async function runE2eGmailBackup(
     const already = await archivedMessageIds(
       supabase,
       orgId,
+      email,
       messages.map((m) => m.id).filter((id): id is string => Boolean(id)),
     );
 
@@ -308,6 +301,7 @@ export async function runE2eGmailBackup(
 
       const archived = await archiveGmailEml({
         orgId,
+        userEmail: email,
         messageId: id,
         body: rawEmail,
         supabase,
@@ -428,21 +422,73 @@ async function listMessageWindow(
   };
 }
 
-async function archivedMessageIds(supabase: SupabaseClient, orgId: string, ids: string[]) {
+async function archivedMessageIds(
+  supabase: SupabaseClient,
+  orgId: string,
+  userEmail: string,
+  ids: string[],
+) {
   const found = new Set<string>();
   if (!ids.length) return found;
   const names = ids.map((id) => `${id}.eml`);
-  const { data, error } = await supabase
-    .from("file_archives")
-    .select("file_name")
-    .eq("org_id", orgId)
-    .in("file_name", names);
-  if (error) return found;
-  for (const row of data || []) {
+  const rows = await selectArchiveRows(supabase, orgId, userEmail, names.length, names);
+  for (const row of rows.data) {
     const name = String(row.file_name || "");
     if (name.endsWith(".eml")) found.add(name.slice(0, -4));
   }
   return found;
+}
+
+async function selectArchiveRows(
+  supabase: SupabaseClient,
+  orgId: string,
+  userEmail: string | undefined,
+  limit: number,
+  fileNames?: string[],
+) {
+  const run = (column: "org_id" | "user_email", value: string) => {
+    const query = supabase.from("file_archives").select("*").eq(column, value);
+    if (fileNames?.length) return query.in("file_name", fileNames).limit(limit);
+    return query.order("archived_at", { ascending: false }).limit(limit);
+  };
+
+  const byOrg = await run("org_id", orgId);
+  if (!byOrg.error) return { data: byOrg.data || [], missing: false };
+  const missingColumn = /Could not find the 'org_id' column|schema cache/i.test(byOrg.error.message);
+  if (!missingColumn || !userEmail) {
+    console.log(
+      "[file_archives] select error",
+      JSON.stringify({ message: byOrg.error.message, code: byOrg.error.code }),
+    );
+    return { data: [] as Record<string, unknown>[], missing: /does not exist/i.test(byOrg.error.message) };
+  }
+
+  const byUser = await run("user_email", userEmail.toLowerCase());
+  if (byUser.error) {
+    console.log(
+      "[file_archives] select error",
+      JSON.stringify({ message: byUser.error.message, code: byUser.error.code }),
+    );
+    return { data: [] as Record<string, unknown>[], missing: /does not exist/i.test(byUser.error.message) };
+  }
+  return { data: byUser.data || [], missing: false };
+}
+
+function archiveRowMb(row: Record<string, unknown>) {
+  if (row.size_mb != null && row.size_mb !== "") return Number(row.size_mb) || 0;
+  if (row.size_bytes != null) return (Number(row.size_bytes) || 0) / (1024 * 1024);
+  return Number(row.size) || 0;
+}
+
+function normalizeArchiveRow(row: Record<string, unknown>) {
+  return {
+    ...row,
+    s3_key: row.s3_key || row.e2e_path || "",
+    s3_bucket: row.s3_bucket || "",
+    storage_class: row.storage_class || row.class || "",
+    size_mb: archiveRowMb(row),
+    is_from_start: row.is_from_start ?? true,
+  };
 }
 
 async function fetchRawMessage(

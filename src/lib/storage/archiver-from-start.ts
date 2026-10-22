@@ -174,24 +174,23 @@ export async function uploadAsArchiver(
   });
   if (!up.ok) throw new Error(up.error);
 
-  if (supabase) {
-    await insertFileArchiveRow(supabase, {
-      org_id: orgId,
-      file_name: file.name,
-      s3_bucket: up.bucket,
-      s3_key: up.key,
-      storage_class: String(archiveStorageClass()),
-      source,
-      size_mb: body.length / (1024 * 1024),
-      is_from_start: true,
-    });
-  }
+  await insertFileArchiveRow(supabase, {
+    org_id: orgId,
+    file_name: file.name,
+    s3_bucket: up.bucket,
+    s3_key: up.key,
+    storage_class: String(archiveStorageClass()),
+    source,
+    size_mb: body.length / (1024 * 1024),
+    is_from_start: true,
+  });
 
   return { bucket: up.bucket, key: up.key };
 }
 
 export async function archiveGmailEml(opts: {
   orgId: string;
+  userEmail?: string;
   messageId: string;
   body: Buffer;
   supabase?: SupabaseClient;
@@ -205,18 +204,17 @@ export async function archiveGmailEml(opts: {
   });
   if (!up.ok) return up;
 
-  if (opts.supabase) {
-    await insertFileArchiveRow(opts.supabase, {
-      org_id: opts.orgId,
-      file_name: `${opts.messageId}.eml`,
-      s3_bucket: up.bucket,
-      s3_key: up.key,
-      storage_class: String(archiveStorageClass()),
-      source: "gmail",
-      size_mb: opts.body.length / (1024 * 1024),
-      is_from_start: true,
-    });
-  }
+  await insertFileArchiveRow(opts.supabase, {
+    org_id: opts.orgId,
+    user_email: opts.userEmail,
+    file_name: `${opts.messageId}.eml`,
+    s3_bucket: up.bucket,
+    s3_key: up.key,
+    storage_class: String(archiveStorageClass()),
+    source: "gmail",
+    size_mb: opts.body.length / (1024 * 1024),
+    is_from_start: true,
+  });
 
   return { ok: true, key: up.key, bucket: up.bucket };
 }

@@ -131,6 +131,7 @@ export async function processBackupJobChunk(
         compressedSize = compressed.body.length;
         await insertFileArchiveRow(supabase, {
           org_id: companyId,
+          user_email: ownerEmail,
           file_name: compressed.outName,
           s3_bucket: ARCHIVER_BUCKET,
           s3_key: archiveKey,

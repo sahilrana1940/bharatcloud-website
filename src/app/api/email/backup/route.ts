@@ -67,8 +67,10 @@ export async function GET(req: Request) {
   const { archives, tableMissing: archivesMissing } = await listFileArchives(
     supabase,
     session.companyId,
+    50,
+    session.email,
   );
-  const storageTotals = await orgArchiveStorageTotals(supabase, session.companyId);
+  const storageTotals = await orgArchiveStorageTotals(supabase, session.companyId, session.email);
 
   return NextResponse.json({
     bucket: getE2EBucket() || EMAIL_BACKUP_S3_BUCKET,
