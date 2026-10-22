@@ -16,6 +16,10 @@
     {
       "path": "/api/cron/gmail-archive",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/gmail-backup-cron",
+      "schedule": "0 20 * * *"
     }
   ]
 }

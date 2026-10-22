@@ -343,7 +343,43 @@ export type E2eEmailBackupBatch = {
   batch?: number;
   /** Cron only. Limits the Gmail query to recent mail. */
   newerThanDays?: number;
+  /** Gmail search q= string (e.g. after:2026/10/22). */
+  gmailSearchQuery?: string;
 };
+
+/** Gmail `after:` date from last completed backup run (UTC date). */
+export function buildGmailQuerySince(lastRunIso: string | null, newerThanDays?: number): string | undefined {
+  if (lastRunIso) {
+    const d = new Date(lastRunIso);
+    if (!Number.isNaN(d.getTime())) {
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(d.getUTCDate()).padStart(2, "0");
+      return `after:${y}/${m}/${day}`;
+    }
+  }
+  if (newerThanDays != null && newerThanDays > 0) return `newer_than:${newerThanDays}d`;
+  return "newer_than:1d";
+}
+
+export async function getLastEmailBackupRunAt(
+  supabase: SupabaseClient,
+  orgId: string,
+  userEmail: string,
+  userId?: string | null,
+): Promise<string | null> {
+  const db = getSupabaseAdmin() || supabase;
+  const scope = toScope(orgId, userEmail, userId);
+  let query = db.from("email_backup_runs").select("created_at").eq("status", "completed");
+  if (scope.userId) query = query.eq("user_id", scope.userId);
+  else query = query.eq("company_id", scope.companyId).eq("email", scope.email);
+  const { data, error } = await query.order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) {
+    console.error(error.message);
+    return null;
+  }
+  return (data?.created_at as string) || null;
+}
 
 export async function runE2eGmailBackup(
   supabase: SupabaseClient,
@@ -356,6 +392,7 @@ export async function runE2eGmailBackup(
     offset?: number;
     batch?: number;
     newerThanDays?: number;
+    gmailSearchQuery?: string;
     userId?: string | null;
     onProgress?: (p: E2eEmailBackupProgress) => void;
   },
@@ -492,7 +529,9 @@ export async function runE2eGmailBackup(
       limit: maxMessages,
       pageToken,
       maxPages: GMAIL_LIST_MAX_PAGES,
-        q: opts.newerThanDays ? `newer_than:${opts.newerThanDays}d` : undefined,
+        q:
+          opts.gmailSearchQuery ??
+          (opts.newerThanDays ? `newer_than:${opts.newerThanDays}d` : undefined),
       }),
     );
     const messages = slice.messages;
