@@ -45,6 +45,8 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [canRetry, setCanRetry] = useState(false);
+  const [tokenExpired, setTokenExpired] = useState(false);
+  const [messagesTotal, setMessagesTotal] = useState<number | null>(null);
   const resumeOffset = useRef(0);
 
   const load = useCallback(async () => {
@@ -59,9 +61,21 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
     setBucket(backup.bucket || "bharatcloudfinal2");
     setStorageClass(backup.storageClass || "GLACIER");
     setTotalArchiveGb(Number(backup.totalArchiveGb) || 0);
-    setProgress(backup.progress || "");
     setStatus(backup.status || "idle");
-  }, []);
+    setTokenExpired(Boolean(backup.tokenExpired));
+    setMessagesTotal(typeof backup.messagesTotal === "number" ? backup.messagesTotal : null);
+    if (backup.gmailCountError) {
+      setError(String(backup.gmailCountError));
+      setProgress("");
+    } else if (!busy) {
+      setError("");
+      setProgress(
+        typeof backup.messagesTotal === "number"
+          ? `Gmail messages: ${backup.messagesTotal}`
+          : backup.progress || "",
+      );
+    }
+  }, [busy]);
 
   useEffect(() => {
     load().catch(() => setError("Could not load archive status"));
@@ -80,7 +94,7 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
     setError("");
     setCanRetry(false);
     if (resumeOffset.current === 0) setProgressPct(0);
-    setProgress(resumeOffset.current > 0 ? `Archiving ${resumeOffset.current}/...` : "Archiving 0/...");
+    setProgress("Counting Gmail messages...");
     try {
       const result = await archiveMailboxInBatches((p) => {
         resumeOffset.current = p.offset;
@@ -90,16 +104,36 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
       if (!result.ok) {
         resumeOffset.current = result.offset;
         setError(result.error);
-        setCanRetry(true);
+        setTokenExpired(Boolean(result.tokenExpired) || /reconnect gmail/i.test(result.error));
+        setCanRetry(!result.tokenExpired);
+        setProgress("");
         return;
       }
       resumeOffset.current = 0;
-      setProgress(result.total > 0 ? `Archived ${result.archived}/${result.total}` : "Archive complete");
+      setProgress(
+        result.total > 0
+          ? `Archived ${result.archived}/${result.total}`
+          : "Gmail mailbox has 0 messages.",
+      );
       setProgressPct(100);
       await load();
     } finally {
       setBusy(false);
     }
+  }
+
+  async function reconnectGmail() {
+    setError("");
+    const res = await fetch(
+      `/api/auth/google/drive/url?gmail=1&returnTo=${encodeURIComponent("/dashboard/email-backup")}`,
+      fetchOpts,
+    );
+    const j = await res.json().catch(() => ({}));
+    if (j.url) {
+      window.location.href = j.url;
+      return;
+    }
+    setError(j.error || "Could not start Gmail reconnect");
   }
 
   async function restore(archiveId: string) {
@@ -163,6 +197,11 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
           </span>
         </div>
 
+        {messagesTotal != null && !error && (
+          <p className="mt-3 text-sm text-slate-600">Gmail messages: {messagesTotal}</p>
+        )}
+
+        <div className="mt-5 flex flex-wrap gap-3">
         <button
           type="button"
           disabled={busy || !connected}
@@ -172,6 +211,16 @@ export function EmailBackupDriveClient({ userEmail }: { userEmail: string }) {
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Archive Now
         </button>
+        {(tokenExpired || !connected) && (
+          <button
+            type="button"
+            onClick={reconnectGmail}
+            className="inline-flex items-center justify-center rounded-xl border border-[#00BAF2] px-5 py-3 text-sm font-bold text-[#0F766E]"
+          >
+            Reconnect Gmail
+          </button>
+        )}
+        </div>
 
         {(progress || status === "running" || busy) && (
           <div className="mt-4">

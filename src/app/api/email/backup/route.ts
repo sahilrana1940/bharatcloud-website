@@ -7,6 +7,7 @@ import {
   orgArchiveStorageTotals,
   orgEmailBackupTotals,
   runE2eGmailBackup,
+  gmailMailboxCount,
   EMAIL_BACKUP_S3_BUCKET,
 } from "@/lib/email/e2e-gmail-backup";
 import { getE2EBucket } from "@/lib/s3/config";
@@ -71,6 +72,9 @@ export async function GET(req: Request) {
     session.email,
   );
   const storageTotals = await orgArchiveStorageTotals(supabase, session.companyId, session.email);
+  const mailbox = await gmailMailboxCount(supabase, session.companyId, session.email);
+  const messagesTotal = "messagesTotal" in mailbox ? mailbox.messagesTotal : null;
+  const gmailCountError = "error" in mailbox ? mailbox.error : null;
 
   return NextResponse.json({
     bucket: getE2EBucket() || EMAIL_BACKUP_S3_BUCKET,
@@ -87,6 +91,9 @@ export async function GET(req: Request) {
     orgTotals,
     fromStart: true,
     retentionYears: 7,
+    messagesTotal,
+    gmailCountError,
+    tokenExpired: "tokenExpired" in mailbox ? Boolean(mailbox.tokenExpired) : false,
   });
 }
 
@@ -142,12 +149,18 @@ export async function POST(req: Request) {
       JSON.stringify({ route: "POST /api/email/backup", error: result.error, runId: result.runId }),
     );
     return NextResponse.json(
-      { success: false, error: result.error, runId: result.runId, retryable: result.retryable },
+      {
+        success: false,
+        error: result.error,
+        runId: result.runId,
+        retryable: result.retryable,
+        tokenExpired: result.tokenExpired,
+      },
       { status: result.retryable ? 503 : 400 },
     );
   }
 
-  const estimate = Math.max(result.resultSizeEstimate, result.nextOffset);
+  const total = result.messagesTotal;
   return NextResponse.json({
     success: true,
     archived: result.processed,
@@ -163,10 +176,14 @@ export async function POST(req: Request) {
     s3Path: result.s3Path,
     nextPageToken: result.nextPageToken,
     done: result.done,
-    resultSizeEstimate: estimate,
+    resultSizeEstimate: total,
+    messagesTotal: total,
     batch: result.batch,
     offset: result.nextOffset,
-    progress: `Archiving ${result.nextOffset}/${estimate}...`,
+    progress:
+      total === 0
+        ? "Gmail mailbox has 0 messages."
+        : `Archiving ${result.nextOffset}/${total}...`,
   });
 }
 

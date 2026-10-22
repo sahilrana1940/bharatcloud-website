@@ -8,6 +8,7 @@ export async function getValidGoogleAccessToken(
   supabase: SupabaseClient,
   companyId: string,
   email: string,
+  opts?: { force?: boolean },
 ): Promise<string | null> {
   const data = await fetchGoogleTokenRowForWorkspace(supabase, companyId, email);
 
@@ -15,7 +16,7 @@ export async function getValidGoogleAccessToken(
 
   const expiry = data.expiry ? new Date(data.expiry).getTime() : 0;
   const stillValid = expiry > Date.now() + 60_000;
-  if (stillValid && data.access_token) return data.access_token;
+  if (!opts?.force && stillValid && data.access_token) return data.access_token;
 
   if (!data.refresh_token) return data.access_token || null;
 
@@ -23,7 +24,18 @@ export async function getValidGoogleAccessToken(
   if (!oauth2) return data.access_token || null;
 
   oauth2.setCredentials({ refresh_token: data.refresh_token });
-  const { credentials } = await oauth2.refreshAccessToken();
+  let credentials;
+  try {
+    const refreshed = await oauth2.refreshAccessToken();
+    credentials = refreshed.credentials;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Gmail token refresh failed";
+    console.log("[gmail] token refresh failed", JSON.stringify({ message }));
+    if (/invalid_grant|expired|revoked|unauthorized/i.test(message)) {
+      throw new Error("Gmail access expired. Reconnect Gmail.");
+    }
+    throw err;
+  }
   const access = credentials.access_token;
   if (!access) return null;
 

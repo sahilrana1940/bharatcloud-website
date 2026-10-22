@@ -9,6 +9,7 @@ import {
   emailArchivePrefix,
 } from "@/lib/storage/archiver-from-start";
 import { getE2EBucket, isS3Configured } from "@/lib/s3/config";
+import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 export const EMAIL_BACKUP_S3_BUCKET = ARCHIVER_BUCKET;
 
@@ -185,9 +186,10 @@ export async function runE2eGmailBackup(
       hasMore: boolean;
       nextOffset: number;
       resultSizeEstimate: number;
+      messagesTotal: number;
       batch: number;
     }
-  | { ok: false; error: string; runId?: string; retryable?: boolean }
+  | { ok: false; error: string; runId?: string; retryable?: boolean; tokenExpired?: boolean }
 > {
   if (!isS3Configured()) {
     return {
@@ -236,27 +238,40 @@ export async function runE2eGmailBackup(
     opts.onProgress?.(full);
   };
 
-  const accessToken = await getValidGoogleAccessToken(supabase, orgId, email);
-  if (!accessToken) {
-    await patchRun(supabase, runId, {
-      status: "error",
-      progress: 0,
-    });
-    return { ok: false, error: "Connect Gmail with mail access first.", runId };
-  }
-
-  const gmail = gmailClient(accessToken);
-  if (!gmail) {
+  const counted = await gmailMailboxCount(supabase, orgId, email);
+  if ("error" in counted) {
     await patchRun(supabase, runId, { status: "error", progress: 0 });
-    return { ok: false, error: "Gmail client unavailable", runId };
+    return { ok: false, error: counted.error, runId, tokenExpired: counted.tokenExpired };
   }
+  const gmail = counted.gmail;
+  const mailboxTotal = counted.messagesTotal;
 
   emit({
     phase: "fetching",
-    message: `Fetching up to ${maxMessages} emails (archive copy only)…`,
-    total: maxMessages,
+    message: `Gmail mailbox has ${mailboxTotal} messages`,
+    total: mailboxTotal,
   });
   await patchRun(supabase, runId, { progress: 0 });
+
+  if (mailboxTotal === 0) {
+    await patchRun(supabase, runId, { status: "completed", email_count: 0, progress: 100 });
+    return {
+      ok: true,
+      runId,
+      emailCount: 0,
+      processed: 0,
+      alreadyArchived: 0,
+      sizeMb: 0,
+      s3Path: prefix,
+      nextPageToken: null,
+      done: true,
+      hasMore: false,
+      nextOffset: offset,
+      resultSizeEstimate: 0,
+      messagesTotal: 0,
+      batch,
+    };
+  }
 
   try {
     const slice = await listMessageWindow(gmail, {
@@ -268,7 +283,7 @@ export async function runE2eGmailBackup(
     const messages = slice.messages;
     const nextPageToken = pageToken ? slice.nextPageToken : null;
     const hasMore = slice.hasMore;
-    const resultSizeEstimate = Math.max(slice.resultSizeEstimate, offset + messages.length);
+    const resultSizeEstimate = mailboxTotal;
     const total = messages.length;
     const already = await archivedMessageIds(
       supabase,
@@ -347,22 +362,99 @@ export async function runE2eGmailBackup(
       sizeMb,
       s3Path: prefix,
       nextPageToken,
-      done: !hasMore,
-      hasMore,
+      done: mailboxTotal === 0 || !hasMore,
+      hasMore: mailboxTotal > 0 && hasMore,
       nextOffset,
       resultSizeEstimate: estimate,
+      messagesTotal: mailboxTotal,
       batch,
     };
   } catch (e) {
     let msg = e instanceof Error ? e.message : "Gmail archive failed";
     const retryable = /socket hang up|ECONNRESET|ETIMEDOUT|Timeout|aborted/i.test(msg);
-    if (/insufficient.*scope|403|Forbidden/i.test(msg)) {
+    const tokenExpired = /Gmail access expired|invalid_grant|reconnect Gmail/i.test(msg);
+    if (tokenExpired) {
+      msg = "Gmail access expired. Reconnect Gmail.";
+    } else if (/insufficient.*scope|403|Forbidden/i.test(msg)) {
       msg =
         "Gmail permission missing — reconnect Google and allow Gmail read/modify on the consent screen.";
     }
     await patchRun(supabase, runId, { status: "error", progress: 0 });
     emit({ phase: "error", message: msg });
-    return { ok: false, error: msg, runId, retryable };
+    return { ok: false, error: msg, runId, retryable, tokenExpired };
+  }
+}
+
+export async function gmailMailboxCount(
+  supabase: SupabaseClient,
+  companyId: string,
+  email: string,
+): Promise<
+  | { messagesTotal: number; gmail: NonNullable<ReturnType<typeof gmailClient>> }
+  | { error: string; tokenExpired?: boolean }
+> {
+  let accessToken: string | null;
+  try {
+    accessToken = await getValidGoogleAccessToken(supabase, companyId, email);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Gmail token refresh failed";
+    return { error: message, tokenExpired: /expired|reconnect/i.test(message) };
+  }
+  if (!accessToken) {
+    return { error: "Connect Gmail with mail access first.", tokenExpired: true };
+  }
+
+  let gmail = gmailClient(accessToken);
+  if (!gmail) return { error: "Gmail client unavailable" };
+
+  let profile = await readGmailProfile(gmail);
+  if ("tokenExpired" in profile && profile.tokenExpired) {
+    try {
+      accessToken = await getValidGoogleAccessToken(supabase, companyId, email, { force: true });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Gmail token refresh failed";
+      return { error: message, tokenExpired: true };
+    }
+    if (!accessToken) return { error: "Gmail access expired. Reconnect Gmail.", tokenExpired: true };
+    gmail = gmailClient(accessToken);
+    if (!gmail) return { error: "Gmail client unavailable" };
+    profile = await readGmailProfile(gmail);
+  }
+  if ("error" in profile) return profile;
+  return { messagesTotal: profile.messagesTotal, gmail };
+}
+
+async function readGmailProfile(
+  gmail: NonNullable<ReturnType<typeof gmailClient>>,
+): Promise<{ messagesTotal: number } | { error: string; tokenExpired?: boolean }> {
+  try {
+    const profile = await gmail.users.getProfile({ userId: "me" });
+    console.log(
+      "[gmail] users.getProfile",
+      JSON.stringify({
+        emailAddress: profile.data.emailAddress || null,
+        messagesTotal: profile.data.messagesTotal ?? null,
+        threadsTotal: profile.data.threadsTotal ?? null,
+        historyId: profile.data.historyId || null,
+      }),
+    );
+    const total = Number(profile.data.messagesTotal);
+    if (!Number.isFinite(total)) {
+      return { error: "Gmail mailbox count failed. The profile response had no messagesTotal." };
+    }
+    return { messagesTotal: total };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Gmail profile request failed";
+    const status =
+      err && typeof err === "object" && "code" in err ? Number((err as { code?: number }).code) : 0;
+    console.log("[gmail] users.getProfile failed", JSON.stringify({ message, status: status || null }));
+    const tokenExpired = status === 401 || /invalid_grant|unauthorized|login required/i.test(message);
+    return {
+      error: tokenExpired
+        ? "Gmail access expired. Reconnect Gmail."
+        : `Gmail mailbox count failed: ${message}`,
+      tokenExpired,
+    };
   }
 }
 
@@ -384,6 +476,14 @@ async function listMessageWindow(
       ...(opts.q ? { q: opts.q } : {}),
     });
     const messages = list.data.messages || [];
+    console.log(
+      "[gmail] users.messages.list",
+      JSON.stringify({
+        resultSizeEstimate: list.data.resultSizeEstimate ?? null,
+        returned: messages.length,
+        hasNextPage: Boolean(list.data.nextPageToken),
+      }),
+    );
     estimate = Math.max(estimate, Number(list.data.resultSizeEstimate) || 0);
     token = list.data.nextPageToken || undefined;
     if (!messages.length) {
@@ -446,8 +546,9 @@ async function selectArchiveRows(
   limit: number,
   fileNames?: string[],
 ) {
+  const db = getSupabaseAdmin() || supabase;
   const run = (column: "org_id" | "user_email", value: string) => {
-    const query = supabase.from("file_archives").select("*").eq(column, value);
+    const query = db.from("file_archives").select("*").eq(column, value);
     if (fileNames?.length) return query.in("file_name", fileNames).limit(limit);
     return query.order("archived_at", { ascending: false }).limit(limit);
   };
