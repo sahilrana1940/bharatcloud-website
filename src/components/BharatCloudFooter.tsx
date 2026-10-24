@@ -14,7 +14,7 @@ export function BharatCloudFooter() {
         <div className="flex flex-wrap gap-4 text-xs text-slate-600">
           <Link href="/login" className="hover:text-cyan-600">Login</Link>
           <Link href="/signup" className="hover:text-cyan-600">Sign up</Link>
-          <Link href="/#pricing" className="hover:text-cyan-600">Pricing</Link>
+          <Link href="/pricing" className="hover:text-cyan-600">Pricing</Link>
         </div>
       </div>
     </footer>

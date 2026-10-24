@@ -134,7 +134,7 @@ export function DashboardClient() {
               {org ? planLabel(org.plan) : "—"}
             </p>
             <Link
-              href="/#pricing"
+              href="/pricing"
               className="mt-2 inline-block text-sm font-medium text-[#ff6a00] hover:underline"
             >
               Upgrade plan →

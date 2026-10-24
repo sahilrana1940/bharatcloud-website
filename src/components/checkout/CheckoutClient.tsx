@@ -38,7 +38,7 @@ function CheckoutInner() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <Link href="/#pricing" className="text-sm text-sky-600 hover:underline">
+      <Link href="/pricing" className="text-sm text-sky-600 hover:underline">
         ← Back to pricing
       </Link>
       <Card className="mt-6 border-slate-200/80 shadow-lg dark:border-slate-800">
