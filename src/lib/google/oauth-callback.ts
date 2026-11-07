@@ -4,6 +4,7 @@ import { google } from "googleapis";
 import { emailDomain } from "@/lib/google/client";
 import { getGoogleOAuthConfig, normalizeGoogleEnvValue } from "@/lib/google/config";
 import { getGoogleDriveOAuthRedirectUri } from "@/lib/google/drive-oauth";
+import { isLocalUrl } from "@/lib/http/public-url";
 
 /** Request URL (fallback when env redirect is not set). */
 export function oauthCallbackRedirectUri(req: Request): string {
@@ -16,18 +17,19 @@ export function oauthCallbackRedirectUri(req: Request): string {
  * Using the request host here causes redirect_uri_mismatch when www vs apex differ.
  */
 export function oauthRedirectUriForDriveExchange(req: Request): string {
-  if (normalizeGoogleEnvValue(process.env.GOOGLE_REDIRECT_URI)) {
-    return getGoogleDriveOAuthRedirectUri();
+  const fromEnv = normalizeGoogleEnvValue(process.env.GOOGLE_REDIRECT_URI);
+  if (fromEnv && !isLocalUrl(fromEnv)) {
+    return getGoogleDriveOAuthRedirectUri(req);
   }
   return oauthCallbackRedirectUri(req);
 }
 
 export function oauthRedirectUriForWorkspaceExchange(req: Request): string {
   const { redirectUri } = getGoogleOAuthConfig();
-  if (
+  const fromEnv =
     normalizeGoogleEnvValue(process.env.GOOGLE_REDIRECT_URI) ||
-    normalizeGoogleEnvValue(process.env.GOOGLE_OAUTH_REDIRECT_URI)
-  ) {
+    normalizeGoogleEnvValue(process.env.GOOGLE_OAUTH_REDIRECT_URI);
+  if (fromEnv && !isLocalUrl(fromEnv) && redirectUri && !isLocalUrl(redirectUri) && !redirectUri.startsWith("/")) {
     return redirectUri;
   }
   return oauthCallbackRedirectUri(req);

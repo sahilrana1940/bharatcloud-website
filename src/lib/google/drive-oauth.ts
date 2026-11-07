@@ -5,6 +5,7 @@ import {
   normalizeGoogleEnvValue,
   resolveGoogleOAuthScopeList,
 } from "@/lib/google/config";
+import { isLocalUrl, publicUrl } from "@/lib/http/public-url";
 
 export const GOOGLE_DRIVE_OAUTH_SCOPE =
   "https://www.googleapis.com/auth/drive.readonly";
@@ -25,19 +26,15 @@ export function googleDriveOAuthScopeList(includeGmail = true): string[] {
   return resolveGoogleOAuthScopeList({ includeGmail });
 }
 
-function appOrigin() {
-  return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "http://localhost:3000";
-}
-
-/** Redirect URI for 1-click Drive OAuth (`GOOGLE_REDIRECT_URI` or default drive callback). */
-export function getGoogleDriveOAuthRedirectUri(): string {
+/** Redirect URI for 1-click Drive OAuth (`GOOGLE_REDIRECT_URI` or the current site). */
+export function getGoogleDriveOAuthRedirectUri(req?: Request): string {
   const fromEnv = normalizeGoogleEnvValue(process.env.GOOGLE_REDIRECT_URI);
-  if (fromEnv) return fromEnv;
-  return `${appOrigin()}/api/auth/google/drive/callback`;
+  if (fromEnv && !isLocalUrl(fromEnv)) return fromEnv;
+  return publicUrl("/api/auth/google/drive/callback", req);
 }
 
-export function createGoogleDriveOAuth2Client() {
+export function createGoogleDriveOAuth2Client(req?: Request) {
   const { clientId, clientSecret } = getGoogleOAuthConfig();
   if (!clientId || !clientSecret) return null;
-  return new google.auth.OAuth2(clientId, clientSecret, getGoogleDriveOAuthRedirectUri());
+  return new google.auth.OAuth2(clientId, clientSecret, getGoogleDriveOAuthRedirectUri(req));
 }

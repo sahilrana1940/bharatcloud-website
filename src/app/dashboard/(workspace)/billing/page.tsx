@@ -70,7 +70,8 @@ export default function BillingPage() {
         <p className="mt-4 text-lg font-semibold tracking-wide text-[#10243E]">{upiId}</p>
         <p className="mt-1 text-sm text-slate-600">{payee}</p>
         <p className="mt-2 text-sm font-medium text-[#10243E]">UPI Number: {BILLING_UPI_NUMBER}</p>
-        <p className="mt-1 text-xs text-slate-500">Inclusive of all taxes · GST not applicable</p>
+        <p className="mt-1 text-xs text-slate-500">GST not applicable</p>
+        <p className="mt-2 text-sm font-semibold text-[#10243E]">Extra User Rs 99 / Month</p>
         <a
           href={upiLink}
           className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-[#00BAF2] px-5 py-3 text-sm font-bold text-[#062033]"

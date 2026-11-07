@@ -27,10 +27,10 @@ export const UPGRADE_EXAMPLE = {
   daysUsed: 90,
   fromPlanLabel: "100GB Total Storage",
   toPlanLabel: "500GB Total Storage",
-  fromYearlyInr: 5999,
-  toYearlyInr: 24999,
-  remainingInr: 4520,
-  payInr: 20479,
+  fromYearlyInr: 6999,
+  toYearlyInr: 19999,
+  remainingInr: 5273,
+  payInr: 14726,
 } as const;
 
 export const OFFER_DAYS_LEFT = 27;

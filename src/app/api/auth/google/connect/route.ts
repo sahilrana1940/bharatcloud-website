@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     url.searchParams.get("returnTo") ||
     (autostart ? "/dashboard/team?autostart=1" : "/dashboard/team");
 
-  const oauth2 = createOAuth2Client();
+  const oauth2 = createOAuth2Client(req);
   if (!oauth2) {
     return NextResponse.redirect(
       new URL("/dashboard/team?setup=google", url.origin),

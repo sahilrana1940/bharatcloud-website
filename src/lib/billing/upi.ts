@@ -1,6 +1,6 @@
 /** Live collect VPA. Env wins; this fallback is used when the host has not set it. */
 export const BILLING_UPI_VPA_FALLBACK = "9469276461@idfcfirst";
-export const BILLING_UPI_NAME_FALLBACK = "Bharat Tijori";
+export const BILLING_UPI_NAME_FALLBACK = "BharatCloud";
 /** Alternate pay path shown next to the QR. */
 export const BILLING_UPI_NUMBER = "77199526";
 
@@ -40,11 +40,11 @@ export function billingUpiName() {
 }
 
 export function billingUpiNote(planName: string, amount: number) {
-  if (amount === 24999) return "BharatCloud Pro";
+  if (amount === 19999) return "BharatCloud Pro";
   return `BharatCloud ${planName}`;
 }
 
-/** upi://pay?pa=9469276461@idfcfirst&pn=Bharat%20Tijori&am=24999&cu=INR&tn=BharatCloud%20Pro */
+/** upi://pay?pa=9469276461@idfcfirst&pn=Bharat%20Tijori&am=19999&cu=INR&tn=BharatCloud%20Pro */
 export function buildUpiPayLink(amount: number, note: string) {
   const pa = billingUpiVpa();
   const pn = encodeURIComponent(billingUpiName());

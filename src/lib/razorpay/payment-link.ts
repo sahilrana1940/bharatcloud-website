@@ -9,12 +9,12 @@ export const WORKSPACE_PLANS: Record<
   { amountPaise: number; label: string; planName: string }
 > = {
   starter: {
-    amountPaise: 599_900,
+    amountPaise: 699_900,
     label: "BharatCloud STARTER",
     planName: "starter",
   },
   growth: {
-    amountPaise: 2_499_900,
+    amountPaise: 1_999_900,
     label: "BharatCloud GROWTH yearly inclusive",
     planName: "growth",
   },
@@ -29,7 +29,7 @@ export const WORKSPACE_PLANS: Record<
     planName: "scale",
   },
   standard: {
-    amountPaise: 2_499_900,
+    amountPaise: 1_999_900,
     label: "BharatCloud GROWTH yearly inclusive",
     planName: "growth",
   },
@@ -39,7 +39,7 @@ export const WORKSPACE_PLANS: Record<
     planName: "scale",
   },
   pro: {
-    amountPaise: 599_900,
+    amountPaise: 699_900,
     label: "BharatCloud STARTER yearly inclusive",
     planName: "starter",
   },

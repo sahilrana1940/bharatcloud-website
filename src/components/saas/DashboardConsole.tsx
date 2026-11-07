@@ -32,7 +32,7 @@ const PAYTM_LIVE_UPI =
 const PLAN = planById("100gb") ?? {
   id: "100gb",
   name: "Starter",
-  yearlyInr: 5999,
+  yearlyInr: 6999,
   storage: "100GB",
   storageLabel: "100GB Total Storage",
   maxIds: 5,
@@ -42,7 +42,7 @@ const RENT_QUOTE = fiveIdRentQuote();
 const PENDING = forwardPendingInr();
 
 const MAILBOXES = [
-  { email: "admin@bharatcloud.store", role: "Admin", status: "Active", sync: "Live" },
+  { email: "super@bharatcloud.store", role: "Admin", status: "Active", sync: "Live" },
   { email: "ops@bharatcloud.store", role: "Employee", status: "Active", sync: "Live" },
   { email: "accounts@bharatcloud.store", role: "Employee", status: "Active", sync: "2m" },
   { email: "hr@bharatcloud.store", role: "Employee", status: "Active", sync: "Live" },

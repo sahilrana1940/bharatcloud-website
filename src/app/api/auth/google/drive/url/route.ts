@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: gate.message, googleConnectStatus: gate.status }, { status: 403 });
   }
 
-  const oauth2 = createGoogleDriveOAuth2Client();
+  const oauth2 = createGoogleDriveOAuth2Client(req);
   if (!oauth2) {
     return NextResponse.json(
       { error: "Google OAuth is not configured (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET)" },

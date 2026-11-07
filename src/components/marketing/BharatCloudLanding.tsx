@@ -69,15 +69,12 @@ export default function BharatCloudLanding() {
 
       <section id="pricing" className="scroll-mt-6 bg-gray-50 p-6 py-16 sm:p-10">
         <h2 className="text-center text-4xl font-bold">Pricing</h2>
-        <p className="mt-2 text-center text-slate-600">Simple, transparent pricing. GST 18% applied.</p>
+        <p className="mt-2 text-center text-slate-600">Simple, transparent pricing. GST not applicable.</p>
         <div className="mx-auto mt-10 grid max-w-7xl gap-6 md:grid-cols-3">
           <div className="rounded-2xl border bg-white p-8 shadow-sm">
             <p className="inline rounded bg-orange-500 px-3 py-1 text-xs text-white">STARTER</p>
-            <h3 className="mt-4 text-3xl font-black">
-              ₹6,999 + GST =
-              <br />
-              ₹8,259 Final
-            </h3>
+            <h3 className="mt-4 text-3xl font-black">Rs 6,999</h3>
+            <p className="mt-1 text-sm text-slate-500">per year</p>
             <p className="mt-1 text-sm">100GB • Up to 5 Users</p>
             <Link
               href="/signup"
@@ -89,11 +86,8 @@ export default function BharatCloudLanding() {
 
           <div className="rounded-2xl bg-orange-300 p-8 shadow-sm">
             <p className="inline rounded bg-orange-600 px-3 py-1 text-xs text-white">GROWTH</p>
-            <h3 className="mt-4 text-3xl font-black">
-              ₹19,999 + GST =
-              <br />
-              ₹23,599 Final
-            </h3>
+            <h3 className="mt-4 text-3xl font-black">Rs 19,999</h3>
+            <p className="mt-1 text-sm">per year</p>
             <p className="mt-1 text-sm">500GB • Up to 25 Users</p>
             <Link
               href="/signup"
@@ -105,11 +99,8 @@ export default function BharatCloudLanding() {
 
           <div className="rounded-2xl border bg-white p-8 shadow-sm">
             <p className="inline rounded bg-orange-500 px-3 py-1 text-xs text-white">ENTERPRISE</p>
-            <h3 className="mt-4 text-3xl font-black">
-              ₹39,999 + GST =
-              <br />
-              ₹47,199 Final
-            </h3>
+            <h3 className="mt-4 text-3xl font-black">Rs 39,999</h3>
+            <p className="mt-1 text-sm text-slate-500">per year</p>
             <p className="mt-1 text-sm">2TB • Unlimited Users</p>
             <a
               href={SALES}
@@ -119,6 +110,7 @@ export default function BharatCloudLanding() {
             </a>
           </div>
         </div>
+        <p className="mt-8 text-center text-lg font-semibold text-slate-800">Extra User Rs 99 / Month</p>
       </section>
 
       <section id="features" className="mx-auto max-w-5xl scroll-mt-6 p-6 py-16 sm:p-10">

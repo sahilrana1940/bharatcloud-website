@@ -38,7 +38,7 @@ export default function LandingPage() {
         </p>
         <div className="flex justify-center gap-4 mt-8">
           <button 
-            onClick={() => goSignup(25,24999)}
+            onClick={() => goSignup(25,19999)}
             className="bg-[#FF8C42] text-black px-8 py-3 rounded-lg font-bold cursor-pointer z-10 pointer-events-auto"
           >
             Get Started →
@@ -54,7 +54,7 @@ export default function LandingPage() {
         {/* STARTER */}
         <div className="bg-[#1F1F1F] border border-white/10 rounded-2xl p-6">
           <p className="text-white/40 text-center">STARTER</p>
-          <h2 className="text-5xl font-bold text-center mt-2">Rs 5,999</h2>
+          <h2 className="text-5xl font-bold text-center mt-2">Rs 6,999</h2>
           <p className="text-center text-xs font-semibold text-emerald-400">/year · Inclusive of all taxes</p>
           <p className="text-center text-white/60">5 Users (Manual Approval)</p>
           <p className="mt-2 text-center"><span className="rounded-full bg-emerald-500/15 px-3 py-1 text-[11px] font-semibold text-emerald-300">Shared for Team</span></p>
@@ -66,7 +66,7 @@ export default function LandingPage() {
             <li>✅ Yearly Archive Included</li>
           </ul>
           <button 
-            onClick={() => goSignup(5,5999)}
+            onClick={() => goSignup(5,6999)}
             className="w-full mt-6 border border-white/20 py-3 rounded-lg cursor-pointer z-10 relative hover:bg-white/5"
           >
             Choose Plan
@@ -79,7 +79,7 @@ export default function LandingPage() {
             MOST POPULAR
           </span>
           <p className="text-white/40 text-center">GROWTH</p>
-          <h2 className="text-5xl font-bold text-center mt-2">Rs 24,999</h2>
+          <h2 className="text-5xl font-bold text-center mt-2">Rs 19,999</h2>
           <p className="text-center text-xs font-semibold text-emerald-400">/year · Inclusive of all taxes</p>
           <p className="text-center text-white/60">25 Users (Auto)</p>
           <p className="mt-2 text-center"><span className="rounded-full bg-emerald-500/15 px-3 py-1 text-[11px] font-semibold text-emerald-300">Shared for Team</span></p>
@@ -92,7 +92,7 @@ export default function LandingPage() {
             <li>✅ Admin Control Panel</li>
           </ul>
           <button 
-            onClick={() => goSignup(25,24999)}
+            onClick={() => goSignup(25,19999)}
             className="w-full mt-6 bg-gradient-to-r from-[#FF8C42] to-[#FF4D4D] text-black py-3 rounded-lg font-bold cursor-pointer z-10 relative"
           >
             Choose Plan
@@ -123,8 +123,9 @@ export default function LandingPage() {
         </div>
       </div>
 
-      <p className="text-center text-white/40 text-xs mt-12 pb-8">
-        All plans inclusive of taxes | GST Not Applicable | Cancel anytime
+      <p className="text-center text-white text-lg font-semibold mt-10">Extra User Rs 99 / Month</p>
+      <p className="text-center text-white/40 text-xs mt-4 pb-8">
+        GST not applicable | Cancel anytime
       </p>
     </div>
   );

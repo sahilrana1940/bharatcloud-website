@@ -1,11 +1,16 @@
 import { google } from "googleapis";
 
 import { getGoogleOAuthConfig } from "@/lib/google/config";
+import { isLocalUrl, publicUrl } from "@/lib/http/public-url";
 
-export function createOAuth2Client() {
+export function createOAuth2Client(req?: Request) {
   const { clientId, clientSecret, redirectUri } = getGoogleOAuthConfig();
   if (!clientId || !clientSecret) return null;
-  return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  const resolved =
+    redirectUri && !isLocalUrl(redirectUri) && !redirectUri.startsWith("/")
+      ? redirectUri
+      : publicUrl("/api/auth/google/callback", req);
+  return new google.auth.OAuth2(clientId, clientSecret, resolved);
 }
 
 export function driveClient(accessToken: string) {

@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
     if (!appUrl) return [];
     try {
       const u = new URL(appUrl);
+      if (u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "::1") return [];
       if (!u.hostname.startsWith("www.")) return [];
       const apex = u.hostname.replace(/^www\./, "");
       return [

@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 import { createOAuth2Client } from "@/lib/google/client";
 import { resolveGoogleOAuthScopeList } from "@/lib/google/config";
 
-export async function GET() {
-  const oauth2 = createOAuth2Client();
+export async function GET(req: Request) {
+  const oauth2 = createOAuth2Client(req);
   if (!oauth2) {
     return NextResponse.json(
       {

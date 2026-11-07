@@ -21,7 +21,7 @@ export const PRICING_PLANS: Record<
   starter: {
     id: "starter",
     name: "Starter",
-    priceInr: 5999,
+    priceInr: 6999,
     maxUsers: 5,
     storageGb: 100,
     storageBytes: 100 * GB,
@@ -29,7 +29,7 @@ export const PRICING_PLANS: Record<
   growth: {
     id: "growth",
     name: "Growth",
-    priceInr: 24999,
+    priceInr: 19999,
     maxUsers: 25,
     storageGb: 500,
     storageBytes: 500 * GB,
@@ -46,7 +46,7 @@ export const PRICING_PLANS: Record<
   standard: {
     id: "standard",
     name: "Growth",
-    priceInr: 24999,
+    priceInr: 19999,
     maxUsers: 25,
     storageGb: 500,
     storageBytes: 500 * GB,

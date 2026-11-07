@@ -1,8 +1,5 @@
 import { isEmailBackupEnabled } from "@/lib/feature-flags";
-
-function appOrigin() {
-  return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "http://localhost:3000";
-}
+import { isLocalUrl, publicUrl } from "@/lib/http/public-url";
 
 /**
  * Google rejects client ids that differ by whitespace. A trailing newline in
@@ -25,11 +22,14 @@ export function getGoogleOAuthConfig() {
   const clientId = normalizeGoogleEnvValue(process.env.GOOGLE_CLIENT_ID);
   const clientSecret = normalizeGoogleEnvValue(process.env.GOOGLE_CLIENT_SECRET);
   const driveRedirect = normalizeGoogleEnvValue(process.env.GOOGLE_REDIRECT_URI);
+  const oauthRedirect = normalizeGoogleEnvValue(process.env.GOOGLE_OAUTH_REDIRECT_URI);
+  const safeDriveRedirect = driveRedirect && !isLocalUrl(driveRedirect) ? driveRedirect : "";
+  const safeOAuthRedirect = oauthRedirect && !isLocalUrl(oauthRedirect) ? oauthRedirect : "";
   const redirectUri =
-    normalizeGoogleEnvValue(process.env.GOOGLE_OAUTH_REDIRECT_URI) ||
-    (driveRedirect.includes("/drive/callback")
-      ? `${appOrigin()}/api/auth/google/callback`
-      : driveRedirect || `${appOrigin()}/api/auth/google/callback`);
+    safeOAuthRedirect ||
+    (safeDriveRedirect.includes("/drive/callback")
+      ? publicUrl("/api/auth/google/callback")
+      : safeDriveRedirect || publicUrl("/api/auth/google/callback"));
 
   return { clientId, clientSecret, redirectUri };
 }

@@ -21,8 +21,8 @@ export type BillingPlan = {
 }
 
 export const BILLING_PLANS: BillingPlan[] = [
-  { id: "starter", name: "Starter", price: 5999, storage: "100GB", storageGb: 100, users: "Upto 5 IDs", trialDays: 30, maxIds: 5 },
-  { id: "growth", name: "Growth", price: 24999, storage: "500GB", storageGb: 500, users: "Upto 25 IDs", tag: "MOST POPULAR", trialDays: 30, maxIds: 25 },
+  { id: "starter", name: "Starter", price: 6999, storage: "100GB", storageGb: 100, users: "Upto 5 IDs", trialDays: 30, maxIds: 5 },
+  { id: "growth", name: "Growth", price: 19999, storage: "500GB", storageGb: 500, users: "Upto 25 IDs", tag: "MOST POPULAR", trialDays: 30, maxIds: 25 },
   { id: "scale", name: "Scale", price: 39999, storage: "2TB", storageGb: 2048, users: "Unlimited IDs", trialDays: 30, maxIds: 0 },
 ];
 

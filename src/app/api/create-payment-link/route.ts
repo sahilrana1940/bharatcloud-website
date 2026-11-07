@@ -7,6 +7,7 @@ import {
   WORKSPACE_PLANS,
   type WorkspacePlanId,
 } from "@/lib/razorpay/payment-link";
+import { publicUrl } from "@/lib/http/public-url";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
@@ -41,10 +42,6 @@ export async function POST(req: Request) {
 
   const companyId = tenant?.companyId ?? session.companyId;
   const domain = tenant?.company.domain;
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(
-    /\/$/,
-    "",
-  );
 
   if (await isPaymentBypassEnabled()) {
     const supabase = await getSupabaseOrNull();
@@ -58,7 +55,7 @@ export async function POST(req: Request) {
       ok: true,
       bypass: true,
       message: "PAYMENT_BYPASS enabled — Pro unlocked without Razorpay",
-      redirect: `${appUrl}/dashboard/team?paid=1`,
+      redirect: "/dashboard/team?paid=1",
     });
   }
 
@@ -85,7 +82,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       useBillingPage: true,
-      redirect: `${appUrl}/dashboard/billing`,
+      redirect: "/dashboard/billing",
       message: "UPI billing + super admin approval (Razorpay disabled for today)",
     });
   }
@@ -101,7 +98,7 @@ export async function POST(req: Request) {
         plan: plan.planName,
         workspace_email: companyEmail,
       },
-      callbackUrl: `${appUrl}/dashboard/team?paid=1&razorpay=1`,
+      callbackUrl: publicUrl("/dashboard/team?paid=1&razorpay=1", req),
     });
 
     if (supabase) {
