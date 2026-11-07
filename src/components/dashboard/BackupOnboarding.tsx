@@ -13,7 +13,6 @@ function formatGb(bytes: number) {
 
 export function BackupOnboarding({ userEmail }: { userEmail: string }) {
   const [oauthConfigured, setOauthConfigured] = useState(true);
-  const [s3Ok, setS3Ok] = useState(true);
   const [paid, setPaid] = useState(false);
   const [googleLinked, setGoogleLinked] = useState(false);
   const [jobStatus, setJobStatus] = useState<string | null>(null);
@@ -33,7 +32,6 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
       fetch("/api/backup/summary").then((r) => r.json()),
     ]);
     setOauthConfigured(cfg.googleOAuthConfigured !== false);
-    setS3Ok(cfg.s3Configured !== false);
     setGoogleLinked(Boolean(g.connected));
     const payments = pay.payments || [];
     const paidViaCompany =
@@ -175,14 +173,6 @@ export function BackupOnboarding({ userEmail }: { userEmail: string }) {
         </div>
         <BackupValueStrip />
       </>
-    );
-  }
-
-  if (!s3Ok) {
-    return (
-      <div className="mt-6 rounded border border-yellow-200 bg-yellow-50 p-4 text-sm text-amber-950">
-        <p>Archive storage pending setup. Admin needs to configure the E2E bucket on Vercel.</p>
-      </div>
     );
   }
 

@@ -4,9 +4,11 @@ import { backupDriveFile } from "@/lib/drive/backup-one";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { fetchDriveFilesListPage } from "@/lib/google/drive-api";
 import { publicBackupUrl } from "@/lib/drive/public-url";
+import { loadCompanyAdminStats } from "@/lib/company-admin/stats";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { DEMO_DRIVE_FILES, DEMO_GOOGLE_DRIVE_FILES } from "@/lib/workspace/demo-data";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
+import { loadTeamRoster } from "@/lib/workspace/team-roster";
 export async function POST(req: Request) {
   const auth = await requireWorkspace();
   if (auth instanceof NextResponse) return auth;
@@ -106,30 +108,38 @@ export async function POST(req: Request) {
     });
   }
 
-  let usersQuery = supabase
-    .from("company_users")
-    .select("email")
-    .eq("company_id", session.companyId)
-    .eq("is_backup_enabled", true);
-  if (body.ownerEmail) {
-    usersQuery = usersQuery.eq("email", body.ownerEmail.toLowerCase());
-  }
-  const { data: users } = await usersQuery;
+  const stats = await loadCompanyAdminStats(supabase, session.companyId, session.email).catch(() => null);
+  const companyId = stats?.companyId || session.companyId;
+  const roster = await loadTeamRoster(supabase, {
+    companyId,
+    domain: stats?.domain || "",
+    adminEmail: (stats?.adminEmail || session.email).toLowerCase(),
+    sessionEmail: session.email,
+  });
+  const requested = body.ownerEmail?.toLowerCase();
+  const users = roster.filter((user) => user.is_backup_enabled && (!requested || user.email === requested));
 
   const { data: company } = await supabase
     .from("companies")
     .select("domain")
-    .eq("id", session.companyId)
-    .single();
+    .eq("id", companyId)
+    .maybeSingle();
 
   let backed = 0;
-  for (const u of users || []) {
+  let connected = 0;
+  for (const u of users) {
     const accessToken = await getValidGoogleAccessToken(
       supabase,
-      session.companyId,
+      companyId,
       u.email,
     );
     if (!accessToken) continue;
+    connected += 1;
+    await supabase
+      .from("company_users")
+      .update({ drive_sync_status: "syncing" })
+      .eq("company_id", companyId)
+      .eq("email", u.email);
 
     const listed = await fetchDriveFilesListPage(accessToken, { pageSize: 50 });
 
@@ -137,8 +147,8 @@ export async function POST(req: Request) {
       if (!f.id || !f.name) continue;
       try {
         await backupDriveFile(supabase, {
-          companyId: session.companyId,
-          domain: company?.domain || "unknown",
+          companyId,
+          domain: company?.domain || stats?.domain || "unknown",
           ownerEmail: u.email,
           driveFileId: f.id,
           accessToken,
@@ -148,7 +158,20 @@ export async function POST(req: Request) {
         /* continue batch */
       }
     }
+    await supabase
+      .from("company_users")
+      .update({ drive_sync_status: "connected" })
+      .eq("company_id", companyId)
+      .eq("email", u.email);
   }
 
-  return NextResponse.json({ ok: true, filesBackedUp: backed });
+  return NextResponse.json({
+    ok: true,
+    filesBackedUp: backed,
+    connected,
+    members: users.length,
+    message: connected
+      ? `Synced ${backed} files from ${connected} connected drive${connected === 1 ? "" : "s"}.`
+      : "No Google Drive is connected yet. Connect a drive in Settings, then sync again.",
+  });
 }

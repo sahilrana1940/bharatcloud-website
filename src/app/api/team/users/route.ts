@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { isS3Configured } from "@/lib/s3/config";
+import { loadCompanyAdminStats } from "@/lib/company-admin/stats";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { syncCompanyDirectory } from "@/lib/workspace/company-directory";
 import { DEMO_USERS } from "@/lib/workspace/demo-data";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { isWorkspaceOwner } from "@/lib/workspace/nav";
 import { resolveCompanyDomain } from "@/lib/workspace/company";
+import { loadTeamRoster, type TeamRole } from "@/lib/workspace/team-roster";
 
 function mapDemoUsers() {
   return DEMO_USERS.map((u) => ({
@@ -57,9 +58,10 @@ export async function GET() {
 
   const supabase = await getSupabaseOrNull();
   if (!supabase) {
+    const users = mapDemoUsers();
     return NextResponse.json({
-      users: mapDemoUsers(),
-      archivePending: !isS3Configured(),
+      users,
+      stats: { members: users.length, storageUsedGb: 0, storageLimitGb: 100, activeBackups: 0 },
       session: {
         email: session.email,
         role: session.role,
@@ -74,67 +76,34 @@ export async function GET() {
     isCompanyOwner: session.isCompanyOwner,
   });
 
-  await ensureOwnerInTeam(supabase, session.companyId, session.email, ownerView);
+  const stats = await loadCompanyAdminStats(supabase, session.companyId, session.email).catch(() => null);
+  const companyId = stats?.companyId || session.companyId;
+  const domain = stats?.domain || (await resolveCompanyDomain(session.companyId, session.email)) || "";
+  const adminEmail = (stats?.adminEmail || session.email).toLowerCase();
 
-  const domain = await resolveCompanyDomain(session.companyId, session.email);
-  const { data: domainTeam } = domain
-    ? await supabase.from("team_members").select("email, role, status, company_domain").eq("company_domain", domain)
-    : { data: [] as Array<{ email: string; role?: string; status?: string }> };
+  await ensureOwnerInTeam(supabase, companyId, adminEmail, ownerView);
 
-  const { data, error } = await supabase
-    .from("company_users")
-    .select("*")
-    .eq("company_id", session.companyId)
-    .order("email");
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  let users = (data || []).map((u) => ({
-    ...u,
-    name: u.display_name || u.email.split("@")[0],
-    storage_used_gb: u.drive_used_gb,
-  }));
-
-  const seen = new Set(users.map((u) => String(u.email || "").toLowerCase()));
-  for (const row of domainTeam || []) {
-    const email = String(row.email || "").toLowerCase();
-    if (!email || seen.has(email)) continue;
-    seen.add(email);
-    users.push({
-      id: email,
-      email,
-      name: email.split("@")[0],
-      role: row.role || "member",
-      drive_used_gb: 0,
-      storage_used_gb: 0,
-      drive_sync_status: row.status || "idle",
-      is_backup_enabled: true,
-    });
-  }
+  let users = await loadTeamRoster(supabase, {
+    companyId,
+    domain,
+    adminEmail,
+    sessionEmail: session.email,
+  });
 
   if (!ownerView) {
-    users = users.filter((u) => u.email?.toLowerCase() === session.email.toLowerCase());
+    users = users.filter((user) => user.email === session.email.toLowerCase());
   }
 
-  if (!users.length && ownerView) {
-    await ensureOwnerInTeam(supabase, session.companyId, session.email, true);
-    const { data: retry } = await supabase
-      .from("company_users")
-      .select("*")
-      .eq("company_id", session.companyId)
-      .order("email");
-    users = (retry || []).map((u) => ({
-      ...u,
-      name: u.display_name || u.email.split("@")[0],
-      storage_used_gb: u.drive_used_gb,
-    }));
-  }
+  const storageUsedGb = users.reduce((sum, user) => sum + Number(user.storage_used_gb || 0), 0);
 
   return NextResponse.json({
     users,
-    archivePending: !isS3Configured(),
+    stats: {
+      members: users.length,
+      storageUsedGb: Math.max(storageUsedGb, stats?.storageGb || 0),
+      storageLimitGb: stats?.limitGb || 100,
+      activeBackups: stats?.activeBackups || users.filter((user) => user.is_backup_enabled).length,
+    },
     session,
   });
 }
@@ -163,14 +132,12 @@ export async function POST(req: NextRequest) {
   const supabase = await getSupabaseOrNull();
   if (!supabase) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
-  const domain = await resolveCompanyDomain(session.companyId, session.email);
-  const host = email.split("@")[1] || "";
-  if (domain && host !== domain) {
-    return NextResponse.json({ error: `Email must be @${domain}` }, { status: 400 });
-  }
+  const stats = await loadCompanyAdminStats(supabase, session.companyId, session.email).catch(() => null);
+  const companyId = stats?.companyId || session.companyId;
+  const domain = stats?.domain || (await resolveCompanyDomain(session.companyId, session.email)) || email.split("@")[1] || "";
 
   const saved = await upsertMember(supabase, {
-    company_id: session.companyId,
+    company_id: companyId,
     email,
     role: "member",
     saas_role: "employee",
@@ -179,20 +146,155 @@ export async function POST(req: NextRequest) {
     display_name: email.split("@")[0],
     drive_used_gb: 0,
     drive_limit_gb: 100,
+    drive_sync_status: "idle",
   });
   if (saved) return NextResponse.json({ error: saved }, { status: 500 });
 
   await supabase.from("team_members").upsert(
     {
       email,
-      company_domain: domain || host,
+      company_domain: domain,
+      company_id: companyId,
       role: "member",
       status: "active",
     },
     { onConflict: "email" },
   );
 
-  return NextResponse.json({ ok: true, email, backup: true });
+  const adminEmail = (stats?.adminEmail || session.email).toLowerCase();
+  const { data: orgRows } = await supabase.from("organizations").select("id, owner_email").ilike("owner_email", adminEmail);
+  const org = (orgRows || []).find((row) => String(row.owner_email || "").toLowerCase() === adminEmail);
+  if (org?.id) {
+    await supabase.from("org_members").upsert(
+      { org_id: org.id, user_email: email, role: "member" },
+      { onConflict: "org_id,user_email" },
+    );
+  }
+
+  const emailSent = await sendTeamInvite(email, session.email, domain);
+
+  return NextResponse.json({ ok: true, email, invited: true, emailSent });
+}
+
+export async function PATCH(req: NextRequest) {
+  const auth = await requireWorkspace(true);
+  if (auth instanceof NextResponse) return auth;
+  const { session } = auth;
+  if (!isOwnerSession(session)) {
+    return NextResponse.json({ error: "Owner only" }, { status: 403 });
+  }
+
+  const body = await req.json().catch(() => ({}));
+  const email = String(body.email || "").trim().toLowerCase();
+  const role = body.role === "admin" ? "admin" : "member";
+  if (!email.includes("@")) {
+    return NextResponse.json({ error: "Email required" }, { status: 400 });
+  }
+
+  const supabase = await getSupabaseOrNull();
+  if (!supabase) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+
+  const stats = await loadCompanyAdminStats(supabase, session.companyId, session.email).catch(() => null);
+  const adminEmail = (stats?.adminEmail || session.email).toLowerCase();
+  if (email === adminEmail) {
+    return NextResponse.json({ error: "The owner role stays with the company owner" }, { status: 400 });
+  }
+
+  const companyId = stats?.companyId || session.companyId;
+  const saved = await upsertMember(supabase, {
+    company_id: companyId,
+    email,
+    role,
+    saas_role: "employee",
+    is_company_owner: false,
+    is_backup_enabled: true,
+  });
+  if (saved) return NextResponse.json({ error: saved }, { status: 500 });
+
+  await supabase.from("org_members").update({ role }).eq("user_email", email);
+  await supabase.from("team_members").update({ role }).eq("email", email);
+
+  return NextResponse.json({ ok: true, email, role: role as TeamRole });
+}
+
+export async function DELETE(req: NextRequest) {
+  const auth = await requireWorkspace(true);
+  if (auth instanceof NextResponse) return auth;
+  const { session } = auth;
+  if (!isOwnerSession(session)) {
+    return NextResponse.json({ error: "Owner only" }, { status: 403 });
+  }
+
+  const body = await req.json().catch(() => ({}));
+  const email = String(body.email || "").trim().toLowerCase();
+  if (!email.includes("@")) {
+    return NextResponse.json({ error: "Email required" }, { status: 400 });
+  }
+
+  const supabase = await getSupabaseOrNull();
+  if (!supabase) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+
+  const stats = await loadCompanyAdminStats(supabase, session.companyId, session.email).catch(() => null);
+  const adminEmail = (stats?.adminEmail || session.email).toLowerCase();
+  if (email === adminEmail) {
+    return NextResponse.json({ error: "The owner cannot be removed" }, { status: 400 });
+  }
+
+  const companyId = stats?.companyId || session.companyId;
+  const { error } = await supabase.from("company_users").delete().eq("company_id", companyId).eq("email", email);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await supabase.from("org_members").delete().eq("user_email", email);
+  await supabase.from("organization_members").delete().eq("email", email);
+  await supabase.from("team_members").delete().eq("email", email);
+
+  return NextResponse.json({ ok: true, email });
+}
+
+function isOwnerSession(session: { role: string; saasRole?: string; isCompanyOwner?: boolean }) {
+  return isWorkspaceOwner({
+    role: session.role,
+    saasRole: session.saasRole,
+    isCompanyOwner: session.isCompanyOwner,
+  });
+}
+
+async function sendTeamInvite(email: string, invitedBy: string, domain: string) {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) {
+    console.log(`[team-invite] no email key email=${email} invitedBy=${invitedBy}`);
+    return false;
+  }
+  const from = process.env.RESEND_FROM_EMAIL?.trim() || "BharatCloud <onboarding@resend.dev>";
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [email],
+        subject: "You're invited to BharatCloud",
+        text: `${invitedBy} invited you to the ${domain || "company"} workspace on BharatCloud.\n\nSign in at https://www.bharatcloud.store/login`,
+      }),
+    });
+    if (!res.ok) {
+      const detail = await res.text();
+      console.log(`[team-invite] email failed email=${email} detail=${detail.slice(0, 180)}`);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.log(`[team-invite] skipped email=${email} reason=${error instanceof Error ? error.message : "failed"}`);
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function upsertMember(
