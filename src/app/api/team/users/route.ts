@@ -103,7 +103,7 @@ export async function GET() {
       members: users.length,
       storageUsedGb: Math.max(storageUsedGb, stats?.storageGb || 0),
       storageLimitGb: stats?.limitGb || 100,
-      activeBackups: stats?.activeBackups || users.filter((user) => user.is_backup_enabled).length,
+      activeBackups: stats ? stats.activeBackups : users.filter((user) => user.is_backup_enabled).length,
     },
     session,
   });

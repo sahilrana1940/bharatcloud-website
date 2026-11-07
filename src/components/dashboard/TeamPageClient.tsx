@@ -183,7 +183,7 @@ export function TeamPageClient({
       : `${(stats.storageUsedGb * 1024).toFixed(0)} MB`;
 
   return (
-    <div className="min-h-screen bg-transparent px-4 pb-24 pt-6 sm:px-8 lg:pb-10">
+    <div className="min-h-screen min-w-0 max-w-full overflow-x-hidden bg-transparent px-4 pb-24 pt-6 sm:px-8 lg:pb-10">
       <ProPageHeader
         eyebrow="Team"
         title="Team & backup"
@@ -214,7 +214,7 @@ export function TeamPageClient({
         }
       />
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3">
         <ProStatCard label="Total Members" value={String(stats.members)} icon={<Users className="h-4 w-4 text-cyan-600" />} />
         <ProStatCard label="Storage Used" value={`${storageValue} / ${stats.storageLimitGb} GB`} />
         <ProStatCard label="Active Backups" value={String(stats.activeBackups)} />
@@ -285,7 +285,7 @@ export function TeamPageClient({
         {!ready ? <p className="py-8 text-center text-sm text-slate-500">Loading team…</p> : null}
       </div>
 
-      <div className="mt-6 hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
+      <div className="mt-6 hidden max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
         <table className="w-full min-w-[860px] text-left text-sm text-slate-900">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
