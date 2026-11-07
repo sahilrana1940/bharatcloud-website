@@ -8,6 +8,7 @@ import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { isWorkspaceOwner } from "@/lib/workspace/nav";
 import { resolveCompanyDomain } from "@/lib/workspace/company";
 import { loadTeamRoster, type TeamRole } from "@/lib/workspace/team-roster";
+import type { SaasRole } from "@/lib/workspace/session";
 
 function mapDemoUsers() {
   return DEMO_USERS.map((u) => ({
@@ -251,7 +252,7 @@ export async function DELETE(req: NextRequest) {
   return NextResponse.json({ ok: true, email });
 }
 
-function isOwnerSession(session: { role: string; saasRole?: string; isCompanyOwner?: boolean }) {
+function isOwnerSession(session: { role: string; saasRole?: SaasRole; isCompanyOwner?: boolean }) {
   return isWorkspaceOwner({
     role: session.role,
     saasRole: session.saasRole,
