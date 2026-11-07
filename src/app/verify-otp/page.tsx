@@ -27,8 +27,8 @@ export default function VerifyPage() {
       }
       alert("Workspace Created Successfully!");
       router.push("/login");
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not verify OTP");
     } finally {
       setLoading(false);
     }

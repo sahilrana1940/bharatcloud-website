@@ -49,10 +49,11 @@ export async function POST(req: NextRequest) {
 
     return response;
 
-  } catch (err: any) {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Server error";
     console.error("[api/login] server error", err);
     return NextResponse.json(
-      { error: "Server error", code: err.message },
+      { error: "Server error", code: message },
       { status: 500 }
     );
   }
