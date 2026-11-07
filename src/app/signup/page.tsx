@@ -20,8 +20,9 @@ export default function SignupPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/send-otp", {
+      const res = await fetch("/api/auth/send-otp", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.trim(),
@@ -34,6 +35,7 @@ export default function SignupPage() {
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Could not send OTP");
       }
+      console.log("[signup-otp]", data.otp);
       alert(`OTP sent. For testing, the code is ${data.otp}`);
       setStep(2);
     } catch (error) {
@@ -50,7 +52,8 @@ export default function SignupPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/verify-otp", {
+      const res = await fetch("/api/auth/verify-otp", {
+        credentials: "same-origin",
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), phone: phone.trim(), otp: otp.trim() }),
