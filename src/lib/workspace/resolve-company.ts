@@ -49,20 +49,24 @@ export async function resolveCompanyIdForEmail(email: string): Promise<string> {
   const domain = emailDomain(normalized);
   if (!domain) return DEMO_COMPANY_ID;
 
-  const { data: member } = await supabase
+  const { data: memberRows } = await supabase
     .from("company_users")
-    .select("company_id")
-    .eq("email", normalized)
-    .maybeSingle();
+    .select("company_id, email")
+    .ilike("email", normalized);
+  const member = (memberRows || []).find(
+    (row) => String(row.email || "").trim().toLowerCase() === normalized,
+  );
   if (member?.company_id) return member.company_id as string;
 
-  const { data: org } = await supabase
+  const { data: orgRows } = await supabase
     .from("organizations")
     .select("id, owner_email")
-    .eq("owner_email", normalized)
-    .maybeSingle();
+    .ilike("owner_email", normalized);
+  const org = (orgRows || []).find(
+    (row) => String(row.owner_email || "").trim().toLowerCase() === normalized,
+  );
 
-  const isOrgOwner = org?.owner_email === normalized;
+  const isOrgOwner = !!org;
 
   const existingCo = await findCompanyByDomain(domain);
 
@@ -79,11 +83,13 @@ export async function resolveCompanyIdForEmail(email: string): Promise<string> {
     return existingCo.id;
   }
 
-  const { data: byAdmin } = await supabase
+  const { data: adminRows } = await supabase
     .from("companies")
     .select("id, admin_email, domain")
-    .eq("admin_email", normalized)
-    .maybeSingle();
+    .ilike("admin_email", normalized);
+  const byAdmin = (adminRows || []).find(
+    (row) => String(row.admin_email || "").trim().toLowerCase() === normalized,
+  );
 
   let companyId: string | null = (byAdmin?.id as string) || null;
 
