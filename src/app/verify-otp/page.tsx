@@ -1,8 +1,16 @@
 "use client";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 export default function VerifyPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black" />}>
+      <VerifyForm />
+    </Suspense>
+  );
+}
+
+function VerifyForm() {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
