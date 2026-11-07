@@ -4,7 +4,7 @@ import { undoCommandLog } from "@/lib/super-admin/command-store";
 
 export const dynamic = "force-dynamic";
 
-const SUPER_ADMIN_EMAIL = "support@bharatcloud.store";
+import { SUPER_ADMIN_OWNER as SUPER_ADMIN_EMAIL } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
   const headerEmail = req.headers.get("x-admin-email")?.toLowerCase() || "";

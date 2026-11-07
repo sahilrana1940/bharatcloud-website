@@ -112,6 +112,7 @@ async function runGmailSync(
             subject,
             from_email: from,
             snippet: full.data.snippet || subject,
+            mailboxEmail: m.email,
           },
           session.companyId,
         );

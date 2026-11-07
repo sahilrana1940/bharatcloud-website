@@ -8,10 +8,8 @@ import { Toast } from "@/components/dashboard/Toast";
 import {
   BILLING_PLANS,
   type BillingPlanId,
-  getUpiLink,
 } from "@/lib/billing/plans";
-import { paytmDeepLink } from "@/lib/billing/paytm";
-import { BILLING_UPI_NUMBER, billingUpiName, billingUpiVpa } from "@/lib/billing/upi";
+import { BANK_UPI_ID, BANK_UPI_LABEL, UPI_QR_URL } from "@/lib/super-admin/locked-spec";
 
 const PRO_FEATURES = [
   "Automatic full Google Drive archive",
@@ -50,16 +48,6 @@ export function BillingClient() {
       setBillingConfig(cfg);
     });
   }, []);
-
-  const upiLink = useMemo(
-    () => getUpiLink(selected.price, selected.name),
-    [selected.price, selected.name],
-  );
-  const paytmLink = paytmDeepLink(selected.price, `Bharat Cloud ${selected.name}`);
-  // FIX: QR me hamesha UPI link hi daalo
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiLink)}`;
-  const upiId = billingUpiVpa();
-  const payeeName = billingUpiName();
 
   // MRR Calculation - teri 199/49/99 wali logic
   const monthlyBill = useMemo(() => {
@@ -118,7 +106,7 @@ export function BillingClient() {
   return (
     <div className="min-h-screen overflow-y-auto bg-transparent px-4 pb-[140px] pt-6 sm:px-8 lg:pb-10">
       <h1 className="text-3xl font-bold text-slate-900">Billing</h1>
-      <p className="mt-1 text-slate-600">Hosted on Hostinger. Storage on E2E Mumbai. Pay with Paytm only.</p>
+      <p className="mt-1 text-slate-600">{BANK_UPI_LABEL}. App payments use Razorpay only.</p>
       
       <div className="mt-8 grid max-w-4xl gap-4 sm:grid-cols-3">
         {BILLING_PLANS.map((plan) => {
@@ -160,10 +148,9 @@ export function BillingClient() {
       <div className="mt-8 max-w-md rounded-2xl border border-[#10243E]/10 bg-white p-6 text-center shadow-sm">
         <p className="text-sm text-slate-600"><span className="font-medium text-[#10243E]">{selected.name}</span> ₹{selected.price} + MRR</p>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={qrUrl} alt="UPI QR" className="mx-auto mt-4 rounded-xl bg-white p-2" width={220} height={220} />
-        <p className="mt-2 text-sm text-[#10243E]">{payeeName}</p>
-        <p className="mt-1 break-all text-xs text-slate-500">{upiId}</p>
-        <p className="mt-1 text-sm font-medium text-[#10243E]">UPI Number: {BILLING_UPI_NUMBER}</p>
+        <img src={UPI_QR_URL} alt="Direct Bank UPI QR" className="mx-auto mt-4 rounded-xl bg-white p-2" width={220} height={220} />
+        <p className="mt-2 text-sm text-[#10243E]">BharatCloud</p>
+        <p className="mt-1 break-all text-xs text-slate-500">{BANK_UPI_ID}</p>
       </div>
 
       <div className="mt-8 max-w-md space-y-3 rounded-2xl border border-[#10243E]/10 bg-white p-5 shadow-sm">

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-const SUPER_ADMIN_EMAIL = "support@bharatcloud.store";
+import { SUPER_ADMIN_OWNER as SUPER_ADMIN_EMAIL } from "@/lib/constants";
 
 const NAV = [
   { href: "/super-admin", label: "Overview" },

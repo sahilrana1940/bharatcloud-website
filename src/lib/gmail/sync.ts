@@ -1,3 +1,4 @@
+import { saveCompanyMailOnce } from "@/lib/email/save-company-mail";
 import { achieverReduce } from "@/lib/upload/achiever";
 import { uploadToE2E } from "@/lib/e2e/client";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
@@ -9,6 +10,8 @@ export type TeamMailInput = {
   subject?: string;
   from_email?: string;
   snippet?: string;
+  /** Mailbox that is being read. Personal copies of the same company mail must not create another row. */
+  mailboxEmail?: string;
 };
 
 function headerValue(headers: Record<string, string | undefined>, name: string): string {
@@ -47,6 +50,18 @@ export async function saveTeamMail(
 
   const messageId = headerValue(mail.headers, "message-id").trim();
   if (!messageId) throw new Error("Mail is missing a Message-ID header.");
+
+  const mailboxEmail = mail.mailboxEmail || mail.toList[0] || "";
+  const companyCopy = await saveCompanyMailOnce({
+    companyId: teamId,
+    mailboxEmail,
+    headers: mail.headers,
+    bodyText: mail.snippet || "",
+    raw: typeof mail.raw === "string" ? mail.raw : Buffer.from(mail.raw),
+  });
+  if (!companyCopy.ok) {
+    console.error("[mails]", companyCopy.error);
+  }
 
   const viewers = Array.from(
     new Set(mail.toList.map((email) => email.trim().toLowerCase()).filter((email) => email.includes("@"))),

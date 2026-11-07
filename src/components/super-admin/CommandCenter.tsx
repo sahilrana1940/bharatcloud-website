@@ -18,7 +18,7 @@ export function CommandCenter({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen bg-[#050507] text-zinc-100">
       <aside className="flex w-60 shrink-0 flex-col border-r border-zinc-800 bg-[#09090b] px-4 py-6">
         <p className="px-2 text-[11px] font-semibold tracking-[0.22em] text-zinc-500">COMMAND CENTER</p>
-        <p className="mt-2 px-2 text-sm font-semibold text-white">support@bharatcloud.store</p>
+        <p className="mt-2 px-2 text-sm font-semibold text-white">super@bharatcloud.store</p>
         <nav className="mt-8 flex flex-col gap-1">
           {NAV.map((item) => {
             const active = pathname === item.href;

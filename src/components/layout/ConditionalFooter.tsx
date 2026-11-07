@@ -15,6 +15,7 @@ const HIDE_PREFIXES = [
   "/settings",
   "/login",
   "/signup",
+  "/verify-otp",
   "/recover",
   "/checkout",
 ];

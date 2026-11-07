@@ -14,6 +14,7 @@ import {
 } from "@/lib/email/e2e-gmail-backup";
 import { isGmailReconnectError } from "@/lib/google/token-row";
 import { getE2EBucket } from "@/lib/s3/config";
+import type { EmailBackupInsert } from "@/lib/supabase/client";
 
 export { GMAIL_ARCHIVE_BATCH_SIZE, GMAIL_ARCHIVE_ROUNDS_PER_REQUEST };
 
@@ -21,6 +22,7 @@ export async function handleGmailArchivePost(
   req: Request,
   supabase: SupabaseClient,
   session: { companyId: string; email: string },
+  onArchived?: (row: EmailBackupInsert) => Promise<void>,
 ) {
   const url = new URL(req.url);
   const body = await req.json().catch(() => ({} as Record<string, unknown>));
@@ -69,6 +71,7 @@ export async function handleGmailArchivePost(
         offset: pageToken ? 0 : offset,
         batch: batch + round,
         pageToken: pageToken || undefined,
+        onArchived,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Archive failed";
@@ -81,6 +84,9 @@ export async function handleGmailArchivePost(
     }
 
     if (!result.ok) {
+      if (result.backupInsertFailed) {
+        return NextResponse.json({ error: result.error || "email_backups insert failed" }, { status: 500 });
+      }
       if (result.needsReconnect || isGmailReconnectError(result.error || "")) {
         return gmailReconnectResponse();
       }

@@ -59,10 +59,13 @@ export function EmployeeMailArchiveClient({
   userEmail,
   scope = "employee",
   isSuperAdmin = false,
+  isOrgUser = false,
 }: {
   userEmail: string;
   scope?: "admin" | "employee";
   isSuperAdmin?: boolean;
+  /** org_user / member — no in-app body; forward-only. */
+  isOrgUser?: boolean;
 }) {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<Status>({});
@@ -505,12 +508,13 @@ export function EmployeeMailArchiveClient({
             <li key={e.id}>
               <InboxItem
                 subject={e.subject || e.file_name}
-                snippet={e.snippet}
+                snippet={isOrgUser ? undefined : e.snippet}
                 from_email={e.from_email}
                 created_at={e.message_date || e.created_at}
                 isSuperAdmin={isSuperAdmin}
                 view_count={e.view_count}
                 saved_mb={e.saved_mb}
+                hideBody={isOrgUser}
               />
               {forwardId === e.id ? (
                 <div className="mt-3 flex flex-wrap items-end gap-2">
@@ -533,33 +537,47 @@ export function EmployeeMailArchiveClient({
                     Cancel
                   </Button>
                 </div>
+              ) : isOrgUser ? (
+                <div className="mt-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="gap-1 bg-[#00BAF2] text-[#062033] hover:bg-[#00a8dc]"
+                    onClick={() => {
+                      setForwardId(e.id);
+                      setForwardTo(userEmail);
+                    }}
+                  >
+                    <Send className="h-3.5 w-3.5" /> Forward to My Inbox to View
+                  </Button>
+                </div>
               ) : (
                 <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="gap-1"
-                  disabled={scope === "employee"}
-                  onClick={() => undefined}
-                >
-                  Restore
-                </Button>
-                <Button type="button" size="sm" variant="outline" disabled={scope === "employee"}>
-                  Delete
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="gap-1"
-                  onClick={() => {
-                    setForwardId(e.id);
-                    setForwardTo("");
-                  }}
-                >
-                  <Send className="h-3.5 w-3.5" /> Forward from company mail
-                </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                    disabled={scope === "employee"}
+                    onClick={() => undefined}
+                  >
+                    Restore
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" disabled={scope === "employee"}>
+                    Delete
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                    onClick={() => {
+                      setForwardId(e.id);
+                      setForwardTo("");
+                    }}
+                  >
+                    <Send className="h-3.5 w-3.5" /> Forward from company mail
+                  </Button>
                 </div>
               )}
             </li>

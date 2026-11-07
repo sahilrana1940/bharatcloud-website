@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { EmployeeMailArchiveClient } from "@/components/dashboard/EmployeeMailArchiveClient";
 import { getUserRole } from "@/lib/auth";
+import { isOrgUser } from "@/lib/workspace/org-user";
 import { getWorkspaceSession } from "@/lib/workspace/session";
 
 export default async function EmployeeMailPage() {
@@ -17,6 +18,7 @@ export default async function EmployeeMailPage() {
         userEmail={session.email}
         scope={isAdmin ? "admin" : "employee"}
         isSuperAdmin={role.role === "super_admin"}
+        isOrgUser={isOrgUser(session)}
       />
     </Suspense>
   );

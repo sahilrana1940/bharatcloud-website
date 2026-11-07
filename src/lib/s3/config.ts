@@ -1,4 +1,4 @@
-// src/lib/s3/config.ts - FUTURE SAFE
+// src/lib/s3/config.ts - storage provider none; legacy names are empty stubs
 // STORAGE_PROVIDER = "none" | "supabase" | "idrive"
 
 export type StorageProvider = "none" | "supabase" | "idrive";
@@ -33,7 +33,37 @@ export function isArchiveEnabled() {
   return getStorageProvider() !== "none";
 }
 
-// Purane imports crash na ho isliye dummy - par use nahi honge
+// Disabled stubs so older imports compile. Storage provider stays "none".
 export const E2E_DELHI_ENDPOINT = "";
+export const E2E_CHENNAI_ENDPOINT = "";
 export const E2E_BUCKET_DEFAULT = "";
+export const E2E_BUCKET_TYPO = "";
 export const E2E_SIGNING_REGION = "";
+
+export function getE2EBucket() {
+  return "";
+}
+export function getE2ERegion() {
+  return "";
+}
+export function getE2EEndpoint() {
+  return "";
+}
+export function resolveE2EEndpoint() {
+  return "";
+}
+export function getE2ECredentials() {
+  return { accessKeyId: "", secretAccessKey: "" };
+}
+export function isS3Configured() {
+  return false;
+}
+export function isArchiveFromStart() {
+  return false;
+}
+export function getArchiveBucket() {
+  return "";
+}
+export function getS3Env() {
+  return { b2bBucket: "", bucket: "", endpoint: "", region: "", accessKeyId: "", secretAccessKey: "" };
+}

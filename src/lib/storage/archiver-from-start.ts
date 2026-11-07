@@ -1,6 +1,8 @@
 import type { StorageClass } from "@aws-sdk/client-s3";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { saveCompanyMailOnce } from "@/lib/email/save-company-mail";
+
 import { putObjectSigned } from "@/lib/e2e/signed-put";
 import { insertFileArchiveRow } from "@/lib/archive/save-file-archive-row";
 import { e2eWorkspacePrefix } from "@/lib/roles/platform-roles";
@@ -147,6 +149,16 @@ export async function archiveGmailEml(opts: {
     });
   }
   if (!up.ok) return up;
+
+  const companyCopy = await saveCompanyMailOnce({
+    companyId: opts.orgId,
+    mailboxEmail: opts.userEmail,
+    raw: opts.body,
+    storagePath: key,
+  });
+  if (!companyCopy.ok) {
+    console.error("[mails]", companyCopy.error);
+  }
 
   const indexed = await insertFileArchiveRow(opts.supabase, {
     org_id: opts.orgId,

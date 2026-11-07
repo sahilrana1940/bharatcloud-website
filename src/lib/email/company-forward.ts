@@ -28,6 +28,8 @@ export async function sendArchivedMailForward(opts: {
   originalFrom: string;
   originalDate: string;
   bodyText: string;
+  /** Send as the company mailbox itself, not a personal Gmail or the Resend test sender. */
+  sendAsCompanyDomain?: boolean;
 }): Promise<{ sent: boolean; demoQueued?: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
@@ -38,10 +40,11 @@ export async function sendArchivedMailForward(opts: {
     };
   }
 
-  const from =
-    process.env.COMPANY_MAIL_FROM?.trim() ||
-    process.env.RESEND_FROM_EMAIL?.trim() ||
-    `${BRAND_PRODUCT} <onboarding@resend.dev>`;
+  const from = opts.sendAsCompanyDomain
+    ? `${BRAND_PRODUCT} <${opts.companyFromEmail}>`
+    : process.env.COMPANY_MAIL_FROM?.trim() ||
+      process.env.RESEND_FROM_EMAIL?.trim() ||
+      `${BRAND_PRODUCT} <onboarding@resend.dev>`;
 
   const subject = `Fwd: ${opts.originalSubject}`;
   const text = [

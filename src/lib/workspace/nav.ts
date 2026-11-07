@@ -28,7 +28,7 @@ export const WORKSPACE_NAV: WorkspaceNavItem[] = [
   { href: "/dashboard/company-admin", label: "Company admin", icon: "Building", for: "owner" },
   { href: "/dashboard/drive", label: "Drive", icon: "HardDrive", for: "owner" },
   { href: "/dashboard/vault", label: "My Vault", icon: "Shield", for: "owner" },
-  { href: "/dashboard/emails", label: "Search company mail", icon: "Mail", for: "owner" },
+  { href: "/dashboard/emails", label: "3-year mail search", icon: "Search", for: "owner" },
   {
     href: "/dashboard/email-backup",
     label: "Archive Drive",

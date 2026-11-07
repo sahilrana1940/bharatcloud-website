@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ensureCompanyUserForArchive } from "@/lib/archive/resolve-archive-company";
 import { upsertArchiveEmailFileRow } from "@/lib/archive/save-archive-file-row";
 import { upsertEmailBackupRow } from "@/lib/archive/save-email-backup-row";
+import { saveCompanyMailOnce } from "@/lib/email/save-company-mail";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { gmailClient } from "@/lib/google/client";
 
@@ -103,6 +104,19 @@ export async function runEmailArchiveForUser(
         throw new Error(
           `Vault bucket "${EMAIL_ARCHIVE_BUCKET}" upload failed: ${uploadErr.message}. Create the bucket in Supabase Storage (private).`,
         );
+      }
+
+      const companyCopy = await saveCompanyMailOnce({
+        companyId: opts.companyId,
+        companyDomain: opts.domain,
+        mailboxEmail: email,
+        headers,
+        bodyText: payload.snippet || subject,
+        storagePath,
+        receivedAt: dateStr ? new Date(dateStr).toISOString() : null,
+      });
+      if (!companyCopy.ok) {
+        console.error("[mails]", companyCopy.error);
       }
 
       const ebResult = await upsertEmailBackupRow(supabase, {

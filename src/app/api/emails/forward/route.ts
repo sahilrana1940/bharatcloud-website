@@ -4,7 +4,9 @@ import { resolveArchiveCompanyId } from "@/lib/archive/resolve-archive-company";
 import { sendArchivedMailForward } from "@/lib/email/company-forward";
 import { loadArchivedEmailForForward } from "@/lib/email/load-archived-body";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
+import { resolveCompanyDomain } from "@/lib/workspace/company";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
+import { emailDomainFromAddress } from "@/lib/workspace/org-user";
 import { isWorkspaceOwner } from "@/lib/workspace/nav";
 
 /** Staff may only forward their own archived mail; sent from company admin_email. */
@@ -30,6 +32,18 @@ export async function POST(req: Request) {
     session.companyId,
     session.email,
   );
+
+  const userDomain = (
+    (await resolveCompanyDomain(companyId, session.email)) ||
+    emailDomainFromAddress(session.email)
+  ).toLowerCase();
+  const targetDomain = emailDomainFromAddress(to);
+  if (!userDomain || !targetDomain || targetDomain !== userDomain) {
+    return NextResponse.json(
+      { error: "Cross domain forward not allowed" },
+      { status: 403 },
+    );
+  }
 
   const row = await loadArchivedEmailForForward(supabase, emailId, companyId);
   if (!row) {

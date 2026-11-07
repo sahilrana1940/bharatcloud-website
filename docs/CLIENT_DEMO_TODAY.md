@@ -27,7 +27,7 @@
 5. **Backup** — employee view par “Start backup” / admin par auto job.
 6. **Optional super admin** — `/admin/super` (aapke email se): Nexus stats, **kharcha panel**, PAYMENT_BYPASS toggle *sirf demo*.
 
-Super admin access: `docs/ADMIN_ACCESS.md` (`support@bharatcloud.store`, `admin@bharatcloud.store`).
+Super admin access: `docs/ADMIN_ACCESS.md` (`super@bharatcloud.store`).
 
 ---
 

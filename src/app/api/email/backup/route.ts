@@ -15,6 +15,7 @@ import {
 import { getE2EBucket } from "@/lib/s3/config";
 import { archiveStorageClass } from "@/lib/storage/archiver-from-start";
 import { isGmailReconnectError } from "@/lib/google/token-row";
+import { insertEmailBackup } from "@/lib/supabase/client";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 import { isWorkspaceOwner } from "@/lib/workspace/nav";
@@ -143,5 +144,12 @@ export async function POST(req: Request) {
       maxMessages: EMAIL_BACKUP_BATCH_SIZE,
     }),
   });
-  return handleGmailArchivePost(patchedReq, supabase, session);
+  return handleGmailArchivePost(patchedReq, supabase, session, async (row) => {
+    try {
+      await insertEmailBackup(row);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "email_backups insert failed";
+      throw new Error(message.startsWith("email_backups:") ? message : `email_backups: ${message}`);
+    }
+  });
 }

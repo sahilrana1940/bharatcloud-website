@@ -2,17 +2,23 @@ import { HeadBucketCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 
 import { infraFromUsage } from "@/lib/admin/platform-costs";
 import { getE2EClient } from "@/lib/e2e/client";
-import {
-  E2E_BUCKET_DEFAULT,
-  E2E_BUCKET_TYPO,
-  E2E_CHENNAI_ENDPOINT,
-  E2E_DELHI_ENDPOINT,
-  getE2EBucket,
-  getE2ECredentials,
-  getE2ERegion,
-  resolveE2EEndpoint,
-} from "@/lib/s3/config";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { E2E_BUCKET_DEFAULT, E2E_DELHI_ENDPOINT } from "@/lib/s3/config";
+
+const E2E_BUCKET_TYPO = "";
+const E2E_CHENNAI_ENDPOINT = "";
+function getE2EBucket() {
+  return "";
+}
+function getE2ECredentials() {
+  return { accessKeyId: "", secretAccessKey: "" };
+}
+function getE2ERegion() {
+  return "";
+}
+function resolveE2EEndpoint() {
+  return "";
+}
 
 export type StorageMeasure = {
   ok: boolean;

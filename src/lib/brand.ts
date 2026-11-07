@@ -9,13 +9,9 @@ export const BRAND_FOOTER =
   `🇮🇳 ${BRAND_TAGLINE} · 100% Made in India | Mumbai-region storage | Encrypted vault | 60s secure download | All plans inclusive of taxes | GST Not Applicable | Cancel anytime`;
 
 /** Primary platform super-admin login (also in default list). */
-export const SUPER_ADMIN_EMAIL = "support@bharatcloud.store";
+export const SUPER_ADMIN_EMAIL = "super@bharatcloud.store";
 
-const DEFAULT_SUPER_ADMINS = [
-  SUPER_ADMIN_EMAIL,
-  "support@bharatcloud.com",
-  "admin@bharatcloud.store",
-];
+const DEFAULT_SUPER_ADMINS = [SUPER_ADMIN_EMAIL];
 
 export function listSuperAdminEmails(): string[] {
   const raw = process.env.SUPER_ADMIN_EMAILS?.trim();

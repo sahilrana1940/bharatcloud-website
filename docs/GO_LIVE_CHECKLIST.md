@@ -18,7 +18,7 @@
 |--------|-----|
 | B2B | `/api/auth/google/demo?email=company@bharatcloud.store` |
 | B2C Personal | `/api/auth/google/demo?email=demo.user@gmail.com&mode=b2c` |
-| Super Admin | `/api/auth/google/demo?email=admin@bharatcloud.store` |
+| Super Admin | `/api/auth/google/demo?email=super@bharatcloud.store` |
 
 ## Mumbai VPS (later)
 Point `NEXT_PUBLIC_SUPABASE_URL` to self-hosted API when ready.

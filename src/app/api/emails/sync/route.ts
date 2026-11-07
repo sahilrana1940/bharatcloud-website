@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { assertEmailBackupEnabled } from "@/lib/backup/email-backup-guard";
+import { saveCompanyMailOnce } from "@/lib/email/save-company-mail";
 import { getValidGoogleAccessToken } from "@/lib/google/access-token";
 import { gmailClient } from "@/lib/google/client";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
@@ -48,12 +49,22 @@ export async function POST() {
         userId: "me",
         id: m.id,
         format: "metadata",
-        metadataHeaders: ["Subject", "From", "Date"],
+        metadataHeaders: ["Subject", "From", "To", "Date", "Message-ID"],
       });
       const headers = full.data.payload?.headers || [];
       const subject = headers.find((h) => h.name === "Subject")?.value || "";
       const from = headers.find((h) => h.name === "From")?.value || "";
       const dateStr = headers.find((h) => h.name === "Date")?.value;
+      const companyCopy = await saveCompanyMailOnce({
+        companyId: session.companyId,
+        mailboxEmail: u.email,
+        headers,
+        bodyText: subject,
+        receivedAt: dateStr ? new Date(dateStr).toISOString() : null,
+      });
+      if (!companyCopy.ok) {
+        console.error("[mails]", companyCopy.error);
+      }
       await supabase.from("email_backups").upsert(
         {
           company_id: session.companyId,

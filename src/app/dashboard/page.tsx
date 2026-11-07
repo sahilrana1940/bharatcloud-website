@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { SuperAdminTenantsDashboard } from "@/components/saas/SuperAdminTenantsDashboard";
 import { getUserRole, defaultDashboardForRole } from "@/lib/auth";
 import { isPlatformSuperAdminEmail } from "@/lib/roles/platform-roles";
 import { getWorkspaceSession } from "@/lib/workspace/session";
@@ -15,7 +14,7 @@ export default async function DashboardPage() {
   if (!session) redirect("/login");
 
   if (isPlatformSuperAdminEmail(session.email)) {
-    return <SuperAdminTenantsDashboard adminEmail={session.email} />;
+    redirect("/super-admin");
   }
 
   const role = await getUserRole(session.email);

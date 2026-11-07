@@ -381,6 +381,14 @@ export async function getLastEmailBackupRunAt(
   return (data?.created_at as string) || null;
 }
 
+function subjectFromRaw(raw: Buffer): string {
+  const head = raw.subarray(0, 8000).toString("utf8").replace(/\r\n/g, "\n");
+  const unfolded = head.replace(/\n[ \t]+/g, " ");
+  const line = unfolded.split("\n").find((row) => /^subject:/i.test(row));
+  const subject = line ? line.replace(/^subject:\s*/i, "").trim() : "";
+  return subject.slice(0, 500) || "(no subject)";
+}
+
 export async function runE2eGmailBackup(
   supabase: SupabaseClient,
   opts: {
@@ -395,6 +403,15 @@ export async function runE2eGmailBackup(
     gmailSearchQuery?: string;
     userId?: string | null;
     onProgress?: (p: E2eEmailBackupProgress) => void;
+    onArchived?: (row: {
+      user_email: string;
+      gmail_id: string;
+      subject: string;
+      backup_status: string;
+      backup_url: string;
+      company_id: string;
+      owner_email: string;
+    }) => Promise<void>;
   },
 ): Promise<
   | {
@@ -413,7 +430,15 @@ export async function runE2eGmailBackup(
       messagesTotal: number;
       batch: number;
     }
-  | { ok: false; error: string; runId?: string; retryable?: boolean; tokenExpired?: boolean; needsReconnect?: boolean }
+  | {
+      ok: false;
+      error: string;
+      runId?: string;
+      retryable?: boolean;
+      tokenExpired?: boolean;
+      needsReconnect?: boolean;
+      backupInsertFailed?: boolean;
+    }
 > {
   if (!isS3Configured()) {
     return {
@@ -560,7 +585,7 @@ export async function runE2eGmailBackup(
         total: maxMessages,
       });
 
-      await withTlsRetry("E2E Gmail upload", async () => {
+      const stored = await withTlsRetry("E2E Gmail upload", async () => {
         const result = await archiveGmailEml({
           orgId,
           userId,
@@ -572,6 +597,19 @@ export async function runE2eGmailBackup(
         if (!result.ok) throw new Error(result.error);
         return result;
       });
+
+      if (opts.onArchived) {
+        const subject = subjectFromRaw(rawEmail);
+        await opts.onArchived({
+          user_email: email,
+          owner_email: email,
+          company_id: orgId,
+          gmail_id: id,
+          subject,
+          backup_status: "backed_up",
+          backup_url: `${stored.bucket}/${stored.key}`,
+        });
+      }
 
       uploaded += 1;
       bytes += rawEmail.length;
@@ -633,6 +671,11 @@ export async function runE2eGmailBackup(
     };
   } catch (e) {
     let msg = e instanceof Error ? e.message : "Gmail archive failed";
+    if (/^email_backups:/i.test(msg)) {
+      await patchRun(supabase, runId, { status: "error", progress: msg.slice(0, 400) });
+      emit({ phase: "error", message: msg });
+      return { ok: false, error: msg, runId, backupInsertFailed: true };
+    }
     if (isGmailReconnectError(msg)) {
       await patchRun(supabase, runId, { status: "error", progress: msg.slice(0, 400) });
       emit({ phase: "error", message: msg });

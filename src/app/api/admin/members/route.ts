@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { isPlatformAdminSession } from "@/lib/admin/access";
 import { getSessionRole } from "@/lib/auth";
+import { removeEmployeeKeepMails } from "@/lib/email/save-company-mail";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
 async function guard() {
@@ -67,9 +68,9 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const { error } = await supabase.from("company_users").delete().eq("id", memberId);
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const removed = await removeEmployeeKeepMails(supabase, memberId);
+  if (!removed.ok) {
+    return NextResponse.json({ error: removed.error }, { status: 500 });
   }
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, mailsRetained: true });
 }

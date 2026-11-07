@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const SUPER_ADMIN_EMAIL = "support@bharatcloud.store";
+import { SUPER_ADMIN_OWNER as SUPER_ADMIN_EMAIL } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
   const email = req.cookies.get("bc_workspace_email")?.value?.toLowerCase() || "";
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json(
-    { approvals: [], message: "No data yet - Real from Razorpay/E2E" },
+    { approvals: [], message: "No data yet" },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

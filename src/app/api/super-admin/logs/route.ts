@@ -4,7 +4,7 @@ import { listCommandLogs } from "@/lib/super-admin/command-store";
 
 export const dynamic = "force-dynamic";
 
-const SUPER_ADMIN_EMAIL = "support@bharatcloud.store";
+import { SUPER_ADMIN_OWNER as SUPER_ADMIN_EMAIL } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
   const email = req.cookies.get("bc_workspace_email")?.value?.toLowerCase() || "";

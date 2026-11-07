@@ -25,6 +25,7 @@ const links = [
   { href: "/admin/payments", label: "UPI approvals", icon: CreditCard },
   { href: "/admin/members", label: "Members", icon: Users },
   { href: "/admin/gmail", label: "Gmail access", icon: Mail },
+  { href: "/admin/mail", label: "Mail archive", icon: Mail },
   { href: "/admin/super", label: "Nexus metrics", icon: Sparkles, exact: true },
   { href: "/admin/storage", label: "Storage", icon: HardDrive },
   { href: "/admin/recovery", label: "Recovery", icon: Shield },

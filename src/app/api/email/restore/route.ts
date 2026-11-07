@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { logArchiveRestore } from "@/lib/archive/save-file-archive-row";
 import { EMAIL_BACKUP_S3_BUCKET } from "@/lib/email/e2e-gmail-backup";
-import { getArchiveObjectUrl } from "@/lib/s3/archive";
+import { getSecureMailUrl, SECURE_MAIL_URL_TTL_SECONDS } from "@/lib/e2e/secure-mail-url";
 import { requireWorkspace } from "@/lib/workspace/auth-api";
 import { getSupabaseOrNull } from "@/lib/workspace/db";
 
@@ -35,7 +35,11 @@ export async function POST(req: Request) {
     if (!row) {
       return NextResponse.json({ error: "Archive not found" }, { status: 404 });
     }
-    s3Key = row.s3_key as string;
+    s3Key =
+      (row.s3_key as string) ||
+      (row.s3_path as string) ||
+      (row.e2e_path as string) ||
+      "";
     bucket = (row.s3_bucket as string) || bucket;
     fileArchiveId = row.id as string;
   } else if (runId) {
@@ -80,7 +84,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "runId or archiveId required" }, { status: 400 });
   }
 
-  const downloadUrl = await getArchiveObjectUrl(s3Key, bucket);
+  const downloadUrl = await getSecureMailUrl(s3Key, { bucket });
 
   await logArchiveRestore(supabase, {
     org_id: session.companyId,
@@ -91,10 +95,11 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    message: "Restore link from E2E Mumbai archive (GLACIER class). Gmail originals unchanged.",
+    message: "Restore link from E2E archive (GLACIER). Link expires in 5 minutes.",
     bucket,
     s3Key,
     downloadUrl,
+    expiresInSeconds: SECURE_MAIL_URL_TTL_SECONDS,
     hint: `Object: s3://${bucket}/${s3Key}`,
   });
 }

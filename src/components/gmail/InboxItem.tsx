@@ -6,6 +6,7 @@ export type InboxItemProps = {
   isSuperAdmin?: boolean;
   view_count?: number;
   saved_mb?: number;
+  hideBody?: boolean;
 };
 
 export function InboxItem({
@@ -16,13 +17,18 @@ export function InboxItem({
   isSuperAdmin = false,
   view_count = 0,
   saved_mb = 0,
+  hideBody = false,
 }: InboxItemProps) {
   const when = created_at ? new Date(created_at).toLocaleString() : "";
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <h3 className="font-bold text-slate-900">{subject || "(no subject)"}</h3>
-      {snippet ? <p className="mt-1 line-clamp-2 text-sm text-slate-600">{snippet}</p> : null}
+      {!hideBody && snippet ? (
+        <p className="mt-1 line-clamp-2 text-sm text-slate-600">{snippet}</p>
+      ) : hideBody ? (
+        <p className="mt-1 text-sm text-slate-500">Message body hidden — forward to your inbox to view.</p>
+      ) : null}
       <p className="mt-2 text-xs text-slate-500">
         {from_email || "Unknown sender"}
         {when ? ` · ${when}` : ""}

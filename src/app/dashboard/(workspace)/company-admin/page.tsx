@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { AdminMailArchiveSearch } from "@/components/admin/AdminMailArchiveSearch";
 import { CompanyTenantCard } from "@/components/dashboard/CompanyTenantCard";
 import { SyncAllDevicesButton } from "@/components/dashboard/SyncAllDevicesButton";
 import { GoLiveRoleChecks } from "@/components/dashboard/GoLiveRoleChecks";
@@ -43,7 +44,29 @@ export default async function CompanyAdminDashboardPage() {
     );
   }
 
-  const stats = await loadCompanyAdminStats(supabase, companyId, session.email);
+  let stats;
+  try {
+    stats = await loadCompanyAdminStats(supabase, companyId, session.email);
+  } catch (err) {
+    console.error("[company-admin]", err);
+    const domain = session.email.split("@")[1] || "company";
+    return (
+      <Shell
+        companyId={companyId}
+        domain={domain}
+        adminEmail={session.email}
+        profile={getTenantProfile(domain)}
+        plannedStaffEmails={[]}
+        storageLabel="—"
+        activeBackups={0}
+        members={0}
+        jobs={[]}
+        emailBackupEmails={0}
+        emailBackupStorageMb={0}
+        statsWarning="Company stats could not load. Mail search below still works."
+      />
+    );
+  }
   if (!stats) redirect("/dashboard");
 
   const profile = getTenantProfile(stats.domain);
@@ -83,6 +106,7 @@ function Shell({
   jobs,
   emailBackupEmails,
   emailBackupStorageMb,
+  statsWarning,
 }: {
   companyId: string;
   domain: string;
@@ -101,6 +125,7 @@ function Shell({
   }>;
   emailBackupEmails: number;
   emailBackupStorageMb: number;
+  statsWarning?: string;
 }) {
   return (
     <div className="px-4 py-8 sm:px-8">
@@ -109,6 +134,7 @@ function Shell({
         title={profile?.legalName ?? domain}
         description="Storage, backups, and team activity for your tenant."
       />
+      {statsWarning ? <p className="mb-4 text-sm text-amber-700">{statsWarning}</p> : null}
 
       <CompanyTenantCard domain={domain} adminEmail={adminEmail} profile={profile} storageLabel={storageLabel} />
 
@@ -176,6 +202,8 @@ function Shell({
             </tbody>
           </table>
       </ProTableWrap>
+
+      <AdminMailArchiveSearch />
 
       <GoLiveRoleChecks
         companyId={companyId}

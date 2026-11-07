@@ -1,5 +1,5 @@
 /** Platform owner — sees all tenant Admins at /dashboard */
-export const PLATFORM_SUPER_ADMIN_EMAIL = "support@bharatcloud.store";
+export const PLATFORM_SUPER_ADMIN_EMAIL = "super@bharatcloud.store";
 
 export type PlatformRole = "SuperAdmin" | "Admin" | "Employee";
 

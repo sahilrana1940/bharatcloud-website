@@ -8,10 +8,11 @@ import {
   type AdminEmployee,
 } from "@/lib/super-admin/command-store";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { removeEmployeeKeepMails } from "@/lib/email/save-company-mail";
 
 export const dynamic = "force-dynamic";
 
-const SUPER_ADMIN_EMAIL = "support@bharatcloud.store";
+import { SUPER_ADMIN_OWNER as SUPER_ADMIN_EMAIL } from "@/lib/constants";
 const HOME_DOMAIN = "bharatcloud.store";
 
 const noStore = { "Cache-Control": "no-store" };
@@ -76,10 +77,9 @@ export async function GET(req: NextRequest) {
 
   const stale = (data || []).filter((row) => String(row.email).toLowerCase() === "admin@bharatcloud.in");
   if (stale.length) {
-    await supabase.from("company_users").delete().in(
-      "id",
-      stale.map((row) => row.id),
-    );
+    for (const row of stale) {
+      await removeEmployeeKeepMails(supabase, row.id);
+    }
   }
 
   const rows = (data || [])
@@ -147,16 +147,18 @@ export async function DELETE(req: NextRequest) {
   const email = String(body?.email || "").toLowerCase();
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400, headers: noStore });
   if (id === COMMAND_EMPLOYEE.id || email === SUPER_ADMIN_EMAIL) {
-    return NextResponse.json({ error: "Cannot delete support@bharatcloud.store" }, { status: 400, headers: noStore });
+    return NextResponse.json({ error: `Cannot delete ${SUPER_ADMIN_EMAIL}` }, { status: 400, headers: noStore });
   }
 
   const { supabase } = await homeCompanyId();
   if (supabase && !id.startsWith("EMP-")) {
-    const { error } = await supabase.from("company_users").delete().eq("id", id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500, headers: noStore });
+    const removed = await removeEmployeeKeepMails(supabase, id);
+    if (!removed.ok) {
+      return NextResponse.json({ error: removed.error }, { status: 500, headers: noStore });
+    }
   } else {
     deleteMemoryEmployee(id);
   }
 
-  return NextResponse.json({ ok: true }, { headers: noStore });
+  return NextResponse.json({ ok: true, mailsRetained: true }, { headers: noStore });
 }

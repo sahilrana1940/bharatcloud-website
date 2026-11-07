@@ -12,7 +12,7 @@ import {
   withGst,
   gstAmount,
 } from "@/lib/b2b/plans";
-import { paytmDeepLink } from "@/lib/billing/paytm";
+import { BANK_UPI_LABEL, UPI_DEEP_LINK, UPI_QR_URL } from "@/lib/super-admin/locked-spec";
 
 function CheckoutInner() {
   const params = useSearchParams();
@@ -27,11 +27,7 @@ function CheckoutInner() {
 
   function pay() {
     setError("");
-    const link = paytmDeepLink(total, `${plan.name} Bharat Cloud`);
-    if (!link) {
-      setError("Paytm VPA missing. Set NEXT_PUBLIC_PAYTM_UPI_ID.");
-      return;
-    }
+    const link = `${UPI_DEEP_LINK}&am=${total}&tn=${encodeURIComponent(plan.name)}`;
     setLoading(true);
     window.location.href = link;
   }
@@ -61,10 +57,12 @@ function CheckoutInner() {
           <p className="text-xs text-slate-500">
             {plan.maxUsers ? `${plan.maxUsers} users` : "Unlimited users"} · {plan.storageGb >= 1024 ? `${plan.storageGb / 1024}TB` : `${plan.storageGb}GB`} Total Storage · inclusive of taxes
           </p>
-          <p className="text-xs text-slate-500">Paytm only. Cards and netbanking are not accepted.</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={UPI_QR_URL} alt="Direct Bank UPI QR" className="mx-auto rounded-xl bg-white p-2" width={180} height={180} />
+          <p className="text-xs text-slate-500">IDFC First Bank UPI · 9469276461@idfcfirst</p>
           {error && <p className="text-sm text-red-500">{error}</p>}
-          <Button className="w-full bg-[#00BAF2] text-[#062033] hover:bg-[#00BAF2]/90" onClick={pay} disabled={loading}>
-            {loading ? "Opening Paytm…" : "Pay with Paytm"}
+          <Button className="w-full bg-[#10243E] text-white hover:bg-[#10243E]/90" onClick={pay} disabled={loading}>
+            {loading ? "Opening UPI…" : BANK_UPI_LABEL}
           </Button>
         </CardContent>
       </Card>

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { VaultEmailsClient } from "@/components/dashboard/VaultEmailsClient";
+import { AdminMailArchiveSearch } from "@/components/admin/AdminMailArchiveSearch";
 import { isWorkspaceOwner } from "@/lib/workspace/nav";
 import { getWorkspaceSession } from "@/lib/workspace/session";
 
@@ -18,7 +18,7 @@ export default async function CompanyEmailsPage() {
 
   return (
     <div className="min-h-screen px-4 py-8 sm:px-8">
-      <VaultEmailsClient mode="emails" isAdmin={true} />
+      <AdminMailArchiveSearch />
     </div>
   );
 }

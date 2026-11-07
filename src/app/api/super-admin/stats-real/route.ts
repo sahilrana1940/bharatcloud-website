@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { infraFromUsage } from "@/lib/admin/platform-costs";
-import { measureE2EStorage } from "@/lib/e2e/measure-storage";
+import { SUPER_ADMIN_OWNER as SUPER_ADMIN_EMAIL } from "@/lib/constants";
 import { listCommandLogs, REAL_STATS } from "@/lib/super-admin/command-store";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 export const revalidate = 60;
 export const dynamic = "force-dynamic";
-
-const SUPER_ADMIN_EMAIL = "support@bharatcloud.store";
 
 export async function GET(req: NextRequest) {
   const email = req.cookies.get("bc_workspace_email")?.value?.toLowerCase() || "";
@@ -27,23 +24,20 @@ export async function GET(req: NextRequest) {
     quotaGb = rows.reduce((sum, row) => sum + Number(row.storage_limit_gb || 0), 0);
   }
 
-  const measured = await measureE2EStorage();
-  const infra = infraFromUsage(measured.usedGb);
-
   return NextResponse.json(
     {
       ...REAL_STATS,
       tenants,
-      storageUsed: measured.usedGb,
-      storageBytes: measured.usedBytes,
-      storageTotal: quotaGb || measured.usedGb,
-      objectCount: measured.objectCount,
-      bucket: measured.bucket,
-      endpoint: measured.endpoint,
-      region: measured.region,
-      storageError: measured.ok ? null : measured.error || "Storage measurement failed",
-      storageWarning: measured.warning || null,
-      infra,
+      storageUsed: 0,
+      storageBytes: 0,
+      storageTotal: quotaGb,
+      objectCount: 0,
+      bucket: null,
+      endpoint: null,
+      region: null,
+      storageError: null,
+      storageWarning: null,
+      infra: { monthlyUsd: 0 },
       logsSize: "0 KB",
       logsCount: logs.length,
     },
