@@ -12,9 +12,8 @@ export function BharatCloudFooter() {
           <p className="mt-2 text-xs text-slate-500">All plans inclusive of taxes | GST Not Applicable | Cancel anytime</p>
         </div>
         <div className="flex flex-wrap gap-4 text-xs text-slate-600">
-          <Link href="/login" className="hover:text-cyan-600">Login</Link>
-          <Link href="/signup" className="hover:text-cyan-600">Sign up</Link>
-          <Link href="/pricing" className="hover:text-cyan-600">Pricing</Link>
+          <Link href="/enter" className="hover:text-cyan-600">Login</Link>
+          <Link href="/join" className="hover:text-cyan-600">Partner Bano</Link>
         </div>
       </div>
     </footer>

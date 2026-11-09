@@ -55,11 +55,21 @@ export function middleware(req: NextRequest) {
     pathname.startsWith("/pricing") ||
     pathname === "/login" ||
     pathname.startsWith("/signup") ||
+    pathname === "/join" ||
+    pathname === "/enter" ||
+    pathname.startsWith("/hub/link") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/public") ||
     pathname.includes("favicon") ||
     pathname.includes(".")
   ) {
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith("/hub")) {
+    if (!req.cookies.get("bc_hub")?.value) {
+      return NextResponse.redirect(new URL("/enter", req.url));
+    }
     return NextResponse.next();
   }
 
@@ -140,5 +150,7 @@ export const config = {
     "/god-mode/:path*",
     "/super-admin",
     "/super-admin/:path*",
+    "/hub",
+    "/hub/:path*",
   ],
 };

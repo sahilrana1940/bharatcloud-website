@@ -310,7 +310,7 @@ export function DrivePageClient({ userEmail }: { isAdmin?: boolean; userEmail: s
           <h1 className="text-3xl font-bold tracking-tight text-[#10243E] sm:text-4xl">
             Drive
           </h1>
-          <p className="mt-1 text-slate-600">Files on E2E Mumbai. Site on Hostinger.</p>
+          <p className="mt-1 text-slate-600">Files on E2E Mumbai.</p>
         </div>
         <div className="flex items-center gap-2 text-xs text-[#0F766E]">
           <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />

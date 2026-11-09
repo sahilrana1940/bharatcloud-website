@@ -3,10 +3,9 @@ export const BRAND_PARENT = "Bharat Tijori";
 export const BRAND_DOMAIN = "bharattijori.com";
 export const BRAND_LEGACY_DOMAIN = "bharatcloud.store";
 
-export const BRAND_TAGLINE = `${BRAND_PRODUCT} for Business — by ${BRAND_PARENT}`;
+export const BRAND_TAGLINE = "India Ke Business Ke Liye - Bharat Ka Apna Business Drive";
 
-export const BRAND_FOOTER =
-  `🇮🇳 ${BRAND_TAGLINE} · 100% Made in India | Mumbai-region storage | Encrypted vault | 60s secure download | All plans inclusive of taxes | GST Not Applicable | Cancel anytime`;
+export const BRAND_FOOTER = "Made For India";
 
 /** Primary platform super-admin login (also in default list). */
 export const SUPER_ADMIN_EMAIL = "super@bharatcloud.store";

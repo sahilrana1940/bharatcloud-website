@@ -1,11 +1,13 @@
 "use client";
 
-import { Search, Shield } from "lucide-react";
+import { BadgeCheck, Plus, Search, Shield } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { FileGrid, type GridFile } from "@/components/dashboard/FileGrid";
 import { PreviewModal } from "@/components/dashboard/PreviewModal";
 import { Toast } from "@/components/dashboard/Toast";
+import { useWorkspaceQuota } from "@/components/dashboard/WorkspaceShell";
 
 export function DriveShell({
   userEmail,
@@ -38,6 +40,7 @@ export function DriveShell({
   const [files, setFiles] = useState<GridFile[]>([]);
   const [toast, setToast] = useState("");
   const [preview, setPreview] = useState<GridFile | null>(null);
+  const { storageLabel } = useWorkspaceQuota();
   const load = useCallback(async () => {
     const res = await fetch(
       `/api/drive/list?source=${source}&owner=${encodeURIComponent(userEmail)}&q=${encodeURIComponent(q)}`,
@@ -78,65 +81,104 @@ export function DriveShell({
 
   const shellClass = embedded
     ? "px-4 pt-4 sm:px-8"
-    : "min-h-screen overflow-y-auto bg-transparent px-4 pb-[140px] pt-6 sm:px-8 lg:pb-10";
+    : "min-h-screen overflow-y-auto bg-transparent px-4 pb-16 pt-5 sm:px-8";
+  const safeEmpty = listSource === "drive" && tab === "safe";
 
   return (
     <div className={shellClass}>
       {!embedded && (
-        <header className="flex flex-col gap-2 border-b border-slate-200 pb-6 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">{title}</h1>
-            <p className="text-slate-500">{subtitle}</p>
+        <header className="flex flex-col gap-4 rounded-3xl border border-white/70 bg-white/55 px-4 py-4 shadow-[0_12px_40px_rgba(37,99,235,0.08)] backdrop-blur-xl lg:flex-row lg:items-center">
+          <h1 className="shrink-0 text-2xl font-bold tracking-tight text-[#0f2744] sm:text-3xl">
+            {title}
+          </h1>
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search files, folders, emails..."
+              className="w-full rounded-2xl border border-blue-100/80 bg-white/80 py-2.5 pl-10 pr-4 text-sm text-slate-900 shadow-sm outline-none ring-blue-500/20 placeholder:text-slate-400 focus:ring-2"
+            />
           </div>
-          <div className="flex items-center gap-2 text-xs text-emerald-400">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" /> All systems operational
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="rounded-full border border-blue-200/80 bg-white/80 px-3 py-1.5 text-xs font-semibold text-blue-900 shadow-sm">
+              {storageLabel}
+            </span>
+            <div className="flex items-center gap-2 rounded-2xl border border-white/80 bg-white/70 px-3 py-1.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white">
+                SR
+              </span>
+              <span className="leading-tight">
+                <span className="block text-sm font-semibold text-[#0f2744]">Sahil Rana</span>
+                <span className="flex items-center gap-1 text-[11px] text-slate-500">
+                  Partner • Verified
+                  <BadgeCheck className="h-3.5 w-3.5 text-emerald-500" />
+                </span>
+              </span>
+            </div>
           </div>
         </header>
       )}
 
-      {listSource === "drive" && source === "bharatcloud" && (
-        <p className="mt-4 rounded-2xl border border-slate-200 bg-cyan-50/80 px-4 py-3 text-sm text-slate-600">
-          Automatic backup runs from{" "}
-          <a href="/dashboard/team" className="text-cyan-400 underline">Team &amp; backup</a> after payment.
-          Manual upload is disabled.
-        </p>
-      )}
-
       {listSource === "drive" && (
-        <div className="mt-6 flex flex-wrap gap-2 rounded-2xl bg-slate-100 p-1.5">
+        <div className="mt-6 inline-flex flex-wrap gap-1 rounded-2xl border border-white/70 bg-white/50 p-1.5 shadow-sm backdrop-blur-xl">
           <button
             type="button"
             onClick={() => setTab("google")}
-            className={`rounded-xl px-4 py-2 text-sm ${tab === "google" ? "bg-gradient-to-r from-sky-600 to-cyan-500 text-white" : "text-slate-400"}`}
+            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${tab === "google" ? "bg-blue-600 text-white shadow-md shadow-blue-600/25" : "text-slate-600 hover:text-[#0f2744]"}`}
           >
             My Google Drive
           </button>
           <button
             type="button"
             onClick={() => setTab("safe")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm ${tab === "safe" ? "bg-gradient-to-r from-sky-600 to-cyan-500 text-white" : "text-slate-500"}`}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${tab === "safe" ? "bg-blue-600 text-white shadow-md shadow-blue-600/25" : "text-slate-600 hover:text-[#0f2744]"}`}
           >
             <Shield className="h-4 w-4" /> BharatCloud Safe Drive
           </button>
         </div>
       )}
 
-      <div className="relative mt-4 max-w-xl">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search files, folders, emails..."
-          className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 shadow-sm"
-        />
-      </div>
-
+      {embedded && (
+        <div className="relative mt-4 max-w-xl">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search files, folders, emails..."
+            className="w-full rounded-2xl border border-blue-100/80 bg-white/80 py-2.5 pl-10 pr-4 text-sm text-slate-900 shadow-sm outline-none"
+          />
+        </div>
+      )}
 
       <div className="mt-8">
         {files.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-slate-200 bg-white py-16 text-center text-slate-500">
-            No files found. Upload or sync from Team page.
-          </p>
+          <div className="flex flex-col items-center rounded-3xl border border-white/70 bg-white/50 px-6 py-20 text-center shadow-[0_20px_50px_rgba(37,99,235,0.08)] backdrop-blur-xl">
+            <p className="text-xl font-semibold text-[#0f2744]">No files found</p>
+            <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
+              {safeEmpty
+                ? "Your BharatCloud Safe Drive is empty. Securely share or sync files from your team to get started."
+                : subtitle}
+            </p>
+            {listSource === "drive" && (
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  href="/dashboard/shared"
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-700"
+                >
+                  <Plus className="h-4 w-4" />
+                  Share
+                </Link>
+                <Link
+                  href="/dashboard/team"
+                  className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-white/80 px-5 py-2.5 text-sm font-semibold text-blue-800 transition hover:border-blue-300 hover:bg-white"
+                >
+                  <Plus className="h-4 w-4" />
+                  Sync from Team & backup
+                </Link>
+              </div>
+            )}
+          </div>
         ) : (
           <FileGrid
             files={files}

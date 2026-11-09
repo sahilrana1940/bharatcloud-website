@@ -16,8 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: `${BRAND_TAGLINE}`,
-  description:
-    "Apna Business Cloud, India me safe. Team backup and vault for Indian companies — Bharat Tijori.",
+  description: "India Ke Business Ke Liye - Bharat Ka Apna Business Drive. Partner plan, company drive, email backup.",
   metadataBase: new URL(`https://www.${BRAND_DOMAIN}`),
   openGraph: {
     title: BRAND_TAGLINE,

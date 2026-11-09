@@ -18,6 +18,10 @@ const HIDE_PREFIXES = [
   "/verify-otp",
   "/recover",
   "/checkout",
+  "/partner",
+  "/join",
+  "/enter",
+  "/hub",
 ];
 
 export function ConditionalFooter() {
